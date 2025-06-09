@@ -25,10 +25,9 @@ const sortButtonText = document.getElementById('sort-button-text');
 const punishmentListDiv = document.getElementById('punishment-list');
 const closeStatsModalBtn = document.getElementById('close-stats-modal');
 const statsModal = document.getElementById('stats-modal');
-const newRuleInput = document.getElementById('new-rule-input');
-const addRuleBtn = document.getElementById('add-rule-btn');
 const rulesListOl = document.getElementById('rules-list');
 const editRulesBtn = document.getElementById('edit-rules-btn');
+const addDecreeBtn = document.getElementById('add-decree-btn');
 
 // --- AUTHENTICATION & INITIALIZATION ---
 onAuthStateChanged(auth, (user) => {
@@ -123,12 +122,14 @@ async function handleRemoveStripe(docId) {
 }
 
 async function handleAddRule() {
-    const text = newRuleInput.value.trim();
-    if (!text) return;
+    const text = prompt("What is the new decree you wish to add?");
+    // Exit if user cancelled or entered empty text
+    if (!text || text.trim() === '') return;
+
     if (!confirmSchikko()) return;
+
     const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
     await addRuleToFirestore(text, maxOrder + 1);
-    newRuleInput.value = '';
 }
 
 // --- EVENT LISTENERS ---
@@ -139,8 +140,7 @@ mainInput.addEventListener('input', () => {
 
 mainInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddName(); } });
 addBtn.addEventListener('click', handleAddName);
-addRuleBtn.addEventListener('click', handleAddRule);
-newRuleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRule(); } });
+addDecreeBtn?.addEventListener('click', handleAddRule);
 closeStatsModalBtn.addEventListener('click', () => statsModal.classList.add('hidden'));
 
 sortSelect.addEventListener('change', (e) => {
