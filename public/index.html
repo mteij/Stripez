@@ -45,9 +45,13 @@
             <div class="flex flex-col sm:flex-row gap-4 mb-8">
                 <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
                 <button id="add-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Inscribe</button>
-                <div class="flex-shrink-0 flex gap-2">
-                    <button id="sort-asc-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">A-Z</button>
-                    <button id="sort-desc-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Z-A</button>
+                <div class="flex-shrink-0">
+                    <select id="sort-select" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg appearance-none cursor-pointer">
+                        <option value="asc">Sort: A-Z</option>
+                        <option value="desc">Sort: Z-A</option>
+                        <option value="stripes_desc">Sort: Most Stripes</option>
+                        <option value="stripes_asc">Sort: Least Stripes</option>
+                    </select>
                 </div>
             </div>
 
@@ -70,7 +74,6 @@
             </div>
         </div>
     </div>
-
 
     <script src="app.js" type="module"></script>
 </body>

@@ -34,8 +34,7 @@ const statsName = document.getElementById('stats-name');
 const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d');
 const mainInput = document.getElementById('main-input');
 const addBtn = document.getElementById('add-btn');
-const sortAscBtn = document.getElementById('sort-asc-btn');
-const sortDescBtn = document.getElementById('sort-desc-btn');
+const sortSelect = document.getElementById('sort-select');
 
 // --- FIRESTORE COLLECTION REFERENCE ---
 const ledgerCollectionRef = collection(db, 'punishments');
@@ -62,15 +61,25 @@ const renderLedger = () => {
     viewData.sort((a, b) => {
         const nameA = a.name.toLowerCase();
         const nameB = b.name.toLowerCase();
-        
+
         if (term) {
             const aStartsWith = nameA.startsWith(term);
             const bStartsWith = nameB.startsWith(term);
             if (aStartsWith && !bStartsWith) return -1;
             if (!aStartsWith && bStartsWith) return 1;
         }
-        
-        return currentSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+
+        switch (currentSortOrder) {
+            case 'stripes_desc':
+                return (b.stripes?.length || 0) - (a.stripes?.length || 0);
+            case 'stripes_asc':
+                return (a.stripes?.length || 0) - (b.stripes?.length || 0);
+            case 'desc':
+                return nameB.localeCompare(nameA);
+            case 'asc':
+            default:
+                return nameA.localeCompare(nameB);
+        }
     });
 
     punishmentListDiv.innerHTML = '';
@@ -81,7 +90,7 @@ const renderLedger = () => {
     }
 
     viewData.forEach(person => {
-        const stripeCount = Array.isArray(person.stripes) ? person.stripes.length : 0;
+        const stripeCount = person.stripes?.length || 0;
         let stripesHTML = '';
         for (let i = 0; i < stripeCount; i++) {
             stripesHTML += `<div class="punishment-stripe"></div>`;
@@ -216,17 +225,8 @@ mainInput.addEventListener('keydown', (e) => {
 
 addBtn.addEventListener('click', handleAddName);
 
-sortAscBtn.addEventListener('click', () => {
-    currentSortOrder = 'asc';
-    sortAscBtn.classList.add('opacity-50');
-    sortDescBtn.classList.remove('opacity-50');
-    renderLedger();
-});
-
-sortDescBtn.addEventListener('click', () => {
-    currentSortOrder = 'desc';
-    sortDescBtn.classList.add('opacity-50');
-    sortAscBtn.classList.remove('opacity-50');
+sortSelect.addEventListener('change', (e) => {
+    currentSortOrder = e.target.value;
     renderLedger();
 });
 
@@ -261,6 +261,3 @@ document.addEventListener('click', (e) => {
 });
 
 closeStatsModalBtn.addEventListener('click', () => statsModal.classList.add('hidden'));
-
-// Set initial sort button state
-sortAscBtn.classList.add('opacity-50');
