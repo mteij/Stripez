@@ -72,3 +72,13 @@ body {
     color: black;
     background: white;
 }
+
+/* Subtle arrow for "Schikko's Decrees" button */
+.decree-arrow {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #fdf8e9; /* Matches button text color */
+    margin-top: 2px; /* Slight adjustment for vertical alignment */
+}
