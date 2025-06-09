@@ -3,70 +3,104 @@
 let wrap, spinBtn, resultsContainer, isSpinning;
 let maxValueSlider, sliderValueSpan;
 
-// Changed rand to be inclusive of max
+const tileVisualWidth = 120; // Corrected visual width from CSS
+
+// Function to generate a random number (inclusive)
 function rand(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Corrected visual width of a tile based on CSS (content width + padding)
-const tileVisualWidth = 120; // 80px content width + 20px left padding + 20px right padding from .roulette-tile CSS
-const pallete = ["r18", "b8", "r19", "g2", "r20", "r21", "b9", "r10", "g3", "r11", "b4", "r12", "b5", "r13", "b6", "r14", "g0", "r15", "b7", "r16", "g1", "r17"];
-const bets = {
-    "green": [2, 3, 0, 1],
-    "red": [18, 19, 20, 21, 10, 11, 12, 13, 14, 15, 16, 17],
-    "black": [8, 9, 4, 5, 6, 7]
-};
+// Global variable to store the currently displayed palette and its colors
+let currentExtendedPalette = [];
+let currentPaletteMapping = {}; // Stores { number: colorPrefix } (e.g., {18: 'r', 2: 'g'})
 
-function spin_promise(color, number) {
+// Function to determine color based on number (simplified for dynamic range)
+function getNumberColor(number) {
+    if (number === 0) return 'green'; // Green for 0
+    if (number % 2 === 0) return 'black'; // Even numbers are black
+    return 'red'; // Odd numbers are red
+}
+
+// Function to populate the roulette tiles dynamically based on maxNumber
+function populateRouletteTiles(maxNumber) {
+    wrap.innerHTML = ''; // Clear existing tiles
+
+    const localPalette = [];
+    currentPaletteMapping = {}; // Reset mapping
+
+    // Generate numbers from 0 up to maxNumber
+    for (let i = 0; i <= maxNumber; i++) {
+        localPalette.push(i);
+        currentPaletteMapping[i] = getNumberColor(i)[0]; // Store 'r', 'b', or 'g'
+    }
+
+    // If localPalette is empty (e.g., maxNumber is negative or 0), add a default 0
+    if (localPalette.length === 0) {
+        localPalette.push(0);
+        currentPaletteMapping[0] = 'g';
+        maxNumber = 0; // Adjust maxNumber to 0 if no numbers were generated
+    }
+
+    const numberOfReplications = 3; // Duplicate pallete for a seamless loop
+    currentExtendedPalette = [];
+    for (let i = 0; i < numberOfReplications; i++) {
+        currentExtendedPalette.push(...localPalette);
+    }
+
+    currentExtendedPalette.forEach(number => {
+        const tileDiv = document.createElement('div');
+        const color = getNumberColor(number);
+        
+        tileDiv.className = `roulette-tile tile-${color}`;
+        tileDiv.textContent = number;
+        wrap.appendChild(tileDiv);
+    });
+
+    // Set the width of the wrap explicitly to contain all tiles
+    wrap.style.width = `${currentExtendedPalette.length * tileVisualWidth}px`;
+}
+
+// Modified spin_promise to work with a targetNumber directly
+function spin_promise(targetNumber) {
     return new Promise((resolve, reject) => {
-        // Find the index of the spun item in the original pallete
-        const targetPaletteItem = color[0] + "" + number;
-        const originalTargetIndex = pallete.indexOf(targetPaletteItem);
-
-        if (originalTargetIndex === -1) {
-            reject("Invalid color or number combination for pallete");
+        // Find the index of the target number in the currently displayed extended palette
+        // We'll target the first occurrence in the middle replication for seamless looping
+        const firstReplicationEndIndex = currentExtendedPalette.indexOf(targetNumber, pallete.length); // Find in second replication
+        
+        if (firstReplicationEndIndex === -1) {
+            // This should ideally not happen if targetNumber is valid and pallete is extended
+            console.error("Target number not found in extended palette during spin promise.");
+            reject("Target number not found for animation.");
             return;
         }
 
         const numCircles = 3; // Reduced number of full rotations for smoother rendering
-        const totalPalleteWidth = (pallete.length * 3) * tileVisualWidth; // Total width of duplicated palette
+        const totalExtendedPaletteWidth = currentExtendedPalette.length * tileVisualWidth;
 
-        // Target an index in the middle section of the extended palette for seamless looping
-        const extendedTargetIndex = originalTargetIndex + pallete.length;
+        // Calculate the base pixel position to land on the target tile
+        let basePixels = firstReplicationEndIndex * tileVisualWidth;
+        basePixels += rand(10, tileVisualWidth - 10); // Add randomness within the tile
 
-        // Calculate the base pixel position to land on the target tile in the extended palette
-        let basePixels = extendedTargetIndex * tileVisualWidth;
-
-        // Add randomization within the target tile to make it look less robotic
-        basePixels += rand(10, tileVisualWidth - 10); // Random offset within the tile
-
-        // Add multiple full rotations to make the animation longer and more dynamic
-        let pixelsToSpin = basePixels + (totalPalleteWidth * numCircles);
+        let pixelsToSpin = basePixels + (totalExtendedPaletteWidth * numCircles);
 
         wrap.style.transition = "transform 5s cubic-bezier(0.1, 0.6, 0.1, 1)";
         wrap.style.transform = `translateX(-${pixelsToSpin}px)`;
 
         setTimeout(() => {
-            // Reset transition to 'none' for instant snap
             wrap.style.transition = 'none';
             
-            // Get the current container width to precisely center the target tile
             const containerWidth = wrap.parentElement.offsetWidth;
-            
-            // Calculate the exact center of the target tile in the extended palette
-            const exactTargetTileCenter = (extendedTargetIndex * tileVisualWidth) + (tileVisualWidth / 2);
-            // Calculate the snap offset to perfectly center the chosen tile under the marker
+            const exactTargetTileCenter = (firstReplicationEndIndex * tileVisualWidth) + (tileVisualWidth / 2);
             const snapOffset = exactTargetTileCenter - (containerWidth / 2);
 
-            // Snap to the final visible position, centering the target tile
             wrap.style.transform = `translateX(-${snapOffset}px)`;
             
-            const result = { color: color, number: number };
-            resolve(result);
+            resolve(targetNumber); // Resolve with the target number
         }, 5700);
     });
 }
 
+// Modified spin to use dynamic tiles
 function spin() {
     if (isSpinning) return;
     isSpinning = true;
@@ -77,56 +111,24 @@ function spin() {
     wrap.style.transition = 'none';
     wrap.style.transform = 'translateX(0)';
 
-    let chosenColor;
-    let chosenBetNumber; // This will be the number the animation targets
-    let validSpinFound = false;
-    let attempts = 0;
-    const maxAttempts = 50; // To prevent infinite loops if slider value is too restrictive
-
     const sliderValue = parseInt(maxValueSlider.value);
-    console.log("Slider Max Value:", sliderValue); // Debugging
+    console.log("Slider Max Value:", sliderValue);
 
-    // Loop to find a valid color and bet that respects the slider's max value for animation targeting
-    while (!validSpinFound && attempts < maxAttempts) {
-        // Step 1: Randomly choose a color category
-        let r = rand(1, 1000);
-        if (1 <= r && r < 30) chosenColor = "green";
-        else if (30 <= r && r < 530) chosenColor = "red";
-        else if (530 <= r && r < 1000) chosenColor = "black";
+    // Choose the final number to land on directly from the slider's range
+    const finalSpinNumber = rand(0, sliderValue);
+    console.log("Final number to spin for:", finalSpinNumber);
 
-        // Step 2: Filter numbers for the chosen color based on slider's max value
-        let eligibleNumbersForColor = bets[chosenColor].filter(num => num <= sliderValue);
-        console.log("Attempt", attempts + 1, "Chosen Color:", chosenColor, "Eligible Numbers for Color:", eligibleNumbersForColor); // Debugging
+    spin_promise(finalSpinNumber).then((numberLandedOn) => {
+        // Get the color for the landed number
+        const colorPrefix = currentPaletteMapping[numberLandedOn];
+        let colorClass = '';
+        if (colorPrefix === 'g') colorClass = 'tile-green';
+        else if (colorPrefix === 'r') colorClass = 'tile-red';
+        else if (colorPrefix === 'b') colorClass = 'tile-black';
 
-        if (eligibleNumbersForColor.length > 0) {
-            // Step 3: Pick a random number from the eligible ones
-            chosenBetNumber = eligibleNumbersForColor[rand(0, eligibleNumbersForColor.length - 1)];
-            
-            // Step 4: Verify this number exists in the main 'pallete' for the chosen color
-            const finalBetItemString = chosenColor[0] + "" + chosenBetNumber;
-            if (pallete.includes(finalBetItemString)) {
-                validSpinFound = true;
-                console.log("Found valid bet:", chosenBetNumber, "for color:", chosenColor); // Debugging
-            }
-        }
-        attempts++;
-    }
-
-    if (!validSpinFound) {
-        console.warn(`Could not find a valid roulette outcome within slider range (${sliderValue}) after ${attempts} attempts. Choosing a random valid pallete item as fallback.`);
-        // Fallback: if no valid number found within attempts, pick any random item from the entire pallete
-        const fallbackItem = pallete[rand(0, pallete.length - 1)];
-        chosenColor = fallbackItem[0] === 'r' ? 'red' : (fallbackItem[0] === 'b' ? 'black' : 'green');
-        chosenBetNumber = parseInt(fallbackItem.substring(1));
-        console.warn("Fallback chosen for animation target:", chosenColor, chosenBetNumber); // Debugging
-    }
-
-    spin_promise(chosenColor, chosenBetNumber).then((result) => {
-        // Here, result.number is the number the animation actually landed on (which was chosen to respect slider).
-        // The displayed number will be this.
         let colorBeted = document.createElement("div");
-        colorBeted.setAttribute("class", "color-beted tile-" + result.color);
-        colorBeted.innerHTML = result.number; // Display the number from the roulette spin (which now respects slider)
+        colorBeted.setAttribute("class", `color-beted ${colorClass}`);
+        colorBeted.innerHTML = numberLandedOn; // Display the number that was spun
         resultsContainer.prepend(colorBeted);
 
         while (resultsContainer.children.length > 10) {
@@ -152,31 +154,8 @@ export function initRandomizer() {
         return;
     }
 
-    // Populate the roulette wrap with tiles for animation, only if not already populated
-    if (wrap.children.length === 0) {
-        const numberOfReplications = 3; // Duplicate pallete for a seamless loop
-        const extendedPallete = [];
-        for (let i = 0; i < numberOfReplications; i++) {
-            extendedPallete.push(...pallete);
-        }
-
-        extendedPallete.forEach(item => {
-            const tileDiv = document.createElement('div');
-            const colorPrefix = item[0];
-            const number = item.substring(1);
-            let colorClass = '';
-            if (colorPrefix === 'r') colorClass = 'tile-red';
-            else if (colorPrefix === 'b') colorClass = 'tile-black';
-            else if (colorPrefix === 'g') colorClass = 'tile-green';
-
-            tileDiv.className = `roulette-tile ${colorClass}`;
-            tileDiv.textContent = number;
-            wrap.appendChild(tileDiv);
-        });
-
-        // Set the width of the wrap explicitly to contain all tiles
-        wrap.style.width = `${extendedPallete.length * tileVisualWidth}px`;
-    }
+    // Initial population of roulette tiles based on default slider value
+    populateRouletteTiles(parseInt(maxValueSlider.value));
 
     // Ensure the carousel is positioned at the start when the modal first appears.
     wrap.style.transform = 'translateX(0)';
@@ -186,8 +165,9 @@ export function initRandomizer() {
 
     spinBtn.onclick = spin;
 
-    // Add event listener for the slider to update its displayed value
+    // Add event listener for the slider to update its displayed value AND repopulate tiles
     maxValueSlider.addEventListener('input', () => {
         sliderValueSpan.textContent = maxValueSlider.value;
+        populateRouletteTiles(parseInt(maxValueSlider.value)); // Repopulate tiles on slider change
     });
 }
