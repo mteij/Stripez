@@ -260,8 +260,13 @@ document.addEventListener('click', (e) => {
 
 // Randomizer Modal Listeners
 diceBtn?.addEventListener('click', () => {
+    const names = ledgerDataCache.map(person => person.name);
+    if (names.length === 0) {
+        alert("The Ledger of Punishments is empty. Inscribe a name to use the randomizer.");
+        return;
+    }
     randomizerModal.classList.remove('hidden');
-    initRandomizer();
+    initRandomizer(names);
 });
 
 closeRandomizerModalBtn?.addEventListener('click', () => {
