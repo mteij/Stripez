@@ -283,7 +283,7 @@ closeRandomizerHubModalBtn?.addEventListener('click', () => {
 openListRandomizerFromHubBtn?.addEventListener('click', () => {
     randomizerHubModal.classList.add('hidden'); // Close hub
     listRandomizerModal.classList.remove('hidden'); // Open list randomizer
-    initListRandomizer(); // Initialize the list randomizer
+    initListRandomizer(ledgerDataCache); // Initialize the list randomizer with ledger data
 });
 
 openDiceRandomizerFromHubBtn?.addEventListener('click', () => {

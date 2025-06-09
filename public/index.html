@@ -116,7 +116,6 @@
             </header>
 
             <div class="flex flex-col sm:flex-row gap-4 mb-8">
-                <!-- New: Button to open Randomizer Hub -->
                 <button id="open-randomizer-hub-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Randomizers">
                     🎲📝
                 </button>
@@ -153,68 +152,54 @@
         </div>
     </div>
     
-    <!-- Re-added Dice Randomizer Modal -->
     <div id="dice-randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
             <button id="close-dice-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
-            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Dice Randomizer</h2>
-            
-            <div class="roulette-container">
-                <div class="controller"></div>
-                <div class="wrap">
-                    <!-- Roulette tiles will be dynamically inserted here by randomizer.js -->
-                </div>
-            </div>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Dice Roller</h2>
             
             <div class="text-center mt-4">
                 <label for="dice-max-value-slider" class="font-cinzel-decorative text-lg text-[#6f4e37]">
-                    Max Value: <span id="dice-slider-value" class="font-bold">20</span>
+                    Max Roll Value: <span id="dice-slider-value" class="font-bold">20</span>
                 </label>
                 <input type="range" id="dice-max-value-slider" min="0" max="50" value="20" class="w-full">
             </div>
 
             <div class="text-center mt-2">
-                <button id="dice-spin-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Spin</button>
-                <div id="dice-roulette-results" class="mt-4 flex flex-wrap-reverse justify-center gap-2">
+                <button id="dice-spin-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Roll Dice</button>
+                <div id="dice-roulette-results" class="mt-4">
                     </div>
             </div>
         </div>
     </div>
 
-    <!-- Existing List Randomizer Modal -->
     <div id="list-randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
             <button id="close-list-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
-            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Custom List Selector</h2>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Name Selector/Shuffler</h2>
             
-            <div class="mb-4">
-                <label for="list-input" class="block text-lg font-cinzel-decorative text-[#5c3d2e] mb-2">Enter items (one per line):</label>
-                <textarea id="list-input" rows="8" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]"></textarea>
-            </div>
+            <p class="block text-lg font-cinzel-decorative text-[#5c3d2e] mb-2 text-center">Names are loaded from the Ledger of Punishments.</p>
 
             <div class="flex flex-col sm:flex-row gap-4 mb-6">
-                <button id="shuffle-list-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Shuffle List</button>
-                <button id="pick-random-item-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Pick Random Item</button>
+                <button id="shuffle-list-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Shuffle Names</button>
+                <button id="pick-random-item-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Pick Random Name</button>
             </div>
 
             <div>
                 <h3 class="font-cinzel-decorative text-2xl text-[#5c3d2e] mb-3">Result:</h3>
                 <div id="list-output" class="bg-[#e9e2d7] border-2 border-[#b9987e] rounded-md p-4 min-h-[60px] text-lg text-[#4a3024] whitespace-pre-wrap">
-                    <!-- Results will appear here -->
-                </div>
+                    </div>
             </div>
         </div>
     </div>
 
-    <!-- New: Randomizer Hub Modal -->
     <div id="randomizer-hub-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative">
             <button id="close-randomizer-hub-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
             <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Choose Randomizer</h2>
             
             <div class="flex flex-col gap-4">
-                <button id="open-list-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">List Randomizer</button>
-                <button id="open-dice-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Dice Randomizer</button>
+                <button id="open-list-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Name Randomizer</button>
+                <button id="open-dice-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Dice Roller</button>
             </div>
         </div>
     </div>
