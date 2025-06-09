@@ -172,6 +172,9 @@ export function initRandomizer() {
             tileDiv.textContent = number;
             wrap.appendChild(tileDiv);
         });
+
+        // Set the width of the wrap explicitly to contain all tiles
+        wrap.style.width = `${extendedPallete.length * tileVisualWidth}px`;
     }
 
     // Initialize slider value display
