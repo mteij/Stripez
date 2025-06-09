@@ -101,7 +101,7 @@ const renderLedger = () => {
         personDiv.innerHTML = `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <div class="mt-2 flex items-center" style="min-height: 20px;">${stripesHTML}</div>
+                <div class="mt-2 h-5">${stripesHTML}</div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
@@ -121,7 +121,7 @@ const renderLedger = () => {
 
 const showStatsModal = (person) => {
     statsName.textContent = `Statistics for ${person.name}`;
-    const stripeTimestamps = person.stripes?.map(ts => ts.toDate()) || [];
+    const stripeTimestamps = person.stripes.map(ts => ts.toDate());
     const stripesByDate = stripeTimestamps.reduce((acc, date) => {
         const dateString = date.toISOString().split('T')[0];
         acc[dateString] = (acc[dateString] || 0) + 1;
