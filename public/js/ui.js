@@ -19,16 +19,25 @@ function renderLedger(viewData, term) {
 
     viewData.forEach(person => {
         const stripeCount = person.stripes?.length || 0;
-        let stripesHTML = '';
-        for (let i = 0; i < stripeCount; i++) {
-            const isFifthStripe = (i + 1) % 5 === 0;
-            const isLastStripe = (i + 1) === stripeCount;
+        let stripesContent = ''; // Will hold either individual stripe divs or a number
 
-            // Apply 'punishment-stripe-black' only if it's the 5th stripe AND NOT the very last stripe overall
-            if (isFifthStripe && !isLastStripe) {
-                stripesHTML += `<div class="punishment-stripe punishment-stripe-black"></div>`;
-            } else {
-                stripesHTML += `<div class="punishment-stripe"></div>`;
+        const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20; // Define threshold for number display
+
+        if (stripeCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
+            // Display total count as a number if it exceeds the threshold
+            stripesContent = `<p class="text-xl text-[#c0392b] font-bold">Total Stripes: ${stripeCount}</p>`;
+        } else {
+            // Display individual stripes, allowing horizontal scroll if needed
+            for (let i = 0; i < stripeCount; i++) {
+                const isFifthStripe = (i + 1) % 5 === 0;
+                const isLastStripe = (i + 1) === stripeCount;
+
+                // Apply 'punishment-stripe-black' only if it's the 5th stripe AND NOT the very last stripe overall
+                if (isFifthStripe && !isLastStripe) {
+                    stripesContent += `<div class="punishment-stripe punishment-stripe-black"></div>`;
+                } else {
+                    stripesContent += `<div class="punishment-stripe"></div>`;
+                }
             }
         }
 
@@ -37,7 +46,7 @@ function renderLedger(viewData, term) {
         personDiv.innerHTML = `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <div class="mt-2 h-5">${stripesHTML}</div>
+                <div class="mt-2 h-5 overflow-x-auto whitespace-nowrap flex items-center">${stripesContent}</div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
