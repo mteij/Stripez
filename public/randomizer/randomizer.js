@@ -13,6 +13,7 @@ function rand(min, max) {
 // Global variable to store the currently displayed palette and its colors
 let currentExtendedPalette = [];
 let currentPaletteMapping = {}; // Stores { number: colorPrefix } (e.g., {18: 'r', 2: 'g'})
+let singlePaletteLength = 0; // Added: Stores the length of a single dynamically generated palette segment
 
 // Function to determine color based on number (simplified for dynamic range)
 function getNumberColor(number) {
@@ -41,6 +42,8 @@ function populateRouletteTiles(maxNumber) {
         maxNumber = 0; // Adjust maxNumber to 0 if no numbers were generated
     }
 
+    singlePaletteLength = localPalette.length; // Store the length of this single segment
+
     const numberOfReplications = 3; // Duplicate pallete for a seamless loop
     currentExtendedPalette = [];
     for (let i = 0; i < numberOfReplications; i++) {
@@ -65,7 +68,7 @@ function spin_promise(targetNumber) {
     return new Promise((resolve, reject) => {
         // Find the index of the target number in the currently displayed extended palette
         // We'll target the first occurrence in the middle replication for seamless looping
-        const firstReplicationEndIndex = currentExtendedPalette.indexOf(targetNumber, pallete.length); // Find in second replication
+        const firstReplicationEndIndex = currentExtendedPalette.indexOf(targetNumber, singlePaletteLength); // Use singlePaletteLength here
         
         if (firstReplicationEndIndex === -1) {
             // This should ideally not happen if targetNumber is valid and pallete is extended
