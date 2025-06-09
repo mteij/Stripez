@@ -21,7 +21,14 @@ function renderLedger(viewData, term) {
         const stripeCount = person.stripes?.length || 0;
         let stripesHTML = '';
         for (let i = 0; i < stripeCount; i++) {
-            stripesHTML += `<div class="punishment-stripe"></div>`;
+            const isFifthStripe = (i + 1) % 5 === 0;
+            const isLastStripe = (i + 1) === stripeCount;
+
+            if (isFifthStripe && !isLastStripe) {
+                stripesHTML += `<div class="punishment-stripe punishment-stripe-black"></div>`;
+            } else {
+                stripesHTML += `<div class="punishment-stripe"></div>`;
+            }
         }
 
         const personDiv = document.createElement('div');
