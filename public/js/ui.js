@@ -20,12 +20,14 @@ function renderLedger(viewData, term) {
     viewData.forEach(person => {
         const stripeCount = person.stripes?.length || 0;
         let stripesContent = ''; // Will hold either individual stripe divs or a number
-
+        let stripeContainerClasses = 'mt-2 flex items-center '; // Common classes
+        
         const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20; // Define threshold for number display
 
         if (stripeCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            stripesContent = `<p class="text-xl text-[#c0392b] font-bold">Total Stripes: ${stripeCount}</p>`;
+            stripesContent = `<p class="text-xl text-[#c0392b] font-bold text-center w-full">Total Stripes: ${stripeCount}</p>`;
+            stripeContainerClasses += 'h-auto justify-center'; // auto height and center for text
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
             for (let i = 0; i < stripeCount; i++) {
@@ -39,6 +41,8 @@ function renderLedger(viewData, term) {
                     stripesContent += `<div class="punishment-stripe"></div>`;
                 }
             }
+            // Add classes for horizontal scrolling and nowrap when showing individual stripes
+            stripeContainerClasses += 'h-8 overflow-x-auto whitespace-nowrap'; // Increased height to h-8 (32px)
         }
 
         const personDiv = document.createElement('div');
@@ -46,7 +50,7 @@ function renderLedger(viewData, term) {
         personDiv.innerHTML = `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <div class="mt-2 h-5 overflow-x-auto whitespace-nowrap flex items-center">${stripesContent}</div>
+                <div class="${stripeContainerClasses}">${stripesContent}</div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
