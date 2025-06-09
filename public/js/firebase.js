@@ -3,10 +3,10 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Firebase configuration. These placeholders will be replaced by GitHub Actions
-// during the build/deploy process using a string replacement utility (sed).
+// during the build/deploy process using a string replacement utility.
 const firebaseConfig = {
     apiKey: "VITE_FIREBASE_API_KEY",
     authDomain: "VITE_FIREBASE_AUTH_DOMAIN",
@@ -69,7 +69,7 @@ const deletePersonFromLedger = async (docId) => {
 };
 
 const addRuleToFirestore = async (text, order) => {
-    await addDoc(rulesCollectionRef, { text, order, createdAt: new Date() });
+    await addDoc(rulesCollectionRef, { text, order, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 };
 
 const deleteRuleFromFirestore = async (docId) => {
@@ -81,10 +81,10 @@ const updateRuleOrderInFirestore = async (rule1, rule2) => {
     const batch = writeBatch(db);
 
     const rule1Ref = doc(db, "rules", rule1.id);
-    batch.update(rule1Ref, { order: rule2.order });
+    batch.update(rule1Ref, { order: rule2.order, updatedAt: serverTimestamp() });
 
     const rule2Ref = doc(db, "rules", rule2.id);
-    batch.update(rule2Ref, { order: rule1.order });
+    batch.update(rule2Ref, { order: rule1.order, updatedAt: serverTimestamp() });
 
     await batch.commit();
 };
@@ -92,7 +92,7 @@ const updateRuleOrderInFirestore = async (rule1, rule2) => {
 // New function to update rule text
 const updateRuleTextInFirestore = async (docId, newText) => {
     const docRef = doc(db, 'rules', docId);
-    await updateDoc(docRef, { text: newText.trim() });
+    await updateDoc(docRef, { text: newText.trim(), updatedAt: serverTimestamp() });
 };
 
 // Export everything needed by other modules

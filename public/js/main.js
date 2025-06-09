@@ -52,7 +52,6 @@ const closeListRandomizerModalBtn = document.getElementById('close-list-randomiz
 // New Randomizer Hub elements
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
-// Corrected the problematic line: removed the accidental assignment to 'document'
 const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
@@ -70,6 +69,7 @@ onAuthStateChanged(auth, (user) => {
         });
         // Listener for the dynamic rules list
         setupRealtimeListener('rules', (data) => {
+            // Sort by order initially, as `updatedAt` is for footer only.
             rulesDataCache = data.sort((a, b) => a.order - b.order);
             handleRenderRules(); // Render rules on data change
             updateAppFooter(); // Update footer when rules data changes
@@ -125,23 +125,28 @@ function handleRenderRules() {
 function updateAppFooter() {
     if (!appInfoFooter) return;
 
-    let lastModifiedDate = null;
-    if (rulesDataCache.length > 0) {
-        // Find the latest createdAt timestamp among all rules
-        const latestRule = rulesDataCache.reduce((latest, rule) => {
-            // Ensure rule.createdAt is a Firestore Timestamp before calling .toMillis()
-            const latestTs = latest.createdAt && typeof latest.createdAt.toMillis === 'function' ? latest.createdAt.toMillis() : 0;
-            const currentTs = rule.createdAt && typeof rule.createdAt.toMillis === 'function' ? rule.createdAt.toMillis() : 0;
-            return currentTs > latestTs ? rule : latest;
-        }, { createdAt: { toMillis: () => 0 } }); // Initialize with an object that has toMillis returning 0
+    let latestUpdateTimestamp = null;
 
-        if (latestRule.createdAt && typeof latestRule.createdAt.toDate === 'function') {
-            lastModifiedDate = latestRule.createdAt.toDate(); // Convert Firestore Timestamp to JS Date
+    if (rulesDataCache.length > 0) {
+        latestUpdateTimestamp = rulesDataCache.reduce((latestTs, rule) => {
+            const ruleTs = rule.updatedAt || rule.createdAt; // Prefer updatedAt, fall back to createdAt
+            if (!ruleTs) return latestTs; // Skip if no timestamp
+
+            const currentMillis = ruleTs.toMillis ? ruleTs.toMillis() : 0; // Handle if it's not a Timestamp object yet
+            const latestMillis = latestTs ? (latestTs.toMillis ? latestTs.toMillis() : 0) : 0;
+
+            return currentMillis > latestMillis ? ruleTs : latestTs;
+        }, null); // Initialize with null
+
+        if (latestUpdateTimestamp && typeof latestUpdateTimestamp.toDate === 'function') {
+            latestUpdateTimestamp = latestUpdateTimestamp.toDate(); // Convert Firestore Timestamp to JS Date
+        } else {
+             latestUpdateTimestamp = null; // Ensure it's null if conversion fails or isn't a Timestamp
         }
     }
 
-    const dateString = lastModifiedDate ?
-        lastModifiedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) :
+    const dateString = latestUpdateTimestamp ?
+        latestUpdateTimestamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) :
         'Unknown Date';
 
     appInfoFooter.innerHTML = `
