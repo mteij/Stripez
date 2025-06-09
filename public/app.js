@@ -37,6 +37,9 @@ const addBtn = document.getElementById('add-btn');
 const sortAscBtn = document.getElementById('sort-asc-btn');
 const sortDescBtn = document.getElementById('sort-desc-btn');
 
+// --- FIRESTORE COLLECTION REFERENCE ---
+const ledgerCollectionRef = collection(db, 'punishments');
+
 // --- AUTHENTICATION ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
