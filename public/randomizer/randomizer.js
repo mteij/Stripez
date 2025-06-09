@@ -78,7 +78,7 @@ function spin() {
     wrap.style.transform = 'translateX(0)';
 
     let chosenColor;
-    let chosenBetNumber;
+    let chosenBetNumber; // This will be the number the animation targets
     let validSpinFound = false;
     let attempts = 0;
     const maxAttempts = 50; // To prevent infinite loops if slider value is too restrictive
@@ -86,7 +86,7 @@ function spin() {
     const sliderValue = parseInt(maxValueSlider.value);
     console.log("Slider Max Value:", sliderValue); // Debugging
 
-    // Loop to find a valid color and bet that respects the slider's max value
+    // Loop to find a valid color and bet that respects the slider's max value for animation targeting
     while (!validSpinFound && attempts < maxAttempts) {
         // Step 1: Randomly choose a color category
         let r = rand(1, 1000);
@@ -118,14 +118,15 @@ function spin() {
         const fallbackItem = pallete[rand(0, pallete.length - 1)];
         chosenColor = fallbackItem[0] === 'r' ? 'red' : (fallbackItem[0] === 'b' ? 'black' : 'green');
         chosenBetNumber = parseInt(fallbackItem.substring(1));
-        console.warn("Fallback chosen:", chosenColor, chosenBetNumber); // Debugging
+        console.warn("Fallback chosen for animation target:", chosenColor, chosenBetNumber); // Debugging
     }
 
     spin_promise(chosenColor, chosenBetNumber).then((result) => {
-        // Display the number that the roulette *actually* landed on (which now respects the slider's max)
+        // Here, result.number is the number the animation actually landed on (which was chosen to respect slider).
+        // The displayed number will be this.
         let colorBeted = document.createElement("div");
         colorBeted.setAttribute("class", "color-beted tile-" + result.color);
-        colorBeted.innerHTML = result.number;
+        colorBeted.innerHTML = result.number; // Display the number from the roulette spin (which now respects slider)
         resultsContainer.prepend(colorBeted);
 
         while (resultsContainer.children.length > 10) {
@@ -176,6 +177,9 @@ export function initRandomizer() {
         // Set the width of the wrap explicitly to contain all tiles
         wrap.style.width = `${extendedPallete.length * tileVisualWidth}px`;
     }
+
+    // Ensure the carousel is positioned at the start when the modal first appears.
+    wrap.style.transform = 'translateX(0)';
 
     // Initialize slider value display
     sliderValueSpan.textContent = maxValueSlider.value;
