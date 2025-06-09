@@ -25,13 +25,13 @@ function renderLedger(viewData, term) {
     // Define approximate pixel width per stripe (including margin and skew effects)
     const effectiveStripeWidthPx = 8; // 5px width + 3px margin. Skew is handled by container height.
 
-    // Calculate available width for stripes (approximate based on max-w-4xl and sidebar buttons)
-    // Assuming the main content area is ~896px max-w, and the stripe container is flex-grow.
-    // It's part of a flex row with buttons on the right, so it's not the full 896px.
-    // Let's estimate it's roughly 60% of the max width, or 80% of current screen width if smaller.
-    const availableContainerWidth = Math.min(896 * 0.6, screenWidth * 0.8);
+    // Calculate available width for stripes, estimating based on a typical card layout.
+    // The card itself will be responsive, but the content area for stripes needs to fit.
+    // Let's assume on very small screens, the name and buttons might stack or shrink.
+    // The stripes area might get about 50-70% of the screen width for display.
+    const estimatedStripeAreaWidth = screenWidth * 0.5; // Roughly half the screen for stripes on small screens
 
-    STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.floor(availableContainerWidth / effectiveStripeWidthPx);
+    STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.floor(estimatedStripeAreaWidth / effectiveStripeWidthPx);
 
     // Ensure a minimum threshold, e.g., display at least 5-10 individual stripes even on tiny screens
     if (STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY < 10) {
@@ -42,39 +42,38 @@ function renderLedger(viewData, term) {
     viewData.forEach(person => {
         const stripeCount = person.stripes?.length || 0;
         let stripesContent = ''; // Will hold either individual stripe divs or a number
-        let stripeContainerClasses = 'mt-2 flex items-center '; // Common classes
+        // Removed common stripeContainerClasses from here to apply dynamically
         
         if (stripeCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            // No 'w-full' or 'text-center' on the p tag, it's handled by the parent container's justify-start
             stripesContent = `<p class="text-xl text-[#c0392b] font-bold">${stripeCount}</p>`;
-            // Align number to start of the flex container (left)
-            stripeContainerClasses += 'h-auto justify-start';
+            // Container for number display: ensures it's left-aligned and has min-height
+            stripesContent = `<div class="mt-2 flex items-center min-h-[32px] justify-start pl-2">${stripesContent}</div>`;
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
             for (let i = 0; i < stripeCount; i++) {
                 const isFifthStripe = (i + 1) % 5 === 0;
                 const isLastStripe = (i + 1) === stripeCount;
 
-                // Apply 'punishment-stripe-black' only if it's the 5th stripe AND NOT the very last stripe overall
                 if (isFifthStripe && !isLastStripe) {
                     stripesContent += `<div class="punishment-stripe punishment-stripe-black"></div>`;
                 } else {
                     stripesContent += `<div class="punishment-stripe"></div>`;
                 }
             }
-            // Add classes for horizontal scrolling, nowrap, min-height, items-start, and padding-left
-            stripeContainerClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2';
+            // Container for individual stripes: enables scrolling, nowrap, min-height, items-start, and padding-left
+            stripesContent = `<div class="mt-2 flex overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2 pr-2">${stripesContent}</div>`;
         }
 
         const personDiv = document.createElement('div');
-        personDiv.className = 'flex items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
+        // Changed flex-grow to flex-none w-full and added flex-wrap for small screens
+        personDiv.className = 'flex flex-wrap items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
         personDiv.innerHTML = `
-            <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
+            <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <div class="${stripeContainerClasses}">${stripesContent}</div>
+                ${stripesContent}
             </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex items-center gap-2 flex-shrink-0 mt-2 md:mt-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
                 <div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
