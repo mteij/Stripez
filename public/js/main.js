@@ -15,6 +15,7 @@ let ledgerDataCache = [];
 let rulesDataCache = [];
 let currentSortOrder = 'stripes_desc';
 let currentSearchTerm = '';
+let isSchikkoConfirmed = false; // Track confirmation status for the session
 
 // --- DOM ELEMENTS ---
 const loadingState = document.getElementById('loading-state');
@@ -81,8 +82,17 @@ function handleRender() {
 
 // --- CONFIRMATION ---
 function confirmSchikko() {
+    // If already confirmed in this session, skip the prompt
+    if (isSchikkoConfirmed) {
+        return true;
+    }
     const answer = prompt("To proceed, you must confirm your station. Who are you?");
-    return answer && answer.toLowerCase() === 'schikko';
+    const isConfirmed = answer && answer.toLowerCase() === 'schikko';
+    if (isConfirmed) {
+        // Remember confirmation for this session
+        isSchikkoConfirmed = true;
+    }
+    return isConfirmed;
 }
 
 // --- EVENT HANDLERS ---
@@ -122,11 +132,11 @@ async function handleRemoveStripe(docId) {
 }
 
 async function handleAddRule() {
+    if (!confirmSchikko()) return;
+
     const text = prompt("What is the new decree you wish to add?");
     // Exit if user cancelled or entered empty text
     if (!text || text.trim() === '') return;
-
-    if (!confirmSchikko()) return;
 
     const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
     await addRuleToFirestore(text, maxOrder + 1);
@@ -188,6 +198,7 @@ rulesListOl?.addEventListener('click', async (e) => {
     const ruleIndex = rulesDataCache.findIndex(r => r.id === id);
     
     if (ruleIndex === -1) return;
+    
     if (!confirmSchikko()) return;
 
     switch (action) {
