@@ -66,9 +66,12 @@ function populateRouletteTiles(maxNumber) {
 // Modified spin_promise to work with a targetNumber directly
 function spin_promise(targetNumber) {
     return new Promise((resolve, reject) => {
+        // Calculate originalTargetIndex here so it's available in the closure for setTimeout
+        const originalTargetIndex = currentExtendedPalette.indexOf(targetNumber) % singlePaletteLength; //
+
         // Find the index of the target number in the currently displayed extended palette
         // We'll target the first occurrence in the middle replication for seamless looping
-        const firstReplicationEndIndex = currentExtendedPalette.indexOf(targetNumber, singlePaletteLength); // Use singlePaletteLength here
+        const firstReplicationEndIndex = currentExtendedPalette.indexOf(targetNumber, singlePaletteLength);
         
         if (firstReplicationEndIndex === -1) {
             // This should ideally not happen if targetNumber is valid and pallete is extended
@@ -77,13 +80,12 @@ function spin_promise(targetNumber) {
             return;
         }
 
-        const numCircles = 3; // Number of *additional* full rotations for the spin effect
+        const numCircles = 3; // Reduced number of full rotations for smoother rendering
         const totalExtendedPaletteWidth = currentExtendedPalette.length * tileVisualWidth;
 
         // Calculate the base pixel position to land on the target tile (exact start of tile)
         let basePixels = firstReplicationEndIndex * tileVisualWidth;
-        // Add randomness within the target tile to make it look less robotic
-        basePixels += rand(10, tileVisualWidth - 10); 
+        basePixels += rand(10, tileVisualWidth - 10); // Add randomness within the tile
 
         // Calculate the final absolute translateX value for the animation's end
         // This includes moving past some full cycles and then landing on the specific basePixels
@@ -98,7 +100,7 @@ function spin_promise(targetNumber) {
             
             const containerWidth = wrap.parentElement.offsetWidth;
             // Calculate the exact center of the target tile in the *first* replication segment
-            const exactTargetTileCenterInFirstSegment = (originalTargetIndex * tileVisualWidth) + (tileVisualWidth / 2);
+            const exactTargetTileCenterInFirstSegment = (originalTargetIndex * tileVisualWidth) + (tileVisualWidth / 2); // originalTargetIndex is now defined
             // Calculate the snap offset to perfectly center the chosen tile under the marker
             const snapOffset = exactTargetTileCenterInFirstSegment - (containerWidth / 2);
 
