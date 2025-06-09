@@ -1,0 +1,62 @@
+/* Custom font classes */
+.font-cinzel-decorative { font-family: 'Cinzel Decorative', serif; }
+.font-medieval-sharp { font-family: 'MedievalSharp', cursive; }
+
+/* Styling for the page background to look like old paper */
+body {
+    background-color: #f5eeda;
+    background-image:
+        linear-gradient(rgba(169, 141, 107, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(169, 141, 107, 0.15) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Custom styling for the ordered list to have Roman numerals */
+.roman-list {
+    list-style: none;
+    counter-reset: roman-counter;
+    padding-left: 2.5rem; /* Space for the numeral */
+}
+
+.roman-list > li {
+    counter-increment: roman-counter;
+    position: relative;
+    margin-bottom: 1.25rem; /* Spacing between rules */
+}
+
+.roman-list > li::before {
+    content: counter(roman-counter, upper-roman) ".";
+    position: absolute;
+    left: -2.5rem;
+    top: 0;
+    font-weight: bold;
+    color: #5c3d2e; /* A dark, earthy brown */
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.125rem;
+}
+
+/* Custom button styling */
+.btn-ancient {
+    background-color: #8c6b52;
+    color: #fdf8e9;
+    border: 2px solid #5c3d2e;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-ancient:hover {
+    background-color: #a58467;
+    color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Styling for the punishment stripes */
+.punishment-stripe {
+    display: inline-block;
+    width: 5px;
+    height: 20px;
+    background-color: #c0392b;
+    margin-right: 3px;
+    border-left: 1px solid #7f2219;
+    transform: skew(-15deg);
+}
