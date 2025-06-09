@@ -77,24 +77,30 @@ function spin_promise(targetNumber) {
             return;
         }
 
-        const numCircles = 3; // Reduced number of full rotations for smoother rendering
+        const numCircles = 3; // Number of *additional* full rotations for the spin effect
         const totalExtendedPaletteWidth = currentExtendedPalette.length * tileVisualWidth;
 
-        // Calculate the base pixel position to land on the target tile
+        // Calculate the base pixel position to land on the target tile (exact start of tile)
         let basePixels = firstReplicationEndIndex * tileVisualWidth;
-        basePixels += rand(10, tileVisualWidth - 10); // Add randomness within the tile
+        // Add randomness within the target tile to make it look less robotic
+        basePixels += rand(10, tileVisualWidth - 10); 
 
+        // Calculate the final absolute translateX value for the animation's end
+        // This includes moving past some full cycles and then landing on the specific basePixels
         let pixelsToSpin = basePixels + (totalExtendedPaletteWidth * numCircles);
 
         wrap.style.transition = "transform 5s cubic-bezier(0.1, 0.6, 0.1, 1)";
         wrap.style.transform = `translateX(-${pixelsToSpin}px)`;
 
         setTimeout(() => {
+            // After the animation, immediately snap to the equivalent position within the *first* segment
             wrap.style.transition = 'none';
             
             const containerWidth = wrap.parentElement.offsetWidth;
-            const exactTargetTileCenter = (firstReplicationEndIndex * tileVisualWidth) + (tileVisualWidth / 2);
-            const snapOffset = exactTargetTileCenter - (containerWidth / 2);
+            // Calculate the exact center of the target tile in the *first* replication segment
+            const exactTargetTileCenterInFirstSegment = (originalTargetIndex * tileVisualWidth) + (tileVisualWidth / 2);
+            // Calculate the snap offset to perfectly center the chosen tile under the marker
+            const snapOffset = exactTargetTileCenterInFirstSegment - (containerWidth / 2);
 
             wrap.style.transform = `translateX(-${snapOffset}px)`;
             
@@ -110,9 +116,9 @@ function spin() {
     spinBtn.disabled = true;
     spinBtn.textContent = "Spinning...";
 
-    // Reset wrap position immediately to ensure animation starts from the initial visible state
-    wrap.style.transition = 'none';
-    wrap.style.transform = 'translateX(0)';
+    // DO NOT reset wrap.style.transform = 'translateX(0)'; here.
+    // The animation should start from its current position for seamless looping.
+    // The absolute transform will be calculated in spin_promise.
 
     const sliderValue = parseInt(maxValueSlider.value);
     console.log("Slider Max Value:", sliderValue);
@@ -160,8 +166,8 @@ export function initRandomizer() {
     // Initial population of roulette tiles based on default slider value
     populateRouletteTiles(parseInt(maxValueSlider.value));
 
-    // Ensure the carousel is positioned at the start when the modal first appears.
-    wrap.style.transform = 'translateX(0)';
+    // Ensure the carousel is positioned correctly at the start, showing the second segment for seamless look.
+    wrap.style.transform = `translateX(-${singlePaletteLength * tileVisualWidth}px)`;
 
     // Initialize slider value display
     sliderValueSpan.textContent = maxValueSlider.value;
