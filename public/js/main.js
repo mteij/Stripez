@@ -52,7 +52,8 @@ const closeListRandomizerModalBtn = document.getElementById('close-list-randomiz
 // New Randomizer Hub elements
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
-const closeRandomizerHubModalBtn = document = document.getElementById('close-randomizer-hub-modal');
+// Corrected the problematic line: removed the accidental assignment to 'document'
+const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
@@ -212,7 +213,7 @@ async function handleAddRule() {
         return;
     }
 
-    const maxOrder = rulesDataCache.reduce((max, rule) => Math.Max(max, rule.order), 0);
+    const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
     await addRuleToFirestore(text, maxOrder + 1);
     
     // Clear the search input after adding
