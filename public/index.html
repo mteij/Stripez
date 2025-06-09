@@ -45,15 +45,16 @@
             <div class="flex flex-col sm:flex-row gap-4 mb-8">
                 <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
                 <button id="add-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Inscribe</button>
-                <div class="flex-shrink-0 relative custom-sort-container">
-                    <select id="sort-select" class="btn-ancient font-cinzel-decorative font-bold py-3 rounded-md text-lg appearance-none cursor-pointer">
+                <div class="flex-shrink-0 relative btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">
+                    <span id="sort-button-text">Sort: A-Z</span>
+                    <select id="sort-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                         <option value="asc">A-Z</option>
                         <option value="desc">Z-A</option>
                         <option value="stripes_desc">Most Stripes</option>
                         <option value="stripes_asc">Least Stripes</option>
                     </select>
                 </div>
-            </div>
+                </div>
 
             <div id="punishment-list" class="space-y-4">
                 <div id="loading-state" class="text-center text-xl text-[#6f4e37]">Loading the sacred ledger...</div>

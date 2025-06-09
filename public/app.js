@@ -35,6 +35,7 @@ const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d
 const mainInput = document.getElementById('main-input');
 const addBtn = document.getElementById('add-btn');
 const sortSelect = document.getElementById('sort-select');
+const sortButtonText = document.getElementById('sort-button-text'); // New element
 
 // --- FIRESTORE COLLECTION REFERENCE ---
 const ledgerCollectionRef = collection(db, 'punishments');
@@ -179,7 +180,6 @@ const handleAddName = async () => {
 const handleAddStripe = async (docId) => {
     const docRef = doc(db, 'punishments', docId);
     try {
-        // CORRECTED LINE: Use a client-side new Date() object.
         await updateDoc(docRef, { stripes: arrayUnion(new Date()) });
     } catch (error) {
         console.error("Error adding stripe:", error);
@@ -232,6 +232,12 @@ addBtn.addEventListener('click', handleAddName);
 
 sortSelect.addEventListener('change', (e) => {
     currentSortOrder = e.target.value;
+
+    // Get the visible text from the selected option
+    const selectedOptionText = e.target.options[e.target.selectedIndex].text;
+    // Update the custom button's text
+    sortButtonText.textContent = `Sort: ${selectedOptionText}`;
+
     renderLedger();
 });
 

@@ -61,25 +61,4 @@ body {
     transform: skew(-15deg);
 }
 
-/* Custom styling for the sort dropdown button */
-.custom-sort-container::before {
-    content: "Sort:";
-    position: absolute;
-    left: 1.5rem; /* 24px */
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none; /* Allows clicks to pass through to the select */
-    z-index: 1;
-
-    /* Match the select button's text style */
-    color: #fdf8e9;
-    font-family: 'Cinzel Decorative', serif;
-    font-weight: bold;
-    font-size: 1.125rem; /* text-lg */
-}
-
-/* Add padding to the select to make room for the text and restore right padding */
-#sort-select {
-    padding-left: 5.75rem; /* Space for "Sort:" */
-    padding-right: 1.5rem; /* Restore original right padding */
-}
+/* DELETED the previous custom sort container CSS */
