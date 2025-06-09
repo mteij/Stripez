@@ -5,7 +5,7 @@ import {
     auth, onAuthStateChanged, signInAnonymously, setupRealtimeListener,
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
-    deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore // New import
+    deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 // Import both randomizer initialization functions
@@ -171,12 +171,21 @@ async function handleAddRule() {
     // First, confirm identity if not already done this session
     if (!confirmSchikko()) return;
 
-    const text = prompt("What is the new decree you wish to add?");
+    // Get text from the rule search input field
+    const text = ruleSearchInput.value.trim();
     // Exit if user cancelled or entered empty text
-    if (!text || text.trim() === '') return;
+    if (!text) { // Changed condition from '!text || text.trim() === ''' to just '!text'
+        alert("Please enter a decree in the search field to add.");
+        return;
+    }
 
     const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
     await addRuleToFirestore(text, maxOrder + 1);
+    
+    // Clear the search input after adding
+    ruleSearchInput.value = '';
+    currentRuleSearchTerm = '';
+    handleRenderRules(); // Re-render rules to clear search filter and show new rule
 }
 
 async function handleEditRule(docId) {

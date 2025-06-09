@@ -202,7 +202,16 @@ function renderRules(rulesData) {
         }
         buttonsHTML += '</div>'; // Close rule-actions div
 
-        li.innerHTML = `<span>${rule.text}</span> ${buttonsHTML}`;
+        let ruleTextContent = rule.text;
+        const colonIndex = rule.text.indexOf(':');
+
+        if (colonIndex !== -1) {
+            const partBeforeColon = rule.text.substring(0, colonIndex + 1); // Include the colon
+            const partAfterColon = rule.text.substring(colonIndex + 1);
+            ruleTextContent = `${partBeforeColon}<span class="text-red-700">${partAfterColon}</span>`;
+        }
+
+        li.innerHTML = `<span>${ruleTextContent}</span> ${buttonsHTML}`;
         rulesListOl.appendChild(li);
     });
 }
