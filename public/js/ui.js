@@ -24,6 +24,7 @@ function renderLedger(viewData, term) {
             const isFifthStripe = (i + 1) % 5 === 0;
             const isLastStripe = (i + 1) === stripeCount;
 
+            // Apply 'punishment-stripe-black' only if it's the 5th stripe AND NOT the very last stripe overall
             if (isFifthStripe && !isLastStripe) {
                 stripesHTML += `<div class="punishment-stripe punishment-stripe-black"></div>`;
             } else {
