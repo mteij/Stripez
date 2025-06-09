@@ -88,6 +88,12 @@ const updateRuleOrderInFirestore = async (rule1, rule2) => {
     await batch.commit();
 };
 
+// New function to update rule text
+const updateRuleTextInFirestore = async (docId, newText) => {
+    const docRef = doc(db, 'rules', docId);
+    await updateDoc(docRef, { text: newText.trim() });
+};
+
 // Export everything needed by other modules
 export {
     auth,
@@ -101,5 +107,6 @@ export {
     deletePersonFromLedger,
     addRuleToFirestore,
     deleteRuleFromFirestore,
-    updateRuleOrderInFirestore
+    updateRuleOrderInFirestore,
+    updateRuleTextInFirestore // New export
 };

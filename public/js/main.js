@@ -5,7 +5,7 @@ import {
     auth, onAuthStateChanged, signInAnonymously, setupRealtimeListener,
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
-    deleteRuleFromFirestore, updateRuleOrderInFirestore
+    deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore // New import
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 // Import both randomizer initialization functions
@@ -15,9 +15,10 @@ import { initListRandomizer, initDiceRandomizer } from '../randomizer/randomizer
 // --- STATE VARIABLES ---
 let currentUserId = null;
 let ledgerDataCache = [];
-let rulesDataCache = [];
+let rulesDataCache = []; // Full, unfiltered rules data
 let currentSortOrder = 'stripes_desc';
-let currentSearchTerm = '';
+let currentSearchTerm = ''; // For ledger search
+let currentRuleSearchTerm = ''; // New: For rules search
 let isSchikkoConfirmed = false; // Track confirmation status for the session
 
 // --- DOM ELEMENTS ---
@@ -36,6 +37,7 @@ const showDecreesContainer = document.getElementById('show-decrees-container');
 const decreesContent = document.getElementById('decrees-content');
 const hideDecreesBtn = document.getElementById('hide-decrees-btn');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
+const ruleSearchInput = document.getElementById('rule-search-input'); // New DOM element
 
 // Dice randomizer modal and buttons (re-added)
 const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
@@ -61,13 +63,12 @@ onAuthStateChanged(auth, (user) => {
         setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
-            handleRender();
+            handleRender(); // Render ledger on data change
         });
         // Listener for the dynamic rules list
         setupRealtimeListener('rules', (data) => {
             rulesDataCache = data.sort((a, b) => a.order - b.order);
-            // Render the interactive list in the collapsible area
-            renderRules(rulesDataCache);
+            handleRenderRules(); // Render rules on data change
         });
     } else {
         signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
@@ -102,6 +103,18 @@ function handleRender() {
 
     renderLedger(viewData, term);
 }
+
+// New: Renders rules based on current search term
+function handleRenderRules() {
+    let filteredRules = [...rulesDataCache];
+    const term = currentRuleSearchTerm.toLowerCase();
+
+    if (term) {
+        filteredRules = filteredRules.filter(rule => rule.text.toLowerCase().includes(term));
+    }
+    renderRules(filteredRules);
+}
+
 
 // --- CONFIRMATION ---
 function confirmSchikko() {
@@ -166,11 +179,29 @@ async function handleAddRule() {
     await addRuleToFirestore(text, maxOrder + 1);
 }
 
+async function handleEditRule(docId) {
+    const rule = rulesDataCache.find(r => r.id === docId);
+    if (!rule) return;
+
+    const newText = prompt("Enter the new text for the decree:", rule.text);
+    if (newText && newText.trim() !== "") {
+        await updateRuleTextInFirestore(docId, newText);
+    }
+}
+
+
 // --- EVENT LISTENERS ---
 mainInput.addEventListener('input', () => {
     currentSearchTerm = mainInput.value;
     handleRender();
 });
+
+// New: Rule search input listener
+ruleSearchInput?.addEventListener('input', () => {
+    currentRuleSearchTerm = ruleSearchInput.value;
+    handleRenderRules();
+});
+
 
 mainInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddName(); } });
 addBtn.addEventListener('click', handleAddName);
@@ -187,6 +218,7 @@ sortSelect.addEventListener('change', (e) => {
 showDecreesBtn?.addEventListener('click', () => {
     showDecreesContainer.classList.add('hidden');
     decreesContent.classList.remove('hidden');
+    handleRenderRules(); // Render rules when shown, in case search term changed while hidden
 });
 
 hideDecreesBtn?.addEventListener('click', () => {
@@ -197,6 +229,10 @@ hideDecreesBtn?.addEventListener('click', () => {
         rulesListOl.classList.remove('rules-list-editing');
         editRulesBtn.textContent = 'Finish Editing';
     }
+    // Clear rule search when hiding decrees
+    ruleSearchInput.value = '';
+    currentRuleSearchTerm = '';
+    handleRenderRules(); // Re-render rules list to clear search filter
 });
 
 punishmentListDiv.addEventListener('click', (e) => {
@@ -230,6 +266,7 @@ editRulesBtn?.addEventListener('click', () => {
     rulesListOl.classList.toggle('rules-list-editing');
     const isEditing = rulesListOl.classList.contains('rules-list-editing');
     editRulesBtn.textContent = isEditing ? 'Finish Editing' : 'Edit Decrees';
+    handleRenderRules(); // Re-render rules to show/hide edit buttons
 });
 
 rulesListOl?.addEventListener('click', async (e) => {
@@ -261,6 +298,9 @@ rulesListOl?.addEventListener('click', async (e) => {
             if (ruleIndex < rulesDataCache.length - 1) {
                 await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]);
             }
+            break;
+        case 'edit': // New edit action
+            await handleEditRule(id);
             break;
     }
 });

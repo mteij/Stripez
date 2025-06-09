@@ -173,27 +173,34 @@ function renderRules(rulesData) {
         return;
     }
 
+    const isEditing = rulesListOl.classList.contains('rules-list-editing');
+
     rulesData.forEach((rule, index) => {
         const li = document.createElement('li');
         li.className = 'flex justify-between items-center';
         
         let buttonsHTML = '<div class="rule-actions items-center gap-2 pl-4">';
 
-        // Don't show "up" arrow for the first item
-        if (index > 0) {
-            buttonsHTML += `<button data-rule-action="move-up" data-id="${rule.id}" class="btn-ancient text-sm font-bold py-1 px-2 rounded-md" title="Move Up">&uarr;</button>`;
-        } else {
-            buttonsHTML += `<span class="py-1 px-2 w-[34px]"></span>`; // Placeholder for alignment
-        }
-        
-        // Don't show "down" arrow for the last item
-        if (index < rulesData.length - 1) {
-            buttonsHTML += `<button data-rule-action="move-down" data-id="${rule.id}" class="btn-ancient text-sm font-bold py-1 px-2 rounded-md" title="Move Down">&darr;</button>`;
-        } else {
-            buttonsHTML += `<span class="py-1 px-2 w-[34px]"></span>`; // Placeholder for alignment
-        }
+        if (isEditing) { // Only show these buttons in edit mode
+            buttonsHTML += `<button data-rule-action="edit" data-id="${rule.id}" class="btn-ancient text-sm font-bold py-1 px-2 rounded-md" title="Edit Rule">&#x270E;</button>`; // Edit icon
 
-        buttonsHTML += `<button data-rule-action="delete" data-id="${rule.id}" class="btn-ancient text-red-300 hover:text-red-100 text-sm font-bold py-1 px-2 rounded-md" title="Delete Rule">&times;</button></div>`;
+            // Don't show "up" arrow for the first item
+            if (index > 0) {
+                buttonsHTML += `<button data-rule-action="move-up" data-id="${rule.id}" class="btn-ancient text-sm font-bold py-1 px-2 rounded-md" title="Move Up">&uarr;</button>`;
+            } else {
+                buttonsHTML += `<span class="py-1 px-2 w-[34px]"></span>`; // Placeholder for alignment
+            }
+            
+            // Don't show "down" arrow for the last item
+            if (index < rulesData.length - 1) {
+                buttonsHTML += `<button data-rule-action="move-down" data-id="${rule.id}" class="btn-ancient text-sm font-bold py-1 px-2 rounded-md" title="Move Down">&darr;</button>`;
+            } else {
+                buttonsHTML += `<span class="py-1 px-2 w-[34px]"></span>`; // Placeholder for alignment
+            }
+
+            buttonsHTML += `<button data-rule-action="delete" data-id="${rule.id}" class="btn-ancient text-red-300 hover:text-red-100 text-sm font-bold py-1 px-2 rounded-md" title="Delete Rule">&times;</button>`;
+        }
+        buttonsHTML += '</div>'; // Close rule-actions div
 
         li.innerHTML = `<span>${rule.text}</span> ${buttonsHTML}`;
         rulesListOl.appendChild(li);
