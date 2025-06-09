@@ -67,7 +67,7 @@ function populateRouletteTiles(maxNumber) {
 function spin_promise(targetNumber) {
     return new Promise((resolve, reject) => {
         // Calculate originalTargetIndex here so it's available in the closure for setTimeout
-        const originalTargetIndex = currentExtendedPalette.indexOf(targetNumber) % singlePaletteLength; //
+        const originalTargetIndex = currentExtendedPalette.indexOf(targetNumber) % singlePaletteLength;
 
         // Find the index of the target number in the currently displayed extended palette
         // We'll target the first occurrence in the middle replication for seamless looping
@@ -92,6 +92,7 @@ function spin_promise(targetNumber) {
         let pixelsToSpin = basePixels + (totalExtendedPaletteWidth * numCircles);
 
         wrap.style.transition = "transform 5s cubic-bezier(0.1, 0.6, 0.1, 1)";
+        wrap.offsetWidth; // Force reflow for transition to apply
         wrap.style.transform = `translateX(-${pixelsToSpin}px)`;
 
         setTimeout(() => {
