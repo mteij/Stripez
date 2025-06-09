@@ -28,7 +28,7 @@ function spin_promise(color, number) {
             return;
         }
 
-        const numCircles = 15; // Number of full rotations
+        const numCircles = 3; // Reduced number of full rotations for smoother rendering
         const totalPalleteWidth = (pallete.length * 3) * tileVisualWidth; // Total width of duplicated palette
 
         // Target an index in the middle section of the extended palette for seamless looping
@@ -52,8 +52,11 @@ function spin_promise(color, number) {
             
             // Get the current container width to precisely center the target tile
             const containerWidth = wrap.parentElement.offsetWidth;
-            const targetTileCenterOffset = (extendedTargetIndex * tileVisualWidth) + (tileVisualWidth / 2);
-            const snapOffset = targetTileCenterOffset - (containerWidth / 2);
+            
+            // Calculate the exact center of the target tile in the extended palette
+            const exactTargetTileCenter = (extendedTargetIndex * tileVisualWidth) + (tileVisualWidth / 2);
+            // Calculate the snap offset to perfectly center the chosen tile under the marker
+            const snapOffset = exactTargetTileCenter - (containerWidth / 2);
 
             // Snap to the final visible position, centering the target tile
             wrap.style.transform = `translateX(-${snapOffset}px)`;
