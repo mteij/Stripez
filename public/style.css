@@ -50,6 +50,22 @@ body {
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
+/* New subtle button style for "Schikko's Decrees" button */
+.btn-subtle-decree {
+    background-color: #e9e2d7; /* Lighter paper-like background */
+    color: #5c3d2e; /* Dark, earthy brown text */
+    border: 2px solid #b9987e; /* Thematic border */
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
+}
+
+.btn-subtle-decree:hover {
+    background-color: #dcd3c4; /* Slightly lighter on hover */
+    color: #4a3024; /* Slightly darker text on hover */
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15); /* Slightly more prominent shadow on hover */
+}
+
+
 /* Styling for the punishment stripes */
 .punishment-stripe {
     display: inline-block;
@@ -79,6 +95,7 @@ body {
     height: 0;
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
-    border-top: 6px solid #fdf8e9; /* Matches button text color */
+    border-top: 6px solid #5c3d2e; /* Matches new subtle button text color */
     margin-top: 2px; /* Slight adjustment for vertical alignment */
+    transition: transform 0.3s ease;
 }
