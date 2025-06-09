@@ -52,7 +52,7 @@ const closeListRandomizerModalBtn = document.getElementById('close-list-randomiz
 // New Randomizer Hub elements
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
-const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
+const closeRandomizerHubModalBtn = document = document.getElementById('close-randomizer-hub-modal');
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
@@ -71,7 +71,7 @@ onAuthStateChanged(auth, (user) => {
         setupRealtimeListener('rules', (data) => {
             rulesDataCache = data.sort((a, b) => a.order - b.order);
             handleRenderRules(); // Render rules on data change
-            updateAppFooter(); // New: Update footer when rules data changes
+            updateAppFooter(); // Update footer when rules data changes
         });
     } else {
         signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
@@ -128,12 +128,13 @@ function updateAppFooter() {
     if (rulesDataCache.length > 0) {
         // Find the latest createdAt timestamp among all rules
         const latestRule = rulesDataCache.reduce((latest, rule) => {
-            const latestTs = latest.createdAt?.toMillis() || 0;
-            const currentTs = rule.createdAt?.toMillis() || 0;
+            // Ensure rule.createdAt is a Firestore Timestamp before calling .toMillis()
+            const latestTs = latest.createdAt && typeof latest.createdAt.toMillis === 'function' ? latest.createdAt.toMillis() : 0;
+            const currentTs = rule.createdAt && typeof rule.createdAt.toMillis === 'function' ? rule.createdAt.toMillis() : 0;
             return currentTs > latestTs ? rule : latest;
-        }, { createdAt: new Date(0) }); // Initialize with a very old date
+        }, { createdAt: { toMillis: () => 0 } }); // Initialize with an object that has toMillis returning 0
 
-        if (latestRule.createdAt) {
+        if (latestRule.createdAt && typeof latestRule.createdAt.toDate === 'function') {
             lastModifiedDate = latestRule.createdAt.toDate(); // Convert Firestore Timestamp to JS Date
         }
     }
@@ -211,7 +212,7 @@ async function handleAddRule() {
         return;
     }
 
-    const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
+    const maxOrder = rulesDataCache.reduce((max, rule) => Math.Max(max, rule.order), 0);
     await addRuleToFirestore(text, maxOrder + 1);
     
     // Clear the search input after adding

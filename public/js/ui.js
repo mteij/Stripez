@@ -26,7 +26,7 @@ function renderLedger(viewData, term) {
 
         if (stripeCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            stripesContent = `<p class="text-xl text-[#c0392b] font-bold text-center w-full">Total Stripes: ${stripeCount}</p>`;
+            stripesContent = `<p class="text-xl text-[#c0392b] font-bold text-center w-full">${stripeCount}</p>`; // Only the number
             stripeContainerClasses += 'h-auto justify-center'; // auto height and center for text
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
@@ -41,8 +41,8 @@ function renderLedger(viewData, term) {
                     stripesContent += `<div class="punishment-stripe"></div>`;
                 }
             }
-            // Add classes for horizontal scrolling and nowrap when showing individual stripes
-            stripeContainerClasses += 'h-8 overflow-x-auto whitespace-nowrap'; // Increased height to h-8 (32px)
+            // Add classes for horizontal scrolling, nowrap, min-height, items-start, and padding-left
+            stripeContainerClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2'; // Changed min-h to 32px, added pl-2
         }
 
         const personDiv = document.createElement('div');
