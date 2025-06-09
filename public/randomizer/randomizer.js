@@ -1,6 +1,7 @@
 // public/randomizer/randomizer.js
 
 let wrap, spinBtn, resultsContainer, isSpinning;
+let maxValueSlider, sliderValueSpan; // Added these variables for the slider
 
 const width = 80;
 const pallete = ["r18", "b8", "r19", "g2", "r20", "r21", "b9", "r10", "g3", "r11", "b4", "r12", "b5", "r13", "b6", "r14", "g0", "r15", "b7", "r16", "g1", "r17"];
@@ -81,12 +82,19 @@ export function initRandomizer() {
     wrap = document.querySelector('#randomizer-modal .roulette-container .wrap');
     spinBtn = document.getElementById('spin-btn');
     resultsContainer = document.getElementById('roulette-results');
+    maxValueSlider = document.getElementById('max-value-slider'); // Get slider reference
+    sliderValueSpan = document.getElementById('slider-value'); // Get span reference
     isSpinning = false;
 
-    if (!wrap || !spinBtn || !resultsContainer) {
+    if (!wrap || !spinBtn || !resultsContainer || !maxValueSlider || !sliderValueSpan) { // Check all elements
         console.error("Randomizer elements not found!");
         return;
     }
 
     spinBtn.onclick = spin;
+
+    // Add event listener for the slider to update its displayed value
+    maxValueSlider.addEventListener('input', () => {
+        sliderValueSpan.textContent = maxValueSlider.value;
+    });
 }
