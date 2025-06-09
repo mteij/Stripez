@@ -116,8 +116,9 @@
             </header>
 
             <div class="flex flex-col sm:flex-row gap-4 mb-8">
-                <button id="dice-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Randomizer">
-                    🎲
+                <!-- Removed Dice Randomizer Button -->
+                <button id="list-randomizer-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open List Randomizer">
+                    📝
                 </button>
                 <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
                 <button id="add-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Inscribe</button>
@@ -152,28 +153,29 @@
         </div>
     </div>
     
-    <div id="randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+    <!-- Removed Dice Randomizer Modal -->
+
+    <!-- New: List Randomizer Modal -->
+    <div id="list-randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
-            <button id="close-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
-            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Randomizer</h2>
+            <button id="close-list-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Custom List Selector</h2>
             
-            <div class="roulette-container">
-                <div class="controller"></div>
-                <div class="wrap">
-                    </div>
-            </div>
-            
-            <div class="text-center mt-4">
-                <label for="max-value-slider" class="font-cinzel-decorative text-lg text-[#6f4e37]">
-                    Max Value: <span id="slider-value" class="font-bold">20</span>
-                </label>
-                <input type="range" id="max-value-slider" min="1" max="50" value="20" class="w-full">
+            <div class="mb-4">
+                <label for="list-input" class="block text-lg font-cinzel-decorative text-[#5c3d2e] mb-2">Enter items (one per line):</label>
+                <textarea id="list-input" rows="8" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]"></textarea>
             </div>
 
-            <div class="text-center mt-2">
-                <button id="spin-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Spin</button>
-                <div id="roulette-results" class="mt-4 flex flex-wrap-reverse justify-center gap-2">
-                    </div>
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <button id="shuffle-list-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Shuffle List</button>
+                <button id="pick-random-item-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Pick Random Item</button>
+            </div>
+
+            <div>
+                <h3 class="font-cinzel-decorative text-2xl text-[#5c3d2e] mb-3">Result:</h3>
+                <div id="list-output" class="bg-[#e9e2d7] border-2 border-[#b9987e] rounded-md p-4 min-h-[60px] text-lg text-[#4a3024] whitespace-pre-wrap">
+                    <!-- Results will appear here -->
+                </div>
             </div>
         </div>
     </div>

@@ -8,7 +8,8 @@ import {
     deleteRuleFromFirestore, updateRuleOrderInFirestore
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
-import { initRandomizer } from '../randomizer/randomizer.js';
+// Import the new list randomizer initialization function
+import { initListRandomizer } from '../randomizer/randomizer.js'; 
 
 
 // --- STATE VARIABLES ---
@@ -35,9 +36,16 @@ const showDecreesContainer = document.getElementById('show-decrees-container');
 const decreesContent = document.getElementById('decrees-content');
 const hideDecreesBtn = document.getElementById('hide-decrees-btn');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
-const diceBtn = document.getElementById('dice-btn');
-const randomizerModal = document.getElementById('randomizer-modal');
-const closeRandomizerModalBtn = document.getElementById('close-randomizer-modal');
+
+// Removed Dice Randomizer elements and listeners
+// const diceBtn = document.getElementById('dice-btn');
+// const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
+// const closeDiceRandomizerModalBtn = document.getElementById('close-dice-randomizer-modal');
+
+// New list randomizer elements
+const listRandomizerBtn = document.getElementById('list-randomizer-btn');
+const listRandomizerModal = document.getElementById('list-randomizer-modal');
+const closeListRandomizerModalBtn = document.getElementById('close-list-randomizer-modal');
 
 
 // --- AUTHENTICATION & INITIALIZATION ---
@@ -182,7 +190,7 @@ hideDecreesBtn?.addEventListener('click', () => {
     // Also exit edit mode for a clean state
     if (rulesListOl.classList.contains('rules-list-editing')) {
         rulesListOl.classList.remove('rules-list-editing');
-        editRulesBtn.textContent = 'Edit Decrees';
+        editRulesBtn.textContent = 'Finish Editing';
     }
 });
 
@@ -258,12 +266,21 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Randomizer Modal Listeners
-diceBtn?.addEventListener('click', () => {
-    randomizerModal.classList.remove('hidden');
-    initRandomizer();
+// Removed Dice Randomizer Modal Listeners
+// diceBtn?.addEventListener('click', () => {
+//     diceRandomizerModal.classList.remove('hidden');
+// });
+
+// closeDiceRandomizerModalBtn?.addEventListener('click', () => {
+//     diceRandomizerModal.classList.add('hidden');
+// });
+
+// New List Randomizer Modal Listeners
+listRandomizerBtn?.addEventListener('click', () => {
+    listRandomizerModal.classList.remove('hidden');
+    initListRandomizer(); // Initialize the list randomizer when its modal opens
 });
 
-closeRandomizerModalBtn?.addEventListener('click', () => {
-    randomizerModal.classList.add('hidden');
+closeListRandomizerModalBtn?.addEventListener('click', () => {
+    listRandomizerModal.classList.add('hidden');
 });
