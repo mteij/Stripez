@@ -10,22 +10,32 @@ All data is stored and synced live using Google's Firebase, and the project is s
 
 * **Ancient Tome Aesthetic:** Uses custom fonts and CSS to create an immersive, old-world feel.
 * **Real-time Database:** Built with Firebase Firestore, allowing multiple users to see updates instantly without refreshing the page.
-* **Add Transgressors:** Users can inscribe new names onto the ledger.
-* **Add Punishment Stripes:** A simple click adds a "stripe" to any name on the list.
+* **Full CRUD Functionality:** Users can add, rename, and delete names from the ledger.
+* **Punishment Tracking:** Add or remove punishment stripes for each person.
+* **Statistics Chart:** View a person's history of transgressions on a smooth, interactive chart that groups events occurring in close succession.
+* **Search & Sort:** Easily find names on the ledger and sort them alphabetically or by the number of stripes.
 * **Continuous Deployment:** The project is configured to automatically deploy to Firebase Hosting whenever changes are pushed to the `main` branch on GitHub.
 
 ---
 
 ## Tech Stack
 
-* **Frontend:** HTML5, CSS3, JavaScript (ESM)
+* **Frontend:** HTML5, CSS3, JavaScript (ES Modules)
 * **Styling:** [Tailwind CSS](https://tailwindcss.com/) for utility-first styling.
+* **Charting:** [Chart.js](https://www.chartjs.org/) for data visualization.
 * **Backend & Database:** [Google Firebase](https://firebase.google.com/)
     * **Firestore:** As the NoSQL real-time database.
     * **Firebase Authentication:** For anonymous user sign-in.
     * **Firebase Hosting:** To serve the live web application.
 * **Deployment:** [GitHub Actions](https://github.com/features/actions) for CI/CD.
 
+---
+
+## Project Structure
+
+The project's code is organized in a modular way to separate concerns, making it easier to maintain and understand.
+
+public/├── js/│   ├── firebase.js  # Handles all Firebase configuration and communication│   ├── main.js      # Main application logic, state, and event handling│   └── ui.js        # Manages all DOM rendering and UI updates├── index.html       # The main HTML file└── style.css        # Custom styles for the ancient tome theme
 ---
 
 ## Project Setup
@@ -60,10 +70,11 @@ If you wish to clone this repository and set it up with your own Firebase projec
     * In your Firebase project settings, add a new **Web App**.
     * Firebase will provide you with a `firebaseConfig` object. Copy it.
 
-5.  **Add Config to `app.js`:**
-    * Open the `app.js` file.
+5.  **Add Config to `firebase.js`:**
+    * Open the `public/js/firebase.js` file.
     * Paste your copied `firebaseConfig` object into the placeholder at the top of the file.
 
 6.  **Deploy:**
     * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`.
     * Alternatively, set up the GitHub Actions integration by following the official Firebase guide.
+
