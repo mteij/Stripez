@@ -122,30 +122,73 @@ const renderLedger = () => {
 
 const showStatsModal = (person) => {
     statsName.textContent = `Statistics for ${person.name}`;
+    if (stripeChart) stripeChart.destroy(); // Destroy existing chart before creating a new one
 
-    const stripeTimestamps = person.stripes.map(ts => ts.toDate()).sort((a, b) => a - b);
+    // Ensure stripes is an array and map Timestamps to Date objects, then sort
+    const stripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
 
-    const cumulativeData = stripeTimestamps.map((ts, index) => ({
-        x: ts,
-        y: index + 1
-    }));
-    
-    if (stripeTimestamps.length > 0) {
-        cumulativeData.unshift({ x: stripeTimestamps[0], y: 0 });
+    // Handle case with no stripes
+    if (stripeTimestamps.length === 0) {
+        stripeChart = new Chart(stripeChartCanvas, {
+            type: 'line',
+            data: { datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'No stripes have been recorded for this transgressor.',
+                        font: { size: 16 },
+                        color: '#6f4e37'
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                }
+            }
+        });
+        statsModal.classList.remove('hidden');
+        return;
     }
+
+    const TIME_WINDOW_MS = 5000; // 5 seconds to merge stripes
+    const graphPoints = [];
+    
+    // Start the graph from y=0 at the time of the first event.
+    graphPoints.push({ x: stripeTimestamps[0], y: 0 });
+
+    let lastTimestamp = stripeTimestamps[0];
+    let cumulativeCount = 1;
+
+    for (let i = 1; i < stripeTimestamps.length; i++) {
+        const currentTimestamp = stripeTimestamps[i];
+        
+        // If the current stripe is NOT close to the previous one,
+        // it means the previous "group" has ended.
+        // Record the point for the *previous* timestamp to mark the end of that step.
+        if (currentTimestamp.getTime() - lastTimestamp.getTime() > TIME_WINDOW_MS) {
+            graphPoints.push({ x: lastTimestamp, y: cumulativeCount });
+        }
+        
+        cumulativeCount++;
+        lastTimestamp = currentTimestamp;
+    }
+    
+    // Add the final point for the last stripe/group
+    graphPoints.push({ x: lastTimestamp, y: cumulativeCount });
 
     const chartData = {
         datasets: [{
             label: 'Total Stripes Over Time',
-            data: cumulativeData,
+            data: graphPoints,
             borderColor: 'rgba(192, 57, 43, 1)',
             backgroundColor: 'rgba(192, 57, 43, 0.2)',
             fill: true,
-            tension: 0.4 // This makes the line curved and smooth
+            stepped: 'before' // This creates the stepped line chart
         }]
     };
-
-    if (stripeChart) stripeChart.destroy();
 
     stripeChart = new Chart(stripeChartCanvas, {
         type: 'line',
@@ -154,9 +197,12 @@ const showStatsModal = (person) => {
             scales: {
                 x: {
                     type: 'time',
+                    time: {
+                        tooltipFormat: 'DD T'
+                    },
                     title: {
                         display: true,
-                        text: 'Date'
+                        text: 'Date of Transgression'
                     }
                 },
                 y: {
@@ -166,7 +212,7 @@ const showStatsModal = (person) => {
                         text: 'Total Stripes'
                     },
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1 // Ensure y-axis has integer steps
                     }
                 }
             },
@@ -215,6 +261,7 @@ const handleRemoveStripe = async (docId) => {
     const person = ledgerDataCache.find(p => p.id === docId);
     if (person && Array.isArray(person.stripes) && person.stripes.length > 0) {
         const docRef = doc(db, 'punishments', docId);
+        // Firestore Timestamps need to be sorted to find the latest one
         const sortedStripes = [...person.stripes].sort((a, b) => b.toMillis() - a.toMillis());
         const lastStripe = sortedStripes[0];
         await updateDoc(docRef, { stripes: arrayRemove(lastStripe) });
