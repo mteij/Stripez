@@ -6,7 +6,7 @@ function rand(min, max) {
 }
 
 // --- List Randomizer Logic ---
-let shuffleListBtn, pickRandomItemBtn, listOutput, listOutputHeading;
+let shuffleListBtn, pickRandomItemBtn, listOutput; // Removed listOutputHeading
 let availableNames = []; // This will hold the names from Firebase
 
 function shuffleArray(array) {
@@ -23,7 +23,6 @@ function renderListOutput(names, isShuffled = true) {
     if (names.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names available from the ledger.</span>';
         listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
-        listOutputHeading.classList.remove('hidden'); // Show heading for error too
         return;
     }
 
@@ -39,14 +38,12 @@ function renderListOutput(names, isShuffled = true) {
     }
     listOutput.innerHTML = outputHTML;
     listOutput.classList.remove('hidden'); // Show the output div
-    listOutputHeading.classList.remove('hidden'); // Show the heading
 }
 
 function handleShuffleList() {
     if (availableNames.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names to shuffle. The ledger is empty.</span>';
         listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
-        listOutputHeading.classList.remove('hidden'); // Show heading for error too
         return;
     }
     const shuffledNames = shuffleArray([...availableNames]);
@@ -57,7 +54,6 @@ function handlePickRandomItem() {
     if (availableNames.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names to pick from. The ledger is empty.</span>';
         listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
-        listOutputHeading.classList.remove('hidden'); // Show heading for error too
         return;
     }
     const randomIndex = rand(0, availableNames.length - 1);
@@ -69,19 +65,17 @@ export function initListRandomizer(ledgerData) {
     shuffleListBtn = document.getElementById('shuffle-list-btn');
     pickRandomItemBtn = document.getElementById('pick-random-item-btn');
     listOutput = document.getElementById('list-output');
-    listOutputHeading = document.getElementById('list-output-heading'); // Get reference to the heading
 
-    if (!shuffleListBtn || !pickRandomItemBtn || !listOutput || !listOutputHeading) {
+    if (!shuffleListBtn || !pickRandomItemBtn || !listOutput) {
         console.error("Name randomizer elements not found!");
         return;
     }
 
     availableNames = ledgerData.map(person => person.name);
 
-    // Hide the output and heading initially
+    // Hide the output initially
     listOutput.classList.add('hidden');
     listOutput.innerHTML = ''; // Clear any previous content
-    listOutputHeading.classList.add('hidden');
 
     shuffleListBtn.onclick = handleShuffleList;
     pickRandomItemBtn.onclick = handlePickRandomItem;
