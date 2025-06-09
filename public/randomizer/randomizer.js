@@ -36,11 +36,13 @@ function renderListOutput(names, isShuffled = true) {
         outputHTML = `<h3>Selected Name:</h3><p class="text-xl font-bold">${names[0]}</p>`;
     }
     listOutput.innerHTML = outputHTML;
+    listOutput.classList.remove('hidden'); // Show the output div
 }
 
 function handleShuffleList() {
     if (availableNames.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names to shuffle. The ledger is empty.</span>';
+        listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
         return;
     }
     const shuffledNames = shuffleArray([...availableNames]);
@@ -50,6 +52,7 @@ function handleShuffleList() {
 function handlePickRandomItem() {
     if (availableNames.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names to pick from. The ledger is empty.</span>';
+        listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
         return;
     }
     const randomIndex = rand(0, availableNames.length - 1);
@@ -69,12 +72,9 @@ export function initListRandomizer(ledgerData) {
 
     availableNames = ledgerData.map(person => person.name);
 
-    // Initial render based on current names
-    if (availableNames.length > 0) {
-        renderListOutput(availableNames, true); // Display shuffled list initially
-    } else {
-        listOutput.innerHTML = '<span class="text-xl text-[#6f4e37]">The ledger is clear. No names available for randomization.</span>';
-    }
+    // Hide the output initially
+    listOutput.classList.add('hidden');
+    listOutput.innerHTML = ''; // Clear any previous content
 
     shuffleListBtn.onclick = handleShuffleList;
     pickRandomItemBtn.onclick = handlePickRandomItem;
