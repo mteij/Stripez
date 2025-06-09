@@ -123,21 +123,17 @@ const renderLedger = () => {
 const showStatsModal = (person) => {
     statsName.textContent = `Statistics for ${person.name}`;
 
-    // 1. Get timestamps and sort them chronologically
     const stripeTimestamps = person.stripes.map(ts => ts.toDate()).sort((a, b) => a - b);
 
-    // 2. Create cumulative data points for the line graph
     const cumulativeData = stripeTimestamps.map((ts, index) => ({
         x: ts,
         y: index + 1
     }));
     
-    // 3. Add a starting point at y=0 to show the line rising from the baseline
     if (stripeTimestamps.length > 0) {
         cumulativeData.unshift({ x: stripeTimestamps[0], y: 0 });
     }
 
-    // 4. Configure the chart data and dataset
     const chartData = {
         datasets: [{
             label: 'Total Stripes Over Time',
@@ -145,21 +141,19 @@ const showStatsModal = (person) => {
             borderColor: 'rgba(192, 57, 43, 1)',
             backgroundColor: 'rgba(192, 57, 43, 0.2)',
             fill: true,
-            stepped: true, // Creates a step-line graph
+            tension: 0.4 // This makes the line curved and smooth
         }]
     };
 
     if (stripeChart) stripeChart.destroy();
 
-    // 5. Create the new chart with updated type and options
     stripeChart = new Chart(stripeChartCanvas, {
-        type: 'line', // Changed to a line graph
+        type: 'line',
         data: chartData,
         options: {
             scales: {
                 x: {
-                    type: 'time', // Use time scale
-                    // By REMOVING the `time.unit`, Chart.js will automatically pick the best unit (day/month/year)
+                    type: 'time',
                     title: {
                         display: true,
                         text: 'Date'
@@ -172,7 +166,7 @@ const showStatsModal = (person) => {
                         text: 'Total Stripes'
                     },
                     ticks: {
-                        stepSize: 1 // Ensure y-axis only uses whole numbers
+                        stepSize: 1
                     }
                 }
             },
