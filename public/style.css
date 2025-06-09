@@ -61,4 +61,8 @@ body {
     transform: skew(-15deg);
 }
 
-/* DELETED the previous custom sort container CSS */
+/* Set a readable text color for the dropdown options */
+#sort-select option {
+    color: black;
+    background: white;
+}
