@@ -38,6 +38,8 @@ const decreesContent = document.getElementById('decrees-content');
 const hideDecreesBtn = document.getElementById('hide-decrees-btn');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
 const ruleSearchInput = document.getElementById('rule-search-input'); // New DOM element
+const appInfoFooter = document.getElementById('app-info-footer'); // New: Reference to the footer info div
+
 
 // Dice randomizer modal and buttons (re-added)
 const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
@@ -69,6 +71,7 @@ onAuthStateChanged(auth, (user) => {
         setupRealtimeListener('rules', (data) => {
             rulesDataCache = data.sort((a, b) => a.order - b.order);
             handleRenderRules(); // Render rules on data change
+            updateAppFooter(); // New: Update footer when rules data changes
         });
     } else {
         signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
@@ -115,6 +118,35 @@ function handleRenderRules() {
     renderRules(filteredRules);
 }
 
+/**
+ * Updates the application footer with creation info and last rule modification date.
+ */
+function updateAppFooter() {
+    if (!appInfoFooter) return;
+
+    let lastModifiedDate = null;
+    if (rulesDataCache.length > 0) {
+        // Find the latest createdAt timestamp among all rules
+        const latestRule = rulesDataCache.reduce((latest, rule) => {
+            const latestTs = latest.createdAt?.toMillis() || 0;
+            const currentTs = rule.createdAt?.toMillis() || 0;
+            return currentTs > latestTs ? rule : latest;
+        }, { createdAt: new Date(0) }); // Initialize with a very old date
+
+        if (latestRule.createdAt) {
+            lastModifiedDate = latestRule.createdAt.toDate(); // Convert Firestore Timestamp to JS Date
+        }
+    }
+
+    const dateString = lastModifiedDate ?
+        lastModifiedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) :
+        'Unknown Date';
+
+    appInfoFooter.innerHTML = `
+        <span class="font-cinzel-decorative">Crafted by the hand of Michiel, with the wisdom of the Oracles (ChatGPT).</span><br>
+        <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
+    `;
+}
 
 // --- CONFIRMATION ---
 function confirmSchikko() {
@@ -174,7 +206,7 @@ async function handleAddRule() {
     // Get text from the rule search input field
     const text = ruleSearchInput.value.trim();
     // Exit if user cancelled or entered empty text
-    if (!text) { // Changed condition from '!text || text.trim() === ''' to just '!text'
+    if (!text) {
         alert("Please enter a decree in the search field to add.");
         return;
     }
