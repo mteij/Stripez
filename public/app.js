@@ -178,7 +178,12 @@ const handleAddName = async () => {
 
 const handleAddStripe = async (docId) => {
     const docRef = doc(db, 'punishments', docId);
-    await updateDoc(docRef, { stripes: arrayUnion(serverTimestamp()) });
+    try {
+        // CORRECTED LINE: Use a client-side new Date() object.
+        await updateDoc(docRef, { stripes: arrayUnion(new Date()) });
+    } catch (error) {
+        console.error("Error adding stripe:", error);
+    }
 };
 
 const handleRemoveStripe = async (docId) => {
