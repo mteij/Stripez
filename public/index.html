@@ -4,35 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schikko Rules - Ancient Tome</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
-    <!-- Chart.js for graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <!-- Link to your custom stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="font-medieval-sharp text-gray-800 flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
 
     <div class="w-full max-w-4xl bg-[#fdf8e9] shadow-2xl rounded-lg border-4 border-[#8c6b52] border-opacity-60 p-8 md:p-12 lg:p-16 relative">
         
-        <!-- Decorative Corners -->
         <div class="absolute top-2 left-2 w-12 h-12 border-t-2 border-l-2 border-[#a58467]"></div>
         <div class="absolute top-2 right-2 w-12 h-12 border-t-2 border-r-2 border-[#a58467]"></div>
         <div class="absolute bottom-2 left-2 w-12 h-12 border-b-2 border-l-2 border-[#a58467]"></div>
         <div class="absolute bottom-2 right-2 w-12 h-12 border-b-2 border-r-2 border-[#a58467]"></div>
 
-        <!-- Header -->
         <header class="text-center mb-10 border-b-4 border-double border-[#b9987e] pb-6">
             <h1 class="font-cinzel-decorative text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">The Rules of Schikko</h1>
             <p class="text-lg text-[#6f4e37] mt-2">As Decreed by the Ancients</p>
         </header>
 
-        <!-- Rules Section -->
         <main>
             <ol id="rules-list" class="roman-list text-lg md:text-xl leading-relaxed text-[#4a3024]">
                 <li>The first rule of Schikko is to always uphold the covenant of the sacred scrolls. Betrayal of this trust is the highest offense.</li>
@@ -41,10 +34,8 @@
             </ol>
         </main>
         
-        <!-- Divider -->
         <div class="my-12 border-t-4 border-dotted border-[#b9987e]"></div>
 
-        <!-- Punishment Ledger Section -->
         <section id="punishment-ledger">
             <header class="text-center mb-8">
                 <h2 class="font-cinzel-decorative text-3xl md:text-4xl font-bold text-[#5c3d2e]">The Ledger of Punishments</h2>
@@ -61,13 +52,11 @@
             </div>
         </section>
 
-        <!-- Footer -->
         <footer class="text-center mt-12 pt-6 border-t-2 border-[#b9987e]">
              <div class="font-cinzel-decorative text-2xl text-[#5c3d2e]">~ Finis ~</div>
         </footer>
     </div>
 
-    <!-- Statistics Modal -->
     <div id="stats-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-3xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
             <button id="close-stats-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
@@ -79,7 +68,6 @@
     </div>
 
 
-    <!-- Link to your JavaScript file -->
     <script src="app.js" type="module"></script>
 </body>
 </html>

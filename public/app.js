@@ -50,12 +50,12 @@ onAuthStateChanged(auth, (user) => {
 // --- RENDER & DISPLAY LOGIC ---
 
 const renderLedger = () => {
-    punishmentListDiv.innerHTML = ''; 
-    if(ledgerDataCache.length === 0) {
-         punishmentListDiv.innerHTML = `<div class="text-center text-xl text-[#6f4e37]">The ledger is clear. No transgressions recorded.</div>`;
-         return;
+    punishmentListDiv.innerHTML = '';
+    if (ledgerDataCache.length === 0) {
+        punishmentListDiv.innerHTML = `<div class="text-center text-xl text-[#6f4e37]">The ledger is clear. No transgressions recorded.</div>`;
+        return;
     }
-    
+
     const sortedData = [...ledgerDataCache].sort((a, b) => a.name.localeCompare(b.name));
 
     sortedData.forEach(person => {
@@ -90,7 +90,7 @@ const renderLedger = () => {
 const showStatsModal = (person) => {
     statsName.textContent = `Statistics for ${person.name}`;
     const stripeTimestamps = person.stripes.map(ts => ts.toDate());
-    
+
     // Group stripes by date
     const stripesByDate = stripeTimestamps.reduce((acc, date) => {
         const dateString = date.toISOString().split('T')[0];
@@ -173,14 +173,16 @@ const handleAddStripe = async (docId) => {
 };
 
 const handleRemoveStripe = async (docId) => {
-    const docRef = doc(db, 'punishments', docId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        const person = docSnap.data();
-        if (person.stripes && person.stripes.length > 0) {
-            const lastStripe = person.stripes[person.stripes.length - 1];
-            await updateDoc(docRef, { stripes: arrayRemove(lastStripe) });
-        }
+    const person = ledgerDataCache.find(p => p.id === docId);
+    if (person && Array.isArray(person.stripes) && person.stripes.length > 0) {
+        const docRef = doc(db, 'punishments', docId);
+        
+        // Sort stripes by timestamp to find the most recent one.
+        const sortedStripes = [...person.stripes].sort((a, b) => b.toMillis() - a.toMillis());
+        const lastStripe = sortedStripes[0];
+        
+        // Use arrayRemove to delete the most recent stripe.
+        await updateDoc(docRef, { stripes: arrayRemove(lastStripe) });
     }
 };
 
@@ -201,12 +203,16 @@ punishmentListDiv.addEventListener('click', (e) => {
     e.preventDefault();
     const target = e.target.closest('[data-action]');
     if (!target) return;
-    
+
     const action = target.dataset.action;
     const id = target.dataset.id;
-    
-    switch(action) {
+
+    // Hide all open menus whenever an action is taken
+    document.querySelectorAll('[id^="menu-"]').forEach(menu => menu.classList.add('hidden'));
+
+    switch (action) {
         case 'toggle-menu':
+            // Re-open the clicked one
             document.getElementById(`menu-${id}`)?.classList.toggle('hidden');
             break;
         case 'add-stripe':
@@ -220,14 +226,14 @@ punishmentListDiv.addEventListener('click', (e) => {
             break;
         case 'show-stats':
             const person = ledgerDataCache.find(p => p.id === id);
-            if(person) showStatsModal(person);
+            if (person) showStatsModal(person);
             break;
     }
 });
 
 // Hide dropdown menus if clicking elsewhere
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('[data-action="toggle-menu"]')) {
+    if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
         document.querySelectorAll('[id^="menu-"]').forEach(menu => menu.classList.add('hidden'));
     }
 });
