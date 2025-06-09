@@ -29,6 +29,11 @@ const statsModal = document.getElementById('stats-modal');
 const rulesListOl = document.getElementById('rules-list');
 const editRulesBtn = document.getElementById('edit-rules-btn');
 const addDecreeBtn = document.getElementById('add-decree-btn');
+const showDecreesContainer = document.getElementById('show-decrees-container');
+const decreesContent = document.getElementById('decrees-content');
+const hideDecreesBtn = document.getElementById('hide-decrees-btn');
+const showDecreesBtn = document.getElementById('show-decrees-btn');
+
 
 // --- AUTHENTICATION & INITIALIZATION ---
 onAuthStateChanged(auth, (user) => {
@@ -159,6 +164,21 @@ sortSelect.addEventListener('change', (e) => {
     const selectedOptionText = e.target.options[e.target.selectedIndex].text;
     sortButtonText.textContent = `Sort: ${selectedOptionText}`;
     handleRender();
+});
+
+showDecreesBtn?.addEventListener('click', () => {
+    showDecreesContainer.classList.add('hidden');
+    decreesContent.classList.remove('hidden');
+});
+
+hideDecreesBtn?.addEventListener('click', () => {
+    decreesContent.classList.add('hidden');
+    showDecreesContainer.classList.remove('hidden');
+    // Also exit edit mode for a clean state
+    if (rulesListOl.classList.contains('rules-list-editing')) {
+        rulesListOl.classList.remove('rules-list-editing');
+        editRulesBtn.textContent = 'Edit Decrees';
+    }
 });
 
 punishmentListDiv.addEventListener('click', (e) => {
