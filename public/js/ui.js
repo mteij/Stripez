@@ -18,37 +18,49 @@ function renderLedger(viewData, term) {
     }
 
     // Determine dynamic stripe count threshold based on screen width
-    // This is a rough estimation; fine-tuning might be needed on various devices.
     let STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY;
     const screenWidth = window.innerWidth;
 
-    // Define approximate pixel width per stripe (including margin and skew effects)
-    const effectiveStripeWidthPx = 8; // 5px width + 3px margin. Skew is handled by container height.
+    // Approximate pixel width per stripe (5px width + 3px margin-right)
+    const effectiveStripeWidthPx = 8; 
 
-    // Calculate available width for stripes, estimating based on a typical card layout.
-    // The card itself will be responsive, but the content area for stripes needs to fit.
-    // Let's assume on very small screens, the name and buttons might stack or shrink.
-    // The stripes area might get about 50-70% of the screen width for display.
-    const estimatedStripeAreaWidth = screenWidth * 0.5; // Roughly half the screen for stripes on small screens
+    // Estimate the available width for stripes within the card's flexible layout.
+    // On small screens, the name and buttons might stack, giving more horizontal room for stripes
+    // or the name/stripes section might take up a larger portion.
+    // Let's refine this to be based on the general content area, considering paddings.
+    // Max content width is 896px. On smaller screens, it will be screenWidth - margins.
+    // The stripe container itself (`<div class="flex-grow w-full md:w-auto">`) will take up available space.
+    // Let's assume the stripe *display area* within that container can be around 60% of the maximum card width on larger screens,
+    // and potentially more responsive on smaller screens.
+    // For a starting point, let's target about 200-300px for stripes before switching to number on typical mobile.
+    // This translates to roughly 25-35 stripes before converting.
 
-    STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.floor(estimatedStripeAreaWidth / effectiveStripeWidthPx);
+    // A more robust way would be to measure the actual available width of the parent container at runtime.
+    // For now, let's use a breakpoint-based logic or a more fixed threshold, and ensure layout handles overflow.
+    // Let's try a fixed threshold that works well on most small screens, and ensure the `overflow-x-auto` handles anything beyond that.
+    
+    // Previous calculation: STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.floor(estimatedStripeAreaWidth / effectiveStripeWidthPx);
+    // This made the threshold very low on small screens. Let's make it a fixed number that allows for some scrolling.
+    STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20; // Default to 20 stripes before showing number
 
-    // Ensure a minimum threshold, e.g., display at least 5-10 individual stripes even on tiny screens
-    if (STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY < 10) {
-        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 10;
+    // If screen is very small, we might want to switch earlier.
+    if (screenWidth < 400) { // e.g., on very small phone screens
+        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 15;
+    } else if (screenWidth < 640) { // sm breakpoint
+        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20;
+    } else { // Larger screens, can show more stripes
+        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 30; // Allows for more stripes on wider screens
     }
-
 
     viewData.forEach(person => {
         const stripeCount = person.stripes?.length || 0;
-        let stripesContent = ''; // Will hold either individual stripe divs or a number
-        // Removed common stripeContainerClasses from here to apply dynamically
+        let stripesContentHtml = ''; // Will hold either individual stripe divs or the number string
+        let stripeContainerDynamicClasses = ''; // Classes for the div wrapping stripes/number
         
         if (stripeCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            stripesContent = `<p class="text-xl text-[#c0392b] font-bold">${stripeCount}</p>`;
-            // Container for number display: ensures it's left-aligned and has min-height
-            stripesContent = `<div class="mt-2 flex items-center min-h-[32px] justify-start pl-2">${stripesContent}</div>`;
+            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${stripeCount}</p>`;
+            stripeContainerDynamicClasses += 'justify-start'; // Left-align the number
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
             for (let i = 0; i < stripeCount; i++) {
@@ -56,22 +68,23 @@ function renderLedger(viewData, term) {
                 const isLastStripe = (i + 1) === stripeCount;
 
                 if (isFifthStripe && !isLastStripe) {
-                    stripesContent += `<div class="punishment-stripe punishment-stripe-black"></div>`;
+                    stripesContentHtml += `<div class="punishment-stripe punishment-stripe-black"></div>`;
                 } else {
-                    stripesContent += `<div class="punishment-stripe"></div>`;
+                    stripesContentHtml += `<div class="punishment-stripe"></div>`;
                 }
             }
-            // Container for individual stripes: enables scrolling, nowrap, min-height, items-start, and padding-left
-            stripesContent = `<div class="mt-2 flex overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2 pr-2">${stripesContent}</div>`;
+            // Add classes for horizontal scrolling, nowrap, items-start, and padding-left/right
+            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap items-start pl-2 pr-2';
         }
 
         const personDiv = document.createElement('div');
-        // Changed flex-grow to flex-none w-full and added flex-wrap for small screens
+        // Use flex-wrap on the main personDiv to allow name/stripes and buttons to stack
         personDiv.className = 'flex flex-wrap items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
         personDiv.innerHTML = `
             <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                ${stripesContent}
+                <!-- Stripe/Number container with common and dynamic classes -->
+                <div class="mt-2 flex items-center min-h-[32px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0 mt-2 md:mt-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
