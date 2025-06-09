@@ -4,13 +4,15 @@
 import {
     auth, onAuthStateChanged, signInAnonymously, setupRealtimeListener,
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
-    renamePersonOnLedger, deletePersonFromLedger
+    renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
+    deleteRuleFromFirestore, updateRuleOrderInFirestore
 } from './firebase.js';
-import { renderLedger, showStatsModal, closeMenus } from './ui.js';
+import { renderLedger, showStatsModal, closeMenus, renderRules, renderTopRules } from './ui.js';
 
 // --- STATE VARIABLES ---
 let currentUserId = null;
 let ledgerDataCache = [];
+let rulesDataCache = [];
 let currentSortOrder = 'stripes_desc';
 let currentSearchTerm = '';
 
@@ -23,15 +25,30 @@ const sortButtonText = document.getElementById('sort-button-text');
 const punishmentListDiv = document.getElementById('punishment-list');
 const closeStatsModalBtn = document.getElementById('close-stats-modal');
 const statsModal = document.getElementById('stats-modal');
+const newRuleInput = document.getElementById('new-rule-input');
+const addRuleBtn = document.getElementById('add-rule-btn');
+const rulesListOl = document.getElementById('rules-list');
 
 // --- AUTHENTICATION & INITIALIZATION ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUserId = user.uid;
-        setupRealtimeListener((data) => {
+        // Listener for the punishment ledger
+        setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
             handleRender();
+        });
+        // Listener for the rules list
+        setupRealtimeListener('rules', (data) => {
+            rulesDataCache = data.sort((a, b) => a.order - b.order);
+            const topRules = rulesDataCache.slice(0, 3);
+            
+            // Render the top 3 static rules
+            renderTopRules(topRules);
+
+            // Render the full interactive list in the collapsible area
+            renderRules(rulesDataCache);
         });
     } else {
         signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
@@ -65,6 +82,12 @@ function handleRender() {
     });
 
     renderLedger(viewData, term);
+}
+
+// --- CONFIRMATION ---
+function confirmSchikko() {
+    const answer = prompt("To proceed, you must confirm your station. Who are you?");
+    return answer && answer.toLowerCase() === 'schikko';
 }
 
 // --- EVENT HANDLERS ---
@@ -103,6 +126,15 @@ async function handleRemoveStripe(docId) {
     await removeLastStripeFromPerson(person);
 }
 
+async function handleAddRule() {
+    const text = newRuleInput.value.trim();
+    if (!text) return;
+    if (!confirmSchikko()) return;
+    const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
+    await addRuleToFirestore(text, maxOrder + 1);
+    newRuleInput.value = '';
+}
+
 // --- EVENT LISTENERS ---
 mainInput.addEventListener('input', () => {
     currentSearchTerm = mainInput.value;
@@ -111,6 +143,8 @@ mainInput.addEventListener('input', () => {
 
 mainInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddName(); } });
 addBtn.addEventListener('click', handleAddName);
+addRuleBtn.addEventListener('click', handleAddRule);
+newRuleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRule(); } });
 closeStatsModalBtn.addEventListener('click', () => statsModal.classList.add('hidden'));
 
 sortSelect.addEventListener('change', (e) => {
@@ -136,6 +170,34 @@ punishmentListDiv.addEventListener('click', (e) => {
         case 'show-stats':
             const person = ledgerDataCache.find(p => p.id === id);
             if (person) showStatsModal(person);
+            break;
+    }
+});
+
+rulesListOl?.addEventListener('click', async (e) => {
+    const target = e.target.closest('[data-rule-action]');
+    if (!target) return;
+
+    const action = target.dataset.ruleAction;
+    const id = target.dataset.id;
+    const ruleIndex = rulesDataCache.findIndex(r => r.id === id);
+    
+    if (ruleIndex === -1) return;
+    if (!confirmSchikko()) return;
+
+    switch (action) {
+        case 'delete':
+            await deleteRuleFromFirestore(id);
+            break;
+        case 'move-up':
+            if (ruleIndex > 0) {
+                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex - 1]);
+            }
+            break;
+        case 'move-down':
+            if (ruleIndex < rulesDataCache.length - 1) {
+                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]);
+            }
             break;
     }
 });

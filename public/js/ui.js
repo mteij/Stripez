@@ -147,4 +147,70 @@ function closeMenus() {
     document.querySelectorAll('[id^="menu-"]').forEach(menu => menu.classList.add('hidden'));
 }
 
-export { renderLedger, showStatsModal, closeMenus };
+/**
+ * Renders the top 3 rules into the static list.
+ * @param {Array} rulesData - The first 3 rule objects.
+ */
+function renderTopRules(rulesData) {
+    const topRulesListOl = document.getElementById('top-rules-list');
+    if (!topRulesListOl) return;
+    topRulesListOl.innerHTML = '';
+
+    if (rulesData.length === 0) {
+        topRulesListOl.innerHTML = `<li class="text-center text-xl text-[#6f4e37]" style="list-style: none;">No rules have been decreed.</li>`;
+        return;
+    }
+
+    rulesData.forEach(rule => {
+        const li = document.createElement('li');
+        li.textContent = rule.text;
+        topRulesListOl.appendChild(li);
+    });
+}
+
+/**
+ * Renders the interactive list of all rules into the DOM.
+ * @param {Array} rulesData - The sorted array of all rule objects to display.
+ */
+function renderRules(rulesData) {
+    const rulesListOl = document.getElementById('rules-list');
+    if (!rulesListOl) return;
+    rulesListOl.innerHTML = ''; // Clear existing rules
+
+    if (rulesData.length === 0) {
+        const li = document.createElement('li');
+        li.className = "text-center text-xl text-[#6f4e37]";
+        li.textContent = "The sacred scrolls are blank. Decree a rule to begin.";
+        li.style.listStyle = 'none'; // Prevents roman numeral from showing on this message
+        rulesListOl.appendChild(li);
+        return;
+    }
+
+    rulesData.forEach((rule, index) => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center group';
+        
+        let buttonsHTML = '<div class="flex items-center gap-2 pl-4 opacity-0 group-hover:opacity-100 transition-opacity">';
+
+        // Don't show "up" arrow for the first item
+        if (index > 0) {
+            buttonsHTML += `<button data-rule-action="move-up" data-id="${rule.id}" class="btn-ancient text-sm font-bold py-1 px-2 rounded-md" title="Move Up">&uarr;</button>`;
+        } else {
+            buttonsHTML += `<span class="py-1 px-2 w-[34px]"></span>`; // Placeholder for alignment
+        }
+        
+        // Don't show "down" arrow for the last item
+        if (index < rulesData.length - 1) {
+            buttonsHTML += `<button data-rule-action="move-down" data-id="${rule.id}" class="btn-ancient text-sm font-bold py-1 px-2 rounded-md" title="Move Down">&darr;</button>`;
+        } else {
+            buttonsHTML += `<span class="py-1 px-2 w-[34px]"></span>`; // Placeholder for alignment
+        }
+
+        buttonsHTML += `<button data-rule-action="delete" data-id="${rule.id}" class="btn-ancient text-red-300 hover:text-red-100 text-sm font-bold py-1 px-2 rounded-md" title="Delete Rule">&times;</button></div>`;
+
+        li.innerHTML = `<span>${rule.text}</span> ${buttonsHTML}`;
+        rulesListOl.appendChild(li);
+    });
+}
+
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderTopRules };

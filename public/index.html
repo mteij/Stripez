@@ -36,28 +36,21 @@
         </header>
 
         <main>
-            <ol class="roman-list text-lg md:text-xl leading-relaxed text-[#4a3024]">
-                <li>The Schikko is chosen by sacred overbidding, each soul raising the burden until one alone dares bear it.</li>
-                <li>All must obey the Schikko’s decrees, for his word is law within the circle.</li>
-                <li>He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the NICAT until penance is made.</li>
-            </ol>
-            <details class="mt-4">
-                <summary class="font-cinzel-decorative text-lg text-[#6f4e37] cursor-pointer hover:text-[#5c3d2e] focus:outline-none">
-                    View the Schikko's Decrees...
-                </summary>
-                <ol class="roman-list text-lg md:text-xl leading-relaxed text-[#4a3024] mt-4" start="4">
-                    <li>Forsaking a council meeting without notice shall be punished with two stripes.</li>
-                    <li>Arriving five or more minutes late to council, without word, shall earn one stripe.</li>
-                    <li>Failure to complete one's decreed Actions of Providence shall be marked with a single stripe.</li>
-                    <li>The common tongue must be spoken. Use of a foreign vernacular shall cost one stripe.</li>
-                    <li>Should the one known as Noud deny his true name, Bram, he shall receive one stripe.</li>
-                    <li>Inciting a revolt amongst the initiates is a grave treason, punishable by four-and-twenty stripes.</li>
-                    <li>Consorting with initiates during the NICAT rites is forbidden and shall be punished with five stripes.</li>
-                    <li>Straying from the sacred agenda with unrelated discourse shall be marked with one stripe.</li>
-                    <li>Unseemly displays of affection between Valentijn and Jasmijn are forbidden in council, lest they each receive a stripe.</li>
-                    <li>Use of the scrying orb for non-council matters warrants one stripe. A second stripe shall be added if the orb displays the sigil of a SuperCell.</li>
-                    <li>Revealing the clandestine rituals to the uninitiated breaks a sacred vow and is punished with one stripe.</li>
+            <ol id="top-rules-list" class="roman-list text-lg md:text-xl leading-relaxed text-[#4a3024]">
                 </ol>
+            
+            <details class="mt-6">
+                <summary class="font-cinzel-decorative text-lg text-[#6f4e37] cursor-pointer hover:text-[#5c3d2e] focus:outline-none">
+                    Manage All Decrees...
+                </summary>
+                <div class="mt-4 pt-4 border-t-2 border-dotted border-[#b9987e]">
+                    <ol id="rules-list" class="roman-list text-lg md:text-xl leading-relaxed text-[#4a3024] space-y-5">
+                        </ol>
+                    <div class="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t-2 border-dotted border-[#b9987e]">
+                        <input type="text" id="new-rule-input" placeholder="Decree a new rule..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                        <button id="add-rule-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Add Rule</button>
+                    </div>
+                </div>
             </details>
         </main>
         
