@@ -17,17 +17,39 @@ function renderLedger(viewData, term) {
         return;
     }
 
+    // Determine dynamic stripe count threshold based on screen width
+    // This is a rough estimation; fine-tuning might be needed on various devices.
+    let STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY;
+    const screenWidth = window.innerWidth;
+
+    // Define approximate pixel width per stripe (including margin and skew effects)
+    const effectiveStripeWidthPx = 8; // 5px width + 3px margin. Skew is handled by container height.
+
+    // Calculate available width for stripes (approximate based on max-w-4xl and sidebar buttons)
+    // Assuming the main content area is ~896px max-w, and the stripe container is flex-grow.
+    // It's part of a flex row with buttons on the right, so it's not the full 896px.
+    // Let's estimate it's roughly 60% of the max width, or 80% of current screen width if smaller.
+    const availableContainerWidth = Math.min(896 * 0.6, screenWidth * 0.8);
+
+    STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.floor(availableContainerWidth / effectiveStripeWidthPx);
+
+    // Ensure a minimum threshold, e.g., display at least 5-10 individual stripes even on tiny screens
+    if (STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY < 10) {
+        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 10;
+    }
+
+
     viewData.forEach(person => {
         const stripeCount = person.stripes?.length || 0;
         let stripesContent = ''; // Will hold either individual stripe divs or a number
         let stripeContainerClasses = 'mt-2 flex items-center '; // Common classes
         
-        const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20; // Define threshold for number display
-
         if (stripeCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            stripesContent = `<p class="text-xl text-[#c0392b] font-bold text-center w-full">${stripeCount}</p>`; // Only the number
-            stripeContainerClasses += 'h-auto justify-center'; // auto height and center for text
+            // No 'w-full' or 'text-center' on the p tag, it's handled by the parent container's justify-start
+            stripesContent = `<p class="text-xl text-[#c0392b] font-bold">${stripeCount}</p>`;
+            // Align number to start of the flex container (left)
+            stripeContainerClasses += 'h-auto justify-start';
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
             for (let i = 0; i < stripeCount; i++) {
@@ -42,7 +64,7 @@ function renderLedger(viewData, term) {
                 }
             }
             // Add classes for horizontal scrolling, nowrap, min-height, items-start, and padding-left
-            stripeContainerClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2'; // Changed min-h to 32px, added pl-2
+            stripeContainerClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2';
         }
 
         const personDiv = document.createElement('div');
