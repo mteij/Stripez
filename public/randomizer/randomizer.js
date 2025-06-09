@@ -1,38 +1,29 @@
-// public/randomizer/randomizer.js - REWRITTEN FOR LIST SHUFFLER/SELECTOR
+// public/randomizer/randomizer.js - REWRITTEN FOR BOTH LIST AND DICE RANDOMIZERS
 
-let listInput, shuffleListBtn, pickRandomItemBtn, listOutput;
-
-// Function to generate a random number (inclusive)
+// --- Shared Utility Functions ---
 function rand(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Fisher-Yates (Knuth) Shuffle algorithm
+// --- List Randomizer Logic ---
+let listInput, shuffleListBtn, pickRandomItemBtn, listOutput;
+
 function shuffleArray(array) {
     let currentIndex = array.length, randomIndex;
-
-    // While there remain elements to shuffle.
     while (currentIndex !== 0) {
-        // Pick a remaining element.
         randomIndex = Math.floor(Math.random() * currentIndex);
         currentIndex--;
-
-        // And swap it with the current element.
-        [array[currentIndex], array[randomIndex]] = [
-            array[randomIndex], array[currentIndex]];
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
     }
-
     return array;
 }
 
-// Function to get items from the textarea
 function getItemsFromInput() {
     const input = listInput.value.trim();
     if (!input) return [];
     return input.split('\n').map(item => item.trim()).filter(item => item !== '');
 }
 
-// Function to render results
 function renderListOutput(items, isShuffled = true) {
     if (items.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No items to display.</span>';
@@ -52,18 +43,16 @@ function renderListOutput(items, isShuffled = true) {
     listOutput.innerHTML = outputHTML;
 }
 
-// Event handler for Shuffle List button
 function handleShuffleList() {
     const items = getItemsFromInput();
     if (items.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">Please enter items in the list.</span>';
         return;
     }
-    const shuffledItems = shuffleArray([...items]); // Create a copy to shuffle
+    const shuffledItems = shuffleArray([...items]);
     renderListOutput(shuffledItems, true);
 }
 
-// Event handler for Pick Random Item button
 function handlePickRandomItem() {
     const items = getItemsFromInput();
     if (items.length === 0) {
@@ -75,7 +64,6 @@ function handlePickRandomItem() {
     renderListOutput([selectedItem], false);
 }
 
-// Initialization function for the List Randomizer
 export function initListRandomizer() {
     listInput = document.getElementById('list-input');
     shuffleListBtn = document.getElementById('shuffle-list-btn');
@@ -87,14 +75,125 @@ export function initListRandomizer() {
         return;
     }
 
-    // Attach event listeners
     shuffleListBtn.onclick = handleShuffleList;
     pickRandomItemBtn.onclick = handlePickRandomItem;
 }
 
-// --- Placeholder for old Dice Randomizer functions if they were still needed elsewhere ---
-// In this setup, the dice randomizer is completely separate and its init function
-// would be imported and called separately if desired. For now, it's assumed
-// the previous dice randomizer logic is being replaced/deprecated by this new functionality.
-// If you still want the dice randomizer functionality, its code needs to be
-// in a separate file (e.g., 'diceRandomizer.js') and imported/initialized independently.
+
+// --- Dice Randomizer Logic ---
+let diceWrap, diceSpinBtn, diceResultsContainer, isDiceSpinning;
+let diceMaxValueSlider, diceSliderValueSpan;
+
+const diceTileVisualWidth = 120; // 80px content width + 20px padding on each side
+
+// Fixed palette for the dice roulette visual
+const dicePallete = ["r18", "b8", "r19", "g2", "r20", "r21", "b9", "r10", "g3", "r11", "b4", "r12", "b5", "r13", "b6", "r14", "g0", "r15", "b7", "r16", "g1", "r17"];
+
+// Helper to determine color for the displayed number (0-50 range)
+function getNumberColorForDiceDisplay(number) {
+    if (number === 0) return 'green';
+    if (number % 2 === 0) return 'black';
+    return 'red';
+}
+
+// Populates the roulette tiles for the dice randomizer
+function populateDiceRouletteTiles() {
+    diceWrap.innerHTML = ''; // Clear existing tiles
+
+    const numberOfReplications = 3; // Duplicate pallete for a seamless visual loop
+    const extendedDicePallete = [];
+    for (let i = 0; i < numberOfReplications; i++) {
+        extendedDicePallete.push(...dicePallete);
+    }
+
+    extendedDicePallete.forEach(item => {
+        const tileDiv = document.createElement('div');
+        const colorPrefix = item[0];
+        const number = item.substring(1);
+        let colorClass = '';
+        if (colorPrefix === 'r') colorClass = 'tile-red';
+        else if (colorPrefix === 'b') colorClass = 'tile-black';
+        else if (colorPrefix === 'g') colorClass = 'tile-green';
+
+        tileDiv.className = `roulette-tile ${colorClass}`;
+        tileDiv.textContent = number;
+        diceWrap.appendChild(tileDiv);
+    });
+
+    diceWrap.style.width = `${extendedDicePallete.length * diceTileVisualWidth}px`;
+}
+
+// Generic spin animation for the dice roulette
+function spinDiceAnimation() {
+    return new Promise((resolve) => {
+        const totalVisualWidth = diceWrap.offsetWidth;
+        let pixelsToSpin = rand(totalVisualWidth * 2, totalVisualWidth * 4); // Spin 2-4 full lengths visually
+
+        diceWrap.style.transition = "transform 5s cubic-bezier(0.1, 0.6, 0.1, 1)";
+        diceWrap.offsetWidth; // Force reflow for transition to apply
+        diceWrap.style.transform = `translateX(-${pixelsToSpin}px)`;
+
+        setTimeout(() => {
+            // After animation, immediately snap back to a consistent starting position
+            diceWrap.style.transition = 'none';
+            diceWrap.style.transform = 'translateX(0)';
+            resolve();
+        }, 5700); // Match CSS transition duration
+    });
+}
+
+function handleDiceSpin() {
+    if (isDiceSpinning) return;
+    isDiceSpinning = true;
+    diceSpinBtn.disabled = true;
+    diceSpinBtn.textContent = "Spinning...";
+
+    // Generate the random number based on the slider value
+    const sliderValue = parseInt(diceMaxValueSlider.value);
+    const finalDiceResult = rand(0, sliderValue);
+    console.log("Dice spin result:", finalDiceResult);
+
+    // Perform the visual animation, then display the result
+    spinDiceAnimation().then(() => {
+        let resultDiv = document.createElement("div");
+        resultDiv.setAttribute("class", `color-beted tile-${getNumberColorForDiceDisplay(finalDiceResult)}`);
+        resultDiv.innerHTML = finalDiceResult;
+        diceResultsContainer.prepend(resultDiv);
+
+        // Limit the number of results shown
+        while (diceResultsContainer.children.length > 10) {
+            diceResultsContainer.removeChild(diceResultsContainer.lastChild);
+        }
+
+        isDiceSpinning = false;
+        diceSpinBtn.disabled = false;
+        diceSpinBtn.textContent = "Spin";
+    }).catch(console.error);
+}
+
+export function initDiceRandomizer() {
+    diceWrap = document.querySelector('#dice-randomizer-modal .roulette-container .wrap');
+    diceSpinBtn = document.getElementById('dice-spin-btn');
+    diceResultsContainer = document.getElementById('dice-roulette-results');
+    diceMaxValueSlider = document.getElementById('dice-max-value-slider');
+    diceSliderValueSpan = document.getElementById('dice-slider-value');
+    isDiceSpinning = false;
+
+    if (!diceWrap || !diceSpinBtn || !diceResultsContainer || !diceMaxValueSlider || !diceSliderValueSpan) {
+        console.error("Dice randomizer elements not found!");
+        return;
+    }
+
+    // Populate tiles when modal opens
+    populateDiceRouletteTiles();
+    // Ensure initial position is correct
+    diceWrap.style.transform = 'translateX(0)';
+
+    diceSpinBtn.onclick = handleDiceSpin;
+
+    // Update slider value display
+    diceSliderValueSpan.textContent = diceMaxValueSlider.value;
+    diceMaxValueSlider.addEventListener('input', () => {
+        diceSliderValueSpan.textContent = diceMaxValueSlider.value;
+    });
+}

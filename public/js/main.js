@@ -8,8 +8,8 @@ import {
     deleteRuleFromFirestore, updateRuleOrderInFirestore
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
-// Import the new list randomizer initialization function
-import { initListRandomizer } from '../randomizer/randomizer.js'; 
+// Import both randomizer initialization functions
+import { initListRandomizer, initDiceRandomizer } from '../randomizer/randomizer.js';
 
 
 // --- STATE VARIABLES ---
@@ -37,15 +37,20 @@ const decreesContent = document.getElementById('decrees-content');
 const hideDecreesBtn = document.getElementById('hide-decrees-btn');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
 
-// Removed Dice Randomizer elements and listeners
-// const diceBtn = document.getElementById('dice-btn');
-// const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
-// const closeDiceRandomizerModalBtn = document.getElementById('close-dice-randomizer-modal');
+// Dice randomizer modal and buttons (re-added)
+const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
+const closeDiceRandomizerModalBtn = document.getElementById('close-dice-randomizer-modal');
 
-// New list randomizer elements
-const listRandomizerBtn = document.getElementById('list-randomizer-btn');
+// List randomizer modal and buttons
 const listRandomizerModal = document.getElementById('list-randomizer-modal');
 const closeListRandomizerModalBtn = document.getElementById('close-list-randomizer-modal');
+
+// New Randomizer Hub elements
+const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
+const randomizerHubModal = document.getElementById('randomizer-hub-modal');
+const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
+const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
+const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
 
 // --- AUTHENTICATION & INITIALIZATION ---
@@ -266,21 +271,32 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Removed Dice Randomizer Modal Listeners
-// diceBtn?.addEventListener('click', () => {
-//     diceRandomizerModal.classList.remove('hidden');
-// });
-
-// closeDiceRandomizerModalBtn?.addEventListener('click', () => {
-//     diceRandomizerModal.classList.add('hidden');
-// });
-
-// New List Randomizer Modal Listeners
-listRandomizerBtn?.addEventListener('click', () => {
-    listRandomizerModal.classList.remove('hidden');
-    initListRandomizer(); // Initialize the list randomizer when its modal opens
+// Randomizer Hub Listeners
+openRandomizerHubBtn?.addEventListener('click', () => {
+    randomizerHubModal.classList.remove('hidden');
 });
 
+closeRandomizerHubModalBtn?.addEventListener('click', () => {
+    randomizerHubModal.classList.add('hidden');
+});
+
+openListRandomizerFromHubBtn?.addEventListener('click', () => {
+    randomizerHubModal.classList.add('hidden'); // Close hub
+    listRandomizerModal.classList.remove('hidden'); // Open list randomizer
+    initListRandomizer(); // Initialize the list randomizer
+});
+
+openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
+    randomizerHubModal.classList.add('hidden'); // Close hub
+    diceRandomizerModal.classList.remove('hidden'); // Open dice randomizer
+    initDiceRandomizer(); // Initialize the dice randomizer
+});
+
+// Close listeners for specific randomizer modals
 closeListRandomizerModalBtn?.addEventListener('click', () => {
     listRandomizerModal.classList.add('hidden');
+});
+
+closeDiceRandomizerModalBtn?.addEventListener('click', () => {
+    diceRandomizerModal.classList.add('hidden');
 });
