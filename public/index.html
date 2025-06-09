@@ -75,7 +75,8 @@
         <div class="absolute bottom-2 left-2 w-12 h-12 border-b-2 border-l-2 border-[#a58467]"></div>
         <div class="absolute bottom-2 right-2 w-12 h-12 border-b-2 border-r-2 border-[#a58467]"></div>
 
-        <header class="text-center mb-10 border-b-4 border-double border-[#b9987e] pb-6">
+        <!-- Removed border from header, relying on spacing for separation -->
+        <header class="text-center mb-10 pb-6">
             <h1 class="font-cinzel-decorative text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">The Rules of Schikko</h1>
             <p class="text-lg text-[#6f4e37] mt-2">As Decreed by the Ancients</p>
         </header>
@@ -95,6 +96,7 @@
             </div>
 
             <div id="decrees-content" class="hidden mt-6">
+                <!-- Inner section divider -->
                 <div class="pt-4 border-t-2 border-dotted border-[#b9987e]">
                     <!-- Rules search input and action buttons -->
                     <div class="flex flex-col sm:flex-row items-center justify-end gap-2 mb-4">
@@ -113,7 +115,8 @@
             </div>
         </main>
         
-        <div class="my-12 border-t-4 border-dotted border-[#b9987e]"></div>
+        <!-- Main section divider between main content and punishment ledger -->
+        <div class="section-divider"></div>
 
         <section id="punishment-ledger">
             <header class="text-center mb-8">
@@ -147,7 +150,11 @@
             </div>
         </section>
 
-        <footer class="text-center mt-12 pt-6 border-t-2 border-[#b9987e]">
+        <!-- Main section divider between punishment ledger and footer -->
+        <div class="section-divider"></div>
+
+        <!-- Removed border from footer, handled by section-divider -->
+        <footer class="text-center mt-12 pt-6">
              <div class="font-cinzel-decorative text-2xl text-[#5c3d2e]">~ Finis ~</div>
              <div id="app-info-footer" class="text-base text-[#4a3024] mt-4">
                 <!-- Footer information will be dynamically inserted here -->

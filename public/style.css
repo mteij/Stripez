@@ -105,3 +105,10 @@ body {
     margin-top: 2px; /* Slight adjustment for vertical alignment */
     transition: transform 0.3s ease;
 }
+
+/* New: Main section divider style */
+.section-divider {
+    margin-top: 3rem; /* Same as my-12 */
+    margin-bottom: 3rem; /* Same as my-12 */
+    border-top: 4px dotted #b9987e; /* Consistent with main divider */
+}
