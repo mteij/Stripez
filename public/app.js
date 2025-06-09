@@ -34,10 +34,8 @@ const statsName = document.getElementById('stats-name');
 const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d');
 const mainInput = document.getElementById('main-input');
 const addBtn = document.getElementById('add-btn');
-const sortSelect = document.getElementById('sort-select');
-
-// --- FIRESTORE COLLECTION REFERENCE ---
-const ledgerCollectionRef = collection(db, 'punishments');
+const sortAscBtn = document.getElementById('sort-asc-btn');
+const sortDescBtn = document.getElementById('sort-desc-btn');
 
 // --- AUTHENTICATION ---
 onAuthStateChanged(auth, (user) => {
@@ -61,25 +59,15 @@ const renderLedger = () => {
     viewData.sort((a, b) => {
         const nameA = a.name.toLowerCase();
         const nameB = b.name.toLowerCase();
-
+        
         if (term) {
             const aStartsWith = nameA.startsWith(term);
             const bStartsWith = nameB.startsWith(term);
             if (aStartsWith && !bStartsWith) return -1;
             if (!aStartsWith && bStartsWith) return 1;
         }
-
-        switch (currentSortOrder) {
-            case 'stripes_desc':
-                return (b.stripes?.length || 0) - (a.stripes?.length || 0);
-            case 'stripes_asc':
-                return (a.stripes?.length || 0) - (b.stripes?.length || 0);
-            case 'desc':
-                return nameB.localeCompare(nameA);
-            case 'asc':
-            default:
-                return nameA.localeCompare(nameB);
-        }
+        
+        return currentSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
     });
 
     punishmentListDiv.innerHTML = '';
@@ -90,7 +78,7 @@ const renderLedger = () => {
     }
 
     viewData.forEach(person => {
-        const stripeCount = person.stripes?.length || 0;
+        const stripeCount = Array.isArray(person.stripes) ? person.stripes.length : 0;
         let stripesHTML = '';
         for (let i = 0; i < stripeCount; i++) {
             stripesHTML += `<div class="punishment-stripe"></div>`;
@@ -101,9 +89,7 @@ const renderLedger = () => {
         personDiv.innerHTML = `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                // --- THIS IS THE FIX ---
-                // The container now has min-h-5 instead of a fixed h-5
-                <div class="mt-2 flex items-center min-h-5">${stripesHTML}</div>
+                <div class="mt-2 h-5">${stripesHTML}</div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
@@ -123,7 +109,7 @@ const renderLedger = () => {
 
 const showStatsModal = (person) => {
     statsName.textContent = `Statistics for ${person.name}`;
-    const stripeTimestamps = person.stripes?.map(ts => ts.toDate()) || [];
+    const stripeTimestamps = person.stripes.map(ts => ts.toDate());
     const stripesByDate = stripeTimestamps.reduce((acc, date) => {
         const dateString = date.toISOString().split('T')[0];
         acc[dateString] = (acc[dateString] || 0) + 1;
@@ -227,8 +213,17 @@ mainInput.addEventListener('keydown', (e) => {
 
 addBtn.addEventListener('click', handleAddName);
 
-sortSelect.addEventListener('change', (e) => {
-    currentSortOrder = e.target.value;
+sortAscBtn.addEventListener('click', () => {
+    currentSortOrder = 'asc';
+    sortAscBtn.classList.add('opacity-50');
+    sortDescBtn.classList.remove('opacity-50');
+    renderLedger();
+});
+
+sortDescBtn.addEventListener('click', () => {
+    currentSortOrder = 'desc';
+    sortDescBtn.classList.add('opacity-50');
+    sortAscBtn.classList.remove('opacity-50');
     renderLedger();
 });
 
@@ -263,3 +258,6 @@ document.addEventListener('click', (e) => {
 });
 
 closeStatsModalBtn.addEventListener('click', () => statsModal.classList.add('hidden'));
+
+// Set initial sort button state
+sortAscBtn.classList.add('opacity-50');
