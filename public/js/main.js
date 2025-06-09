@@ -28,6 +28,7 @@ const statsModal = document.getElementById('stats-modal');
 const newRuleInput = document.getElementById('new-rule-input');
 const addRuleBtn = document.getElementById('add-rule-btn');
 const rulesListOl = document.getElementById('rules-list');
+const editRulesBtn = document.getElementById('edit-rules-btn');
 
 // --- AUTHENTICATION & INITIALIZATION ---
 onAuthStateChanged(auth, (user) => {
@@ -169,9 +170,18 @@ punishmentListDiv.addEventListener('click', (e) => {
     }
 });
 
+editRulesBtn?.addEventListener('click', () => {
+    rulesListOl.classList.toggle('rules-list-editing');
+    const isEditing = rulesListOl.classList.contains('rules-list-editing');
+    editRulesBtn.textContent = isEditing ? 'Finish Editing' : 'Edit Decrees';
+});
+
 rulesListOl?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-rule-action]');
     if (!target) return;
+
+    // Do not proceed if not in edit mode
+    if (!rulesListOl.classList.contains('rules-list-editing')) return;
 
     const action = target.dataset.ruleAction;
     const id = target.dataset.id;

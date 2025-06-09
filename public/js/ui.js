@@ -167,9 +167,9 @@ function renderRules(rulesData) {
 
     rulesData.forEach((rule, index) => {
         const li = document.createElement('li');
-        li.className = 'flex justify-between items-center group';
+        li.className = 'flex justify-between items-center';
         
-        let buttonsHTML = '<div class="flex items-center gap-2 pl-4 opacity-0 group-hover:opacity-100 transition-opacity">';
+        let buttonsHTML = '<div class="rule-actions items-center gap-2 pl-4">';
 
         // Don't show "up" arrow for the first item
         if (index > 0) {
