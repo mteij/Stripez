@@ -35,7 +35,7 @@ const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d
 const mainInput = document.getElementById('main-input');
 const addBtn = document.getElementById('add-btn');
 const sortSelect = document.getElementById('sort-select');
-const sortButtonText = document.getElementById('sort-button-text'); // New element
+const sortButtonText = document.getElementById('sort-button-text');
 
 // --- FIRESTORE COLLECTION REFERENCE ---
 const ledgerCollectionRef = collection(db, 'punishments');
@@ -122,37 +122,68 @@ const renderLedger = () => {
 
 const showStatsModal = (person) => {
     statsName.textContent = `Statistics for ${person.name}`;
-    const stripeTimestamps = person.stripes.map(ts => ts.toDate());
-    const stripesByDate = stripeTimestamps.reduce((acc, date) => {
-        const dateString = date.toISOString().split('T')[0];
-        acc[dateString] = (acc[dateString] || 0) + 1;
-        return acc;
-    }, {});
+
+    // 1. Get timestamps and sort them chronologically
+    const stripeTimestamps = person.stripes.map(ts => ts.toDate()).sort((a, b) => a - b);
+
+    // 2. Create cumulative data points for the line graph
+    const cumulativeData = stripeTimestamps.map((ts, index) => ({
+        x: ts,
+        y: index + 1
+    }));
+    
+    // 3. Add a starting point at y=0 to show the line rising from the baseline
+    if (stripeTimestamps.length > 0) {
+        cumulativeData.unshift({ x: stripeTimestamps[0], y: 0 });
+    }
+
+    // 4. Configure the chart data and dataset
     const chartData = {
-        labels: Object.keys(stripesByDate),
         datasets: [{
-            label: 'Stripes per Day',
-            data: Object.values(stripesByDate),
-            backgroundColor: 'rgba(192, 57, 43, 0.7)',
-            borderColor: 'rgba(127, 34, 25, 1)',
-            borderWidth: 1
+            label: 'Total Stripes Over Time',
+            data: cumulativeData,
+            borderColor: 'rgba(192, 57, 43, 1)',
+            backgroundColor: 'rgba(192, 57, 43, 0.2)',
+            fill: true,
+            stepped: true, // Creates a step-line graph
         }]
     };
+
     if (stripeChart) stripeChart.destroy();
+
+    // 5. Create the new chart with updated type and options
     stripeChart = new Chart(stripeChartCanvas, {
-        type: 'bar',
+        type: 'line', // Changed to a line graph
         data: chartData,
         options: {
             scales: {
-                x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Date' } },
-                y: { beginAtZero: true, title: { display: true, text: 'Number of Stripes' }, ticks: { stepSize: 1 } }
+                x: {
+                    type: 'time', // Use time scale
+                    // By REMOVING the `time.unit`, Chart.js will automatically pick the best unit (day/month/year)
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Total Stripes'
+                    },
+                    ticks: {
+                        stepSize: 1 // Ensure y-axis only uses whole numbers
+                    }
+                }
             },
             responsive: true,
             maintainAspectRatio: false
         }
     });
+
     statsModal.classList.remove('hidden');
 };
+
 
 // --- FIRESTORE & DATA LOGIC ---
 const setupRealtimeListener = () => {
@@ -232,12 +263,8 @@ addBtn.addEventListener('click', handleAddName);
 
 sortSelect.addEventListener('change', (e) => {
     currentSortOrder = e.target.value;
-
-    // Get the visible text from the selected option
     const selectedOptionText = e.target.options[e.target.selectedIndex].text;
-    // Update the custom button's text
     sortButtonText.textContent = `Sort: ${selectedOptionText}`;
-
     renderLedger();
 });
 
