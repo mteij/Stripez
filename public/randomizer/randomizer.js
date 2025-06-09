@@ -93,8 +93,9 @@ let diceSpinBtn, diceResultsContainer;
 let diceMaxValueSlider, diceSliderValueSpan;
 
 function handleDiceSpin() {
+    // rand(min, max) is used. The slider's min is now 1, so no adjustment needed here.
     const sliderValue = parseInt(diceMaxValueSlider.value);
-    const finalDiceResult = rand(1, sliderValue > 0 ? sliderValue : 1); // Ensure at least 1 as max value
+    const finalDiceResult = rand(1, sliderValue); // Min value is now 1 based on slider's 'min' attribute
 
     diceResultsContainer.innerHTML = ''; // Clear previous result
     let resultDiv = document.createElement("div");
