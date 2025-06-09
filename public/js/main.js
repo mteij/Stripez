@@ -132,6 +132,7 @@ async function handleRemoveStripe(docId) {
 }
 
 async function handleAddRule() {
+    // First, confirm identity if not already done this session
     if (!confirmSchikko()) return;
 
     const text = prompt("What is the new decree you wish to add?");
@@ -181,6 +182,13 @@ punishmentListDiv.addEventListener('click', (e) => {
 });
 
 editRulesBtn?.addEventListener('click', () => {
+    // Only ask for confirmation when entering edit mode
+    if (!rulesListOl.classList.contains('rules-list-editing')) {
+        if (!confirmSchikko()) {
+            return; // If confirmation fails, do not enter edit mode
+        }
+    }
+    
     rulesListOl.classList.toggle('rules-list-editing');
     const isEditing = rulesListOl.classList.contains('rules-list-editing');
     editRulesBtn.textContent = isEditing ? 'Finish Editing' : 'Edit Decrees';
@@ -190,7 +198,8 @@ rulesListOl?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-rule-action]');
     if (!target) return;
 
-    // Do not proceed if not in edit mode
+    // The only protection needed is to check if we are in edit mode.
+    // The confirmation was handled by the "Edit Decrees" button.
     if (!rulesListOl.classList.contains('rules-list-editing')) return;
 
     const action = target.dataset.ruleAction;
@@ -199,7 +208,7 @@ rulesListOl?.addEventListener('click', async (e) => {
     
     if (ruleIndex === -1) return;
     
-    if (!confirmSchikko()) return;
+    // NO confirmation prompt here anymore.
 
     switch (action) {
         case 'delete':
