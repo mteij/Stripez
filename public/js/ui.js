@@ -148,27 +148,6 @@ function closeMenus() {
 }
 
 /**
- * Renders the top 3 rules into the static list.
- * @param {Array} rulesData - The first 3 rule objects.
- */
-function renderTopRules(rulesData) {
-    const topRulesListOl = document.getElementById('top-rules-list');
-    if (!topRulesListOl) return;
-    topRulesListOl.innerHTML = '';
-
-    if (rulesData.length === 0) {
-        topRulesListOl.innerHTML = `<li class="text-center text-xl text-[#6f4e37]" style="list-style: none;">No rules have been decreed.</li>`;
-        return;
-    }
-
-    rulesData.forEach(rule => {
-        const li = document.createElement('li');
-        li.textContent = rule.text;
-        topRulesListOl.appendChild(li);
-    });
-}
-
-/**
  * Renders the interactive list of all rules into the DOM.
  * @param {Array} rulesData - The sorted array of all rule objects to display.
  */
@@ -180,7 +159,7 @@ function renderRules(rulesData) {
     if (rulesData.length === 0) {
         const li = document.createElement('li');
         li.className = "text-center text-xl text-[#6f4e37]";
-        li.textContent = "The sacred scrolls are blank. Decree a rule to begin.";
+        li.textContent = "No lesser decrees have been recorded.";
         li.style.listStyle = 'none'; // Prevents roman numeral from showing on this message
         rulesListOl.appendChild(li);
         return;
@@ -213,4 +192,4 @@ function renderRules(rulesData) {
     });
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderTopRules };
+export { renderLedger, showStatsModal, closeMenus, renderRules };

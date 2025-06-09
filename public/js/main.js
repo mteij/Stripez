@@ -7,7 +7,7 @@ import {
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore
 } from './firebase.js';
-import { renderLedger, showStatsModal, closeMenus, renderRules, renderTopRules } from './ui.js';
+import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 
 // --- STATE VARIABLES ---
 let currentUserId = null;
@@ -39,15 +39,10 @@ onAuthStateChanged(auth, (user) => {
             ledgerDataCache = data;
             handleRender();
         });
-        // Listener for the rules list
+        // Listener for the dynamic rules list
         setupRealtimeListener('rules', (data) => {
             rulesDataCache = data.sort((a, b) => a.order - b.order);
-            const topRules = rulesDataCache.slice(0, 3);
-            
-            // Render the top 3 static rules
-            renderTopRules(topRules);
-
-            // Render the full interactive list in the collapsible area
+            // Render the interactive list in the collapsible area
             renderRules(rulesDataCache);
         });
     } else {

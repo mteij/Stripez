@@ -3,7 +3,7 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -19,14 +19,23 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+// --- COLLECTION REFERENCES ---
 const ledgerCollectionRef = collection(db, 'punishments');
+const rulesCollectionRef = collection(db, 'rules');
 
 // --- DATABASE AND AUTH FUNCTIONS ---
 
-const setupRealtimeListener = (callback) => {
-    onSnapshot(query(ledgerCollectionRef), (snapshot) => {
-        const ledgerDataCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        callback(ledgerDataCache);
+/**
+ * Sets up a real-time listener for a specified collection.
+ * @param {string} collectionName - The name of the collection ('punishments' or 'rules').
+ * @param {Function} callback - The function to call with the updated data.
+ */
+const setupRealtimeListener = (collectionName, callback) => {
+    const collRef = collectionName === 'rules' ? rulesCollectionRef : ledgerCollectionRef;
+    onSnapshot(query(collRef), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(data);
     }, (error) => console.error("Error fetching ledger:", error));
 };
 
@@ -58,6 +67,27 @@ const deletePersonFromLedger = async (docId) => {
     await deleteDoc(docRef).catch(error => console.error("Error removing document: ", error));
 };
 
+const addRuleToFirestore = async (text, order) => {
+    await addDoc(rulesCollectionRef, { text, order, createdAt: new Date() });
+};
+
+const deleteRuleFromFirestore = async (docId) => {
+    const docRef = doc(db, 'rules', docId);
+    await deleteDoc(docRef);
+};
+
+const updateRuleOrderInFirestore = async (rule1, rule2) => {
+    const batch = writeBatch(db);
+
+    const rule1Ref = doc(db, "rules", rule1.id);
+    batch.update(rule1Ref, { order: rule2.order });
+
+    const rule2Ref = doc(db, "rules", rule2.id);
+    batch.update(rule2Ref, { order: rule1.order });
+
+    await batch.commit();
+};
+
 // Export everything needed by other modules
 export {
     auth,
@@ -68,5 +98,8 @@ export {
     addStripeToPerson,
     removeLastStripeFromPerson,
     renamePersonOnLedger,
-    deletePersonFromLedger
+    deletePersonFromLedger,
+    addRuleToFirestore,
+    deleteRuleFromFirestore,
+    updateRuleOrderInFirestore
 };
