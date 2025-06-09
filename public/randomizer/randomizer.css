@@ -48,7 +48,7 @@
     text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
 
-/* --- Dice Randomizer Styles (re-added) --- */
+/* --- Dice Randomizer Styles (Modified to be single-colored blocks) --- */
 .roulette-container {
 	height: 80px;
 	width: 100%;
@@ -77,36 +77,38 @@
   z-index: 10;
 }
 
-/* Individual tile for each name */
+/* Individual tile for each name - now unified color */
 .roulette-tile {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100%;
     padding: 0 20px;
-    color: white;
+    color: white; /* Text color */
+    background-color: #7a5d40; /* Unified background color for all tiles */
     font-family: 'Cinzel Decorative', serif;
     font-size: 1.25rem;
     font-weight: bold;
     text-transform: uppercase;
     flex-shrink: 0; /* Prevents tiles from shrinking */
-    border-right: 1px solid rgba(0,0,0,0.2);
+    border-right: 1px solid rgba(0,0,0,0.2); /* Keep subtle borders */
 }
 
 /* Color styles for the tiles */
-.tile-red { background-color: #c0392b; }
-.tile-black { background-color: #2c3e50; }
-.tile-green { background-color: #27ae60; }
+/* Removed specific tile-color classes as they are no longer needed */
+/* .tile-red { background-color: #c0392b; } */
+/* .tile-black { background-color: #2c3e50; } */
+/* .tile-green { background-color: #27ae60; } */
 
 
-/* Styles for the results display */
+/* Styles for the results display - now unified color */
 .color-beted {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 10px 15px;
-  background-color: #424242;
-  color: #fff;
+  background-color: #7a5d40; /* Unified background color for results */
+  color: #fff; /* Text color */
   font-weight: bold;
   border-radius: 4px;
   margin: 2px;
@@ -116,6 +118,7 @@
   text-transform: uppercase;
 }
 
-.color-beted.tile-red { background-color: #c0392b; }
-.color-beted.tile-green { background-color: #27ae60; }
-.color-beted.tile-black { background-color: #2c3e50; }
+/* Removed specific color-beted.tile-color classes */
+/* .color-beted.tile-red { background-color: #c0392b; } */
+/* .color-beted.tile-green { background-color: #27ae60; } */
+/* .color-beted.tile-black { background-color: #2c3e50; } */
