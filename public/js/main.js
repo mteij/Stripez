@@ -8,6 +8,8 @@ import {
     deleteRuleFromFirestore, updateRuleOrderInFirestore
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
+import { initRandomizer } from '../randomizer/randomizer.js';
+
 
 // --- STATE VARIABLES ---
 let currentUserId = null;
@@ -33,6 +35,9 @@ const showDecreesContainer = document.getElementById('show-decrees-container');
 const decreesContent = document.getElementById('decrees-content');
 const hideDecreesBtn = document.getElementById('hide-decrees-btn');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
+const diceBtn = document.getElementById('dice-btn');
+const randomizerModal = document.getElementById('randomizer-modal');
+const closeRandomizerModalBtn = document.getElementById('close-randomizer-modal');
 
 
 // --- AUTHENTICATION & INITIALIZATION ---
@@ -251,4 +256,14 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
         closeMenus();
     }
+});
+
+// Randomizer Modal Listeners
+diceBtn?.addEventListener('click', () => {
+    randomizerModal.classList.remove('hidden');
+    initRandomizer();
+});
+
+closeRandomizerModalBtn?.addEventListener('click', () => {
+    randomizerModal.classList.add('hidden');
 });
