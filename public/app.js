@@ -1,7 +1,7 @@
 // Import Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- START: PASTE YOUR FIREBASE CONFIGURATION HERE ---
 const firebaseConfig = {
@@ -72,14 +72,18 @@ const renderLedger = () => {
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
                 <div class="mt-2 h-5">${stripesHTML}</div>
             </div>
-            <div class="relative">
-                <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">
-                    &#x22EE;
-                </button>
-                <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-48 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
-                    <a href="#" data-action="add-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Add Stripe</a>
-                    <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Remove Stripe</a>
-                    <a href="#" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
+                <div class="relative">
+                    <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">
+                        &#x22EE;
+                    </button>
+                    <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-52 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
+                        <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Remove Last Stripe</a>
+                        <a href="#" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
+                        <div class="border-t border-[#b9987e] my-1"></div>
+                        <a href="#" data-action="delete" data-id="${person.id}" class="block px-4 py-2 text-md text-red-700 hover:bg-[#f5eeda] hover:text-red-800 font-bold">Delete Person</a>
+                    </div>
                 </div>
             </div>
         `;
@@ -91,7 +95,6 @@ const showStatsModal = (person) => {
     statsName.textContent = `Statistics for ${person.name}`;
     const stripeTimestamps = person.stripes.map(ts => ts.toDate());
 
-    // Group stripes by date
     const stripesByDate = stripeTimestamps.reduce((acc, date) => {
         const dateString = date.toISOString().split('T')[0];
         acc[dateString] = (acc[dateString] || 0) + 1;
@@ -118,26 +121,8 @@ const showStatsModal = (person) => {
         data: chartData,
         options: {
             scales: {
-                x: {
-                    type: 'time',
-                    time: {
-                        unit: 'day'
-                    },
-                    title: {
-                        display: true,
-                        text: 'Date'
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Number of Stripes'
-                    },
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
+                x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Date' }},
+                y: { beginAtZero: true, title: { display: true, text: 'Number of Stripes' }, ticks: { stepSize: 1 } }
             },
             responsive: true,
             maintainAspectRatio: false
@@ -176,12 +161,8 @@ const handleRemoveStripe = async (docId) => {
     const person = ledgerDataCache.find(p => p.id === docId);
     if (person && Array.isArray(person.stripes) && person.stripes.length > 0) {
         const docRef = doc(db, 'punishments', docId);
-        
-        // Sort stripes by timestamp to find the most recent one.
         const sortedStripes = [...person.stripes].sort((a, b) => b.toMillis() - a.toMillis());
         const lastStripe = sortedStripes[0];
-        
-        // Use arrayRemove to delete the most recent stripe.
         await updateDoc(docRef, { stripes: arrayRemove(lastStripe) });
     }
 };
@@ -196,23 +177,33 @@ const handleRename = async (docId) => {
     }
 };
 
+const handleDeletePerson = async (docId) => {
+    const person = ledgerDataCache.find(p => p.id === docId);
+    if (!person) return;
+
+    if (confirm(`Are you sure you want to remove "${person.name}" from the ledger? This action cannot be undone.`)) {
+        const docRef = doc(db, 'punishments', docId);
+        await deleteDoc(docRef).catch(error => console.error("Error removing document: ", error));
+    }
+};
+
 // --- EVENT LISTENERS ---
 addNameBtn.addEventListener('click', handleAddName);
 
 punishmentListDiv.addEventListener('click', (e) => {
-    e.preventDefault();
     const target = e.target.closest('[data-action]');
     if (!target) return;
-
+    
+    e.preventDefault();
     const action = target.dataset.action;
     const id = target.dataset.id;
-
-    // Hide all open menus whenever an action is taken
-    document.querySelectorAll('[id^="menu-"]').forEach(menu => menu.classList.add('hidden'));
+    
+    if (action !== 'toggle-menu') {
+        document.querySelectorAll('[id^="menu-"]').forEach(menu => menu.classList.add('hidden'));
+    }
 
     switch (action) {
         case 'toggle-menu':
-            // Re-open the clicked one
             document.getElementById(`menu-${id}`)?.classList.toggle('hidden');
             break;
         case 'add-stripe':
@@ -224,6 +215,9 @@ punishmentListDiv.addEventListener('click', (e) => {
         case 'rename':
             handleRename(id);
             break;
+        case 'delete':
+            handleDeletePerson(id);
+            break;
         case 'show-stats':
             const person = ledgerDataCache.find(p => p.id === id);
             if (person) showStatsModal(person);
@@ -231,7 +225,6 @@ punishmentListDiv.addEventListener('click', (e) => {
     }
 });
 
-// Hide dropdown menus if clicking elsewhere
 document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
         document.querySelectorAll('[id^="menu-"]').forEach(menu => menu.classList.add('hidden'));
