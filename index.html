@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schikko Rules - Ancient Tome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
+    <style>
+        .font-cinzel-decorative { font-family: 'Cinzel Decorative', serif; }
+        .font-medieval-sharp { font-family: 'MedievalSharp', cursive; }
+        body {
+            background-color: #f5eeda;
+            background-image:
+                linear-gradient(rgba(169, 141, 107, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(169, 141, 107, 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .roman-list { list-style: none; counter-reset: roman-counter; padding-left: 2.5rem; }
+        .roman-list > li { counter-increment: roman-counter; position: relative; margin-bottom: 1.25rem; }
+        .roman-list > li::before {
+            content: counter(roman-counter, upper-roman) ".";
+            position: absolute; left: -2.5rem; top: 0; font-weight: bold;
+            color: #5c3d2e; font-family: 'Cinzel Decorative', serif; font-size: 1.125rem;
+        }
+        .btn-ancient {
+            background-color: #8c6b52;
+            color: #fdf8e9;
+            border: 2px solid #5c3d2e;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn-ancient:hover {
+            background-color: #a58467;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .punishment-stripe {
+            display: inline-block;
+            width: 5px;
+            height: 20px;
+            background-color: #c0392b;
+            margin-right: 3px;
+            border-left: 1px solid #7f2219;
+            transform: skew(-15deg);
+        }
+    </style>
+</head>
+<body class="font-medieval-sharp text-gray-800 flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+
+    <div class="w-full max-w-4xl bg-[#fdf8e9] shadow-2xl rounded-lg border-4 border-[#8c6b52] border-opacity-60 p-8 md:p-12 lg:p-16 relative">
+        
+        <!-- Decorative Corners -->
+        <div class="absolute top-2 left-2 w-12 h-12 border-t-2 border-l-2 border-[#a58467]"></div>
+        <div class="absolute top-2 right-2 w-12 h-12 border-t-2 border-r-2 border-[#a58467]"></div>
+        <div class="absolute bottom-2 left-2 w-12 h-12 border-b-2 border-l-2 border-[#a58467]"></div>
+        <div class="absolute bottom-2 right-2 w-12 h-12 border-b-2 border-r-2 border-[#a58467]"></div>
+
+        <!-- Header -->
+        <header class="text-center mb-10 border-b-4 border-double border-[#b9987e] pb-6">
+            <h1 class="font-cinzel-decorative text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">The Rules of Schikko</h1>
+            <p class="text-lg text-[#6f4e37] mt-2">As Decreed by the Ancients</p>
+        </header>
+
+        <!-- Rules Section -->
+        <main>
+            <ol id="rules-list" class="roman-list text-lg md:text-xl leading-relaxed text-[#4a3024]">
+                <li>The first rule of Schikko is to always uphold the covenant of the sacred scrolls. Betrayal of this trust is the highest offense.</li>
+                <li>One must never speak the forbidden verse aloud, for its echoes awaken that which slumbers in the deep.</li>
+                <li>A debt of honor must be repaid, be it in coin, in service, or in blood. The scales of fate must always be balanced.</li>
+            </ol>
+        </main>
+        
+        <!-- Divider -->
+        <div class="my-12 border-t-4 border-dotted border-[#b9987e]"></div>
+
+        <!-- Punishment Ledger Section -->
+        <section id="punishment-ledger">
+            <header class="text-center mb-8">
+                <h2 class="font-cinzel-decorative text-3xl md:text-4xl font-bold text-[#5c3d2e]">The Ledger of Punishments</h2>
+                <p class="text-md text-[#6f4e37] mt-1">A Record of Transgressions</p>
+            </header>
+
+            <!-- Input to add a new person -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                <input type="text" id="new-name-input" placeholder="Name of the Transgressor" class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                <button id="add-name-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Inscribe Name</button>
+            </div>
+
+            <!-- List of people with punishments -->
+            <div id="punishment-list" class="space-y-4">
+                <!-- Names will be dynamically inserted here by JavaScript -->
+                <div id="loading-state" class="text-center text-xl text-[#6f4e37]">Loading the sacred ledger...</div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center mt-12 pt-6 border-t-2 border-[#b9987e]">
+             <div class="font-cinzel-decorative text-2xl text-[#5c3d2e]">~ Finis ~</div>
+        </footer>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- START: PASTE YOUR FIREBASE CONFIGURATION HERE ---
+        // Replace this with the firebaseConfig object from your project's settings.
+        const firebaseConfig = {
+        apiKey: "AIzaSyD2FN2MCUmoKl7geOIXnYTXhD6tyISDNbc",
+        authDomain: "schikko-rules.firebaseapp.com",
+        projectId: "schikko-rules",
+        storageBucket: "schikko-rules.firebasestorage.app",
+        messagingSenderId: "1068996301922",
+        appId: "1:1068996301922:web:caded5196923e393106d3b"
+        };
+        // --- END: PASTE YOUR FIREBASE CONFIGURATION HERE ---
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let currentUserId = null;
+
+        // --- AUTHENTICATION ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in.
+                currentUserId = user.uid;
+                console.log("Authenticated with user ID:", currentUserId);
+                setupRealtimeListener();
+            } else {
+                // User is signed out.
+                signInAnonymously(auth).catch((error) => {
+                    console.error("Anonymous sign-in failed:", error);
+                    document.getElementById('loading-state').textContent = 'Error: Could not connect to the database.';
+                });
+            }
+        });
+
+        // --- DOM ELEMENTS ---
+        const newNameInput = document.getElementById('new-name-input');
+        const addNameBtn = document.getElementById('add-name-btn');
+        const punishmentListDiv = document.getElementById('punishment-list');
+        const loadingState = document.getElementById('loading-state');
+
+        // --- FIRESTORE COLLECTION REFERENCE ---
+        const ledgerCollectionRef = collection(db, 'punishments');
+
+        // --- FUNCTIONS ---
+
+        const renderLedger = (ledgerData) => {
+            punishmentListDiv.innerHTML = ''; 
+            if(ledgerData.length === 0) {
+                 punishmentListDiv.innerHTML = `<div class="text-center text-xl text-[#6f4e37]">The ledger is clear. No transgressions recorded.</div>`;
+                 return;
+            }
+
+            ledgerData.sort((a, b) => a.name.localeCompare(b.name));
+
+            ledgerData.forEach(person => {
+                const personDiv = document.createElement('div');
+                personDiv.className = 'flex items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
+
+                let stripesHTML = '';
+                for (let i = 0; i < person.stripes; i++) {
+                    stripesHTML += `<div class="punishment-stripe"></div>`;
+                }
+
+                personDiv.innerHTML = `
+                    <div>
+                        <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
+                        <div class="mt-2 h-5">${stripesHTML}</div>
+                    </div>
+                    <button data-id="${person.id}" class="add-stripe-btn btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
+                `;
+                punishmentListDiv.appendChild(personDiv);
+            });
+        };
+
+        const setupRealtimeListener = () => {
+            const q = query(ledgerCollectionRef);
+            onSnapshot(q, (snapshot) => {
+                loadingState.style.display = 'none';
+                const ledger = [];
+                snapshot.forEach(doc => {
+                    ledger.push({ id: doc.id, ...doc.data() });
+                });
+                renderLedger(ledger);
+            }, (error) => {
+                console.error("Error fetching ledger:", error);
+                punishmentListDiv.innerHTML = `<div class="text-center text-xl text-red-700">Failed to load the sacred ledger. Check database rules.</div>`;
+            });
+        };
+
+        const handleAddName = async () => {
+            const name = newNameInput.value.trim();
+            if (name === '') {
+                newNameInput.focus();
+                return;
+            }
+            try {
+                await addDoc(ledgerCollectionRef, { name: name, stripes: 0, addedBy: currentUserId });
+                newNameInput.value = '';
+            } catch (error) {
+                console.error("Error adding document: ", error);
+            }
+        };
+
+        const handleAddStripe = async (docId) => {
+            if (!docId) return;
+            const docRef = doc(db, 'punishments', docId);
+            try {
+                await updateDoc(docRef, { stripes: increment(1) });
+            } catch (error) {
+                console.error("Error updating document: ", error);
+            }
+        };
+
+        // --- EVENT LISTENERS ---
+        addNameBtn.addEventListener('click', handleAddName);
+        
+        punishmentListDiv.addEventListener('click', (e) => {
+            if (e.target && e.target.classList.contains('add-stripe-btn')) {
+                const docId = e.target.getAttribute('data-id');
+                handleAddStripe(docId);
+            }
+        });
+
+    </script>
+</body>
+</html>
