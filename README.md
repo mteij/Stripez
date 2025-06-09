@@ -102,27 +102,35 @@ If you wish to clone this repository and set it up with your own Firebase projec
     }
     ```
 
-4.  **Set up Firebase Configuration using Environment Variables (Recommended for Security):**
+4.  **Secure Firebase Configuration using GitHub Secrets (Recommended for Security):**
     * **Do NOT** hardcode your Firebase configuration directly into `public/js/firebase.js`.
-    * Instead, create environment variables for each piece of your Firebase config (e.g., `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, etc.).
-    * **For Firebase Hosting deployments via GitHub Actions:** You would typically pass these environment variables into your build process. If Firebase Hosting doesn't directly support custom environment variables for client-side builds, you might need a small build script to inject them or manage them directly within your `firebase.js` as global variables provided by the hosting environment.
-
-    * **Example of how your `firebase.js` *should* retrieve these (conceptual):**
+    * **Step 4.1: Update `public/js/firebase.js`:**
+        Modify `public/js/firebase.js` to use placeholder strings for your Firebase configuration. For example:
         ```javascript
-        // public/js/firebase.js
-        // Firebase configuration (values would be injected by your hosting environment)
         const firebaseConfig = {
-            apiKey: typeof __firebase_api_key !== 'undefined' ? __firebase_api_key : '',
-            authDomain: typeof __firebase_auth_domain !== 'undefined' ? __firebase_auth_domain : '',
-            projectId: typeof __firebase_project_id !== 'undefined' ? __firebase_project_id : '',
-            storageBucket: typeof __firebase_storage_bucket !== 'undefined' ? __firebase_storage_bucket : '',
-            messagingSenderId: typeof __firebase_messaging_sender_id !== 'undefined' ? __firebase_messaging_sender_id : '',
-            appId: typeof __firebase_app_id !== 'undefined' ? __firebase_app_id : ''
+            apiKey: "VITE_FIREBASE_API_KEY",
+            authDomain: "VITE_FIREBASE_AUTH_DOMAIN",
+            // ... other config fields with similar placeholders
         };
-        // ... rest of your firebase.js code
         ```
-    * **Note for Canvas Environment:** In the Canvas environment, the `apiKey` field in your `firebaseConfig` object will be automatically populated from a secure source. For other Firebase config values (authDomain, projectId, etc.), if the Canvas environment provides them as global variables (e.g., `__firebase_auth_domain`), you can use those. Otherwise, you may need to manually provide them or adjust your deployment strategy to inject them.
+    * **Step 4.2: Configure GitHub Secrets:**
+        In your GitHub repository, go to **Settings > Secrets and variables > Actions** and add repository secrets for each of your Firebase configuration values (e.g., `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`). Use the exact names above for the secrets.
+    * **Step 4.3: Update GitHub Actions Workflows:**
+        In both your `.github/workflows/firebase-hosting-merge.yml` and `.github/workflows/firebase-hosting-pull-request.yml` files, add a step **before** the `FirebaseExtended/action-hosting-deploy@v0` step. This step will use `sed` to replace the placeholders in `public/js/firebase.js` with the actual secret values during the build process.
+
+        Example of the `sed` step to add:
+        ```yaml
+        - name: Substitute Firebase Config
+          run: |
+            sed -i "s|VITE_FIREBASE_API_KEY|${{ secrets.FIREBASE_API_KEY }}|g" public/js/firebase.js
+            sed -i "s|VITE_FIREBASE_AUTH_DOMAIN|${{ secrets.FIREBASE_AUTH_DOMAIN }}|g" public/js/firebase.js
+            sed -i "s|VITE_FIREBASE_PROJECT_ID|${{ secrets.FIREBASE_PROJECT_ID }}|g" public/js/firebase.js
+            sed -i "s|VITE_FIREBASE_STORAGE_BUCKET|${{ secrets.FIREBASE_STORAGE_BUCKET }}|g" public/js/firebase.js
+            sed -i "s|VITE_FIREBASE_MESSAGING_SENDER_ID|${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}|g" public/js/firebase.js
+            sed -i "s|VITE_FIREBASE_APP_ID|${{ secrets.FIREBASE_APP_ID }}|g" public/js/firebase.js
+        ```
+        (Remember to use `|` as a delimiter in `sed` commands to avoid issues with `/` in URLs.)
 
 5.  **Deploy:**
     * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`.
-    * Alternatively, set up the GitHub Actions integration by following the official Firebase guide. Ensure your GitHub Actions workflow is configured to pass the necessary Firebase environment variables to your build or deployment process.
+    * Alternatively, the GitHub Actions will now automatically deploy whenever changes are pushed to `main` or a pull request is created/updated, with your Firebase credentials securely injected.

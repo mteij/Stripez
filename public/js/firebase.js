@@ -5,14 +5,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// Your web app's Firebase configuration
+// Firebase configuration. These placeholders will be replaced by GitHub Actions
+// during the build/deploy process using a string replacement utility (sed).
 const firebaseConfig = {
-    apiKey: "AIzaSyD2FN2MCUmoKl7geOIXnYTXhD6tyISDNbc",
-    authDomain: "schikko-rules.firebaseapp.com",
-    projectId: "schikko-rules",
-    storageBucket: "schikko-rules.appspot.com",
-    messagingSenderId: "1068996301922",
-    appId: "1:1068996301922:web:caded5196923e393106d3b"
+    apiKey: "VITE_FIREBASE_API_KEY",
+    authDomain: "VITE_FIREBASE_AUTH_DOMAIN",
+    projectId: "VITE_FIREBASE_PROJECT_ID",
+    storageBucket: "VITE_FIREBASE_STORAGE_BUCKET",
+    messagingSenderId: "VITE_FIREBASE_MESSAGING_SENDER_ID",
+    appId: "VITE_FIREBASE_APP_ID"
 };
 
 // Initialize Firebase
@@ -108,5 +109,5 @@ export {
     addRuleToFirestore,
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
-    updateRuleTextInFirestore // New export
+    updateRuleTextInFirestore
 };
