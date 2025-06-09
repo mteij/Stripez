@@ -24,23 +24,13 @@ function renderLedger(viewData, term) {
     // Approximate pixel width per stripe (5px width + 3px margin-right)
     const effectiveStripeWidthPx = 8; 
 
-    // Estimate the available width for stripes within the card's flexible layout.
-    // On small screens, the name and buttons might stack, giving more horizontal room for stripes
-    // or the name/stripes section might take up a larger portion.
-    // Let's refine this to be based on the general content area, considering paddings.
-    // Max content width is 896px. On smaller screens, it will be screenWidth - margins.
-    // The stripe container itself (`<div class="flex-grow w-full md:w-auto">`) will take up available space.
-    // Let's assume the stripe *display area* within that container can be around 60% of the maximum card width on larger screens,
-    // and potentially more responsive on smaller screens.
-    // For a starting point, let's target about 200-300px for stripes before switching to number on typical mobile.
-    // This translates to roughly 25-35 stripes before converting.
-
     // A more robust way would be to measure the actual available width of the parent container at runtime.
     // For now, let's use a breakpoint-based logic or a more fixed threshold, and ensure layout handles overflow.
     // Let's try a fixed threshold that works well on most small screens, and ensure the `overflow-x-auto` handles anything beyond that.
     
     // Previous calculation: STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.floor(estimatedStripeAreaWidth / effectiveStripeWidthPx);
     // This made the threshold very low on small screens. Let's make it a fixed number that allows for some scrolling.
+    
     STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20; // Default to 20 stripes before showing number
 
     // If screen is very small, we might want to switch earlier.
@@ -51,6 +41,7 @@ function renderLedger(viewData, term) {
     } else { // Larger screens, can show more stripes
         STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 30; // Allows for more stripes on wider screens
     }
+
 
     viewData.forEach(person => {
         const stripeCount = person.stripes?.length || 0;
@@ -73,8 +64,8 @@ function renderLedger(viewData, term) {
                     stripesContentHtml += `<div class="punishment-stripe"></div>`;
                 }
             }
-            // Add classes for horizontal scrolling, nowrap, items-start, and padding-left/right
-            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap items-start pl-2 pr-2';
+            // Add classes for horizontal scrolling, nowrap, min-height, items-start, and padding-left/right
+            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2 pr-2';
         }
 
         const personDiv = document.createElement('div');
@@ -211,11 +202,15 @@ function renderRules(rulesData) {
     if (!rulesListOl) return;
     rulesListOl.innerHTML = ''; // Clear existing rules
 
+    // Get the current rule search term from main.js to check if a search is active
+    const ruleSearchInput = document.getElementById('rule-search-input');
+    const hasSearchTerm = ruleSearchInput && ruleSearchInput.value.trim() !== '';
+
     if (rulesData.length === 0) {
         const li = document.createElement('li');
-        li.className = "text-center text-xl text-[#6f4e37]";
-        li.textContent = "No lesser decrees have been recorded.";
-        li.style.listStyle = 'none'; // Prevents roman numeral from showing on this message
+        li.className = "text-center text-xl text-[#6f4e37] no-roman-numeral"; // Add a class to remove roman numeral
+        // Use a different message based on whether a search term is present
+        li.textContent = hasSearchTerm ? "No Schikko's decrees match your quest." : "The scrolls of Schikko's decrees remain unwritten.";
         rulesListOl.appendChild(li);
         return;
     }

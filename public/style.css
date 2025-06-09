@@ -35,6 +35,12 @@ body {
     font-size: 1.125rem;
 }
 
+/* Specific style to remove roman numeral for certain list items */
+.roman-list > li.no-roman-numeral::before {
+    content: none; /* Remove the generated content */
+}
+
+
 /* Custom button styling */
 .btn-ancient {
     background-color: #8c6b52;
