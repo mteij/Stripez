@@ -100,11 +100,40 @@ function showStatsModal(person) {
     stripeChart = new Chart(stripeChartCanvas, {
         type: 'line', data: chartData,
         options: {
-            scales: {
-                x: { type: 'time', time: { tooltipFormat: 'DD T' }, title: { display: true, text: 'Date of Transgression' } },
-                y: { beginAtZero: true, title: { display: true, text: 'Total Stripes' }, ticks: { stepSize: 1 } }
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-            responsive: true, maintainAspectRatio: false
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            const date = new Date(tooltipItems[0].parsed.x);
+                            return date.toLocaleString(undefined, {
+                                year: 'numeric', month: 'short', day: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                            });
+                        },
+                        label: function(tooltipItem) {
+                            const value = tooltipItem.parsed.y;
+                            return `Total Stripes: ${value}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    title: { display: true, text: 'Date of Transgression' }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Total Stripes' },
+                    ticks: { stepSize: 1 }
+                }
+            }
         }
     });
 

@@ -11,7 +11,7 @@ import { renderLedger, showStatsModal, closeMenus } from './ui.js';
 // --- STATE VARIABLES ---
 let currentUserId = null;
 let ledgerDataCache = [];
-let currentSortOrder = 'asc';
+let currentSortOrder = 'stripes_desc';
 let currentSearchTerm = '';
 
 // --- DOM ELEMENTS ---
