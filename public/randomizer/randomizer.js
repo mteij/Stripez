@@ -30,11 +30,10 @@ function spin_promise(color, number) {
         const numCircles = 15; // Number of full rotations
         const totalPalleteWidth = pallete.length * tileVisualWidth;
 
-        // Calculate the base position to land on the target tile
+        // Calculate the base position for the target tile within one loop
         let basePixels = targetIndex * tileVisualWidth;
 
         // Add randomization within the target tile to make it look less robotic
-        // From start of tile to end of tile (tileVisualWidth)
         basePixels += rand(10, tileVisualWidth - 10); // Random offset within the tile
 
         // Add multiple full rotations to make the animation longer and more dynamic
@@ -46,10 +45,16 @@ function spin_promise(color, number) {
         setTimeout(() => {
             // Reset transition to 'none' for instant snap
             wrap.style.transition = 'none';
-            // Snap to the final visible position (modulo totalPalleteWidth)
-            wrap.style.transform = `translateX(-${basePixels % totalPalleteWidth}px)`;
             
-            const result = { color: color, number: number }; // result.number is the one from pallete
+            // Get the current container width to precisely center the target tile
+            const containerWidth = wrap.parentElement.offsetWidth;
+            const targetTileCenterOffset = (targetIndex * tileVisualWidth) + (tileVisualWidth / 2);
+            const snapOffset = targetTileCenterOffset - (containerWidth / 2);
+
+            // Snap to the final visible position, centering the target tile
+            wrap.style.transform = `translateX(-${snapOffset}px)`;
+            
+            const result = { color: color, number: number };
             resolve(result);
         }, 5700);
     });
@@ -62,30 +67,54 @@ function spin() {
     spinBtn.textContent = "Spinning...";
 
     // Reset wrap position immediately to ensure animation starts from the initial visible state
-    // This is crucial to prevent the 'disappearing' effect or jumping.
     wrap.style.transition = 'none';
     wrap.style.transform = 'translateX(0)';
 
 
-    let color;
-    let r = rand(1, 1000);
-    if (1 <= r && r < 30) color = "green";
-    else if (30 <= r && r < 530) color = "red";
-    else if (530 <= r && r < 1000) color = "black";
-    
-    // Select a 'bet' number from the fixed roulette palette.
-    // This number dictates which visual tile the roulette animation aims for.
-    let bet = bets[color][rand(0, bets[color].length - 1)];
+    let chosenColor;
+    let chosenBetNumber;
+    let validSpinFound = false;
+    let attempts = 0;
+    const maxAttempts = 50; // To prevent infinite loops if slider value is too restrictive
 
-    spin_promise(color, bet).then((result) => {
-        // After the roulette animation completes, generate the FINAL displayed number
-        // based on the slider's maximum value. This directly addresses the user's
-        // concern about numbers being higher than the slider's maximum.
-        const finalDisplayedNumber = rand(0, parseInt(maxValueSlider.value));
+    // Loop to find a valid color and bet that respects the slider's max value
+    while (!validSpinFound && attempts < maxAttempts) {
+        // Step 1: Randomly choose a color category
+        let r = rand(1, 1000);
+        if (1 <= r && r < 30) chosenColor = "green";
+        else if (30 <= r && r < 530) chosenColor = "red";
+        else if (530 <= r && r < 1000) chosenColor = "black";
 
+        // Step 2: Filter numbers for the chosen color based on slider's max value
+        // The `bets` structure holds the numbers that correspond to the pallete.
+        let eligibleNumbersForColor = bets[chosenColor].filter(num => num <= parseInt(maxValueSlider.value));
+
+        if (eligibleNumbersForColor.length > 0) {
+            // Step 3: Pick a random number from the eligible ones
+            chosenBetNumber = eligibleNumbersForColor[rand(0, eligibleNumbersForColor.length - 1)];
+            
+            // Step 4: Verify this number exists in the main 'pallete' for the chosen color
+            const finalBetItemString = chosenColor[0] + "" + chosenBetNumber;
+            if (pallete.includes(finalBetItemString)) { //
+                validSpinFound = true;
+            }
+        }
+        attempts++;
+    }
+
+    if (!validSpinFound) {
+        console.warn(`Could not find a valid roulette outcome within slider range (${maxValueSlider.value}) after ${attempts} attempts. Choosing a random valid pallete item as fallback.`);
+        // Fallback: if no valid number found within attempts, pick any random item from the entire pallete
+        const fallbackItem = pallete[rand(0, pallete.length - 1)];
+        chosenColor = fallbackItem[0] === 'r' ? 'red' : (fallbackItem[0] === 'b' ? 'black' : 'green');
+        chosenBetNumber = parseInt(fallbackItem.substring(1));
+    }
+
+    spin_promise(chosenColor, chosenBetNumber).then((result) => {
+        // Display the number that the roulette *actually* landed on (which now respects the slider's max)
         let colorBeted = document.createElement("div");
         colorBeted.setAttribute("class", "color-beted tile-" + result.color);
-        colorBeted.innerHTML = finalDisplayedNumber; // Display the slider-constrained number
+        colorBeted.innerHTML = result.number;
         resultsContainer.prepend(colorBeted);
 
         while (resultsContainer.children.length > 10) {
