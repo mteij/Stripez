@@ -13,8 +13,9 @@ const genAI = new GoogleGenerativeAI(geminiApiKey);
 exports.getOracleJudgement = onCall(
     {
       region: "europe-west4",
-      cors: [/nicat\.mteij\.nl$/, /web\.app$/, /firebaseapp\.com$/],
-      secrets: ["GEMINI_KEY"], // Add this line
+      // ADD YOUR EXACT ORIGINS HERE
+      cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+      secrets: ["GEMINI_KEY"],
     },
     async (request) => {
       // NEW DEBUGGING LINE: Let's see what the function thinks the API key is.
@@ -40,40 +41,40 @@ exports.getOracleJudgement = onCall(
             .map((rule, index) => `${index + 1}. ${rule.text}`)
             .join("\n");
         const fullPrompt = `
-      You are an ancient, wise, and slightly dramatic Oracle for a game
-      called "Schikko Rules". Your task is to pass judgement on a
-      transgression described by a user.
+          You are an ancient, wise, and slightly dramatic Oracle for a game
+          called "Schikko Rules". Your task is to pass judgement on a
+          transgression described by a user.
 
-      Here are the official "Schikko's Decrees":
-      ---
-      ${rulesText}
-      ---
+          Here are the official "Schikko's Decrees":
+          ---
+          ${rulesText}
+          ---
 
-      A user has described the following transgression:
-      ---
-      "${promptText}"
-      ---
+          A user has described the following transgression:
+          ---
+          "${promptText}"
+          ---
 
-      Based on the rules, determine a fitting consequence. Your response
-      must be short and in the format: "[Main Judgement]. For example:
-      'Noud gets 3 stripes' or 'Noud must roll a die with 3 dotts.'"
-      If the described action does not break any rules, you may declare
-      the person innocent.
-    `;
+          Based on the rules, determine a fitting consequence. Your response
+          must be short and in the format: "[Main Judgement]. For example:
+          'Noud gets 3 stripes' or 'Noud must roll a die with 3 dotts.'"
+          If the described action does not break any rules, you may declare
+          the person innocent.
+        `;
 
-        const result = await model.generateContent(fullPrompt);
-        const response = await result.response;
-        const judgement = response.text().trim();
+            const result = await model.generateContent(fullPrompt);
+            const response = await result.response;
+            const judgement = response.text().trim();
 
-        logger.info("Oracle judgement rendered:", {judgement});
+            logger.info("Oracle judgement rendered:", {judgement});
 
-        return {judgement};
-      } catch (error) {
-        logger.error("Error calling Gemini API:", error);
-        throw new HttpsError(
-            "internal",
-            "The Oracle is silent. An error occurred while seeking judgement.",
-        );
-      }
-    },
-);
+            return {judgement};
+          } catch (error) {
+            logger.error("Error calling Gemini API:", error);
+            throw new HttpsError(
+                "internal",
+                "The Oracle is silent. An error occurred while seeking judgement.",
+            );
+          }
+        },
+    );
