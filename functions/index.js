@@ -99,7 +99,7 @@ exports.getOracleJudgement = onCall(
           called "Schikko Rules". Your task is to pass judgement on a
           transgression described by a user.
           You must determine the broken rules and their individual penalties.
-          You will output your judgement as a JSON string. Do NOT output anything else.
+          You will output your judgement as a JSON string, wrapped in a markdown code block (e.g., \`\`\`json { ... } \`\`\`). Do NOT output anything else outside the code block.
 
           The JSON must have the following structure:
           {
@@ -117,7 +117,7 @@ exports.getOracleJudgement = onCall(
           - For "penalties", list each penalty from each broken rule individually. Do NOT sum stripes or combine dice rolls in the JSON; the client-side will handle that.
           - If a rule specifies "X stripes", add one object: {"type": "stripes", "amount": X}.
           - If a rule specifies "a Y-sided die", add one object: {"type": "dice", "value": Y}.
-          - If no rules are broken, set "innocent" to true, and "person", "penalties", "rulesBroken" can be empty or default.
+          - If no rules are broken, set "innocent" to true, and "person", "penalties", "rulesBroken" can be empty or default values.
           - If you identify a person, use their name directly in the "person" field.
 
           Here are the official "Schikko's Decrees":
@@ -198,19 +198,30 @@ exports.getOracleJudgement = onCall(
           `;
 
         const result = await model.generateContent(fullPrompt);
-        const judgementText = result.response.text().trim(); // Get natural language string, which should be JSON now
+        const judgementText = result.response.text().trim(); // Get natural language string, which should contain JSON now
 
-        logger.info("Raw Oracle judgement text (should be JSON):", {judgementText});
+        logger.info("Raw Oracle judgement text (should contain JSON in markdown block):", {judgementText});
+
+        // Extract JSON string from markdown code block
+        const jsonMatch = judgementText.match(/```json\n(.*?)```/s);
+        let jsonString = '';
+        if (jsonMatch && jsonMatch[1]) {
+            jsonString = jsonMatch[1].trim();
+        } else {
+            // Fallback: If no markdown block, try to parse the whole response as JSON
+            // This handles cases where the AI might accidentally omit the markdown block
+            jsonString = judgementText;
+        }
 
         let parsedJudgement;
         try {
-            parsedJudgement = JSON.parse(judgementText);
+            parsedJudgement = JSON.parse(jsonString);
         } catch (e) {
             logger.error("Failed to parse AI response as JSON:", e);
             throw new HttpsError(
                 "internal",
                 "Oracle's response was garbled. Please try again. (Invalid JSON from AI)",
-                judgementText, // Include the raw AI response for debugging
+                jsonString, // Include the extracted string for debugging
             );
         }
 
