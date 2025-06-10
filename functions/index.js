@@ -1,6 +1,7 @@
 // In functions/index.js
 
-const {onCall} = require("firebase-functions/v2/https");
+// CORRECTED: HttpsError is now imported directly
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 
@@ -16,24 +17,23 @@ exports.getOracleJudgement = onCall(
       cors: [/nicat\.mteij\.nl$/, /web\.app$/, /firebaseapp\.com$/],
     },
     async (request) => {
-      // ADD THIS LINE FOR DEBUGGING:
       logger.info("Full request data received from client:", request.data);
 
-      // Get the prompt text and rules from the client
       const {promptText, rules} = request.data;
 
       if (!promptText) {
-        // If no prompt text is provided, throw an error
-        throw new onCall.HttpsError(
+        throw new HttpsError(
             "invalid-argument",
             "The function must be called with a 'promptText' argument.",
         );
       }
 
       try {
-        const model = genAI.getGenerativeModel({model: "gemini-1.5-flash"});
+        // CORRECTED: Line reformatted to be under 80 characters
+        const model = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+        });
 
-        // Construct a detailed prompt for the AI
         const rulesText = rules
             .map((rule, index) => `${index + 1}. ${rule.text}`)
             .join("\n");
@@ -67,8 +67,9 @@ exports.getOracleJudgement = onCall(
 
         return {judgement};
       } catch (error) {
+        // CORRECTED: Line reformatted to be under 80 characters
         logger.error("Error calling Gemini API:", error);
-        throw new onCall.HttpsError(
+        throw new HttpsError(
             "internal",
             "The Oracle is silent. An error occurred while seeking judgement.",
         );
