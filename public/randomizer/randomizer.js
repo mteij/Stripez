@@ -138,8 +138,8 @@ function handleDiceSpin() {
                 dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
                 diceResultsContainer.innerHTML = ''; // Clear dice result
                 document.getElementById('dice-randomizer-modal').classList.add('hidden'); // Close the dice modal after assignment
-                document.getElementById('dice-randomizer-modal').style.display = 'none'; // Ensure it's hidden
-                document.getElementById('dice-randomizer-modal').style.zIndex = ''; // Reset z-index
+                // REMOVED: document.getElementById('dice-randomizer-modal').style.display = 'none'; // Rely on Tailwind's 'hidden' class
+                // REMOVED: document.getElementById('dice-randomizer-modal').style.zIndex = ''; // Rely on Tailwind's 'z-50' class
             } else {
                 console.error("addStripeToPerson function not available for manual assignment.");
                 alert("Error: Cannot assign stripes. Function not found.");
@@ -261,10 +261,9 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
                 dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
                 diceResultsContainer.innerHTML = ''; // Clear dice result
                 
-                // Explicitly hide and reset display properties
                 diceRandomizerModal.classList.add('hidden');
-                diceRandomizerModal.style.display = 'none'; // Ensure it's hidden
-                diceRandomizerModal.style.zIndex = ''; // Reset z-index
+                // REMOVED: diceRandomizerModal.style.display = 'none'; // Rely on Tailwind's 'hidden' class
+                // REMOVED: diceRandomizerModal.style.zIndex = ''; // Rely on Tailwind's 'z-50' class
                 
             } else {
                 console.error("addStripeToPerson function not available for assignment.");
@@ -275,19 +274,19 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
         }
     };
 
-    // --- Critical debugging and visibility forcing ---
+    // Ensure the dice randomizer modal is open to show the result
+    console.log("Attempting to unhide dice randomizer modal from rollDiceAndAssign...");
     console.log("Before unhiding - diceRandomizerModal classList:", diceRandomizerModal.classList.value);
     console.log("Before unhiding - diceRandomizerModal style.display:", diceRandomizerModal.style.display);
     console.log("Before unhiding - diceRandomizerModal style.zIndex:", diceRandomizerModal.style.zIndex);
 
     diceRandomizerModal.classList.remove('hidden');
-    diceRandomizerModal.style.display = 'block'; // Force display to block
-    diceRandomizerModal.style.zIndex = '1000'; // Ensure it's on top
+    // REMOVED: diceRandomizerModal.style.display = 'block'; // Rely on Tailwind's 'flex' for centering
+    // REMOVED: diceRandomizerModal.style.zIndex = '1000';   // Rely on Tailwind's 'z-50' class
 
     console.log("After unhiding - diceRandomizerModal classList:", diceRandomizerModal.classList.value);
     console.log("After unhiding - diceRandomizerModal style.display:", diceRandomizerModal.style.display);
     console.log("After unhiding - diceRandomizerModal style.zIndex:", diceRandomizerModal.style.zIndex);
-
     console.log("Modal unhide command sent by rollDiceAndAssign.");
 }
 
@@ -306,6 +305,9 @@ export function rollSpecificDice(maxValue) {
     diceMaxValueSlider.value = maxValue;
     diceSliderValueSpan.textContent = maxValue;
     diceRandomizerModal.classList.remove('hidden');
+    // REMOVED: diceRandomizerModal.style.display = 'block'; // Rely on Tailwind's 'flex' for centering
+    // REMOVED: diceRandomizerModal.style.zIndex = '1000';   // Rely on Tailwind's 'z-50' class
+
 
     // Trigger the manual dice spin logic, which will then show the assignment section
     handleDiceSpin(); 

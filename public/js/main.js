@@ -671,10 +671,9 @@ document.addEventListener('click', (e) => {
     // IMPORTANT: Make sure this doesn't interfere with the AI-triggered open event.
     // The e.stopPropagation() on the AI buttons should prevent this listener from firing for their clicks.
     if (!diceRandomizerModal.classList.contains('hidden') && !e.target.closest('#dice-randomizer-modal') && !e.target.closest('#open-dice-randomizer-from-hub-btn')) {
-        // Reset inline styles when closing via outside click
         diceRandomizerModal.classList.add('hidden');
-        diceRandomizerModal.style.display = 'none';
-        diceRandomizerModal.style.zIndex = '';
+        // REMOVED: diceRandomizerModal.style.display = 'none'; // Rely on Tailwind's 'hidden' class
+        // REMOVED: diceRandomizerModal.style.zIndex = '';     // Rely on Tailwind's 'z-50' class
     }
 });
 
@@ -695,6 +694,8 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => { // Added event 
     e.stopPropagation(); // Stop propagation
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
+    // REMOVED: diceRandomizerModal.style.display = 'block'; // Rely on Tailwind's 'flex' for centering
+    // REMOVED: diceRandomizerModal.style.zIndex = '1000';   // Rely on Tailwind's 'z-50' class
     // Ensure initDiceRandomizer receives ledgerDataCache and addStripeToPerson for manual rolls
     initDiceRandomizer(ledgerDataCache, addStripeToPerson); 
 });
@@ -703,9 +704,8 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => { // Added event 
 closeDiceRandomizerModalBtn?.addEventListener('click', (e) => { // Added event parameter
     e.stopPropagation(); // Stop propagation to prevent immediate re-opening by global listener
     diceRandomizerModal.classList.add('hidden');
-    // Also reset inline styles when closing with the cross button
-    diceRandomizerModal.style.display = 'none';
-    diceRandomizerModal.style.zIndex = '';
+    // REMOVED: diceRandomizerModal.style.display = 'none'; // Rely on Tailwind's 'hidden' class
+    // REMOVED: diceRandomizerModal.style.zIndex = '';     // Rely on Tailwind's 'z-50' class
 });
 
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
