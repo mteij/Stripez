@@ -10,7 +10,7 @@ import {
     removeLastDrunkStripeFromPerson
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
-import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js';
+import { initListRandomizer, initDiceRandomizer, rollSpecificDice, rollDiceAndAssign } from '../randomizer/randomizer.js';
 // New: Import functions from the Firebase SDK to call our backend
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -62,7 +62,7 @@ const closeListRandomizerModalBtn = document.getElementById('close-list-randomiz
 // Randomizer Hub elements
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
-const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
+const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-btn');
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
@@ -309,7 +309,8 @@ function createActionButtons(parsedJudgement) {
 
             // Open dice roller for each unique die value
             sortedDice.forEach(diceValue => {
-                rollSpecificDice(diceValue); // This opens the dice modal
+                // Pass ledgerDataCache and addStripeToPerson to the new function
+                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache); 
             });
             geminiModal.classList.add('hidden'); // Close Gemini modal
         };
@@ -344,7 +345,8 @@ function createActionButtons(parsedJudgement) {
             diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
             diceBtn.onclick = () => {
-                rollSpecificDice(diceValue);
+                // Pass ledgerDataCache and addStripeToPerson to the new function
+                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache); 
                 geminiModal.classList.add('hidden');
             };
             geminiActionButtonsContainer.appendChild(diceBtn);
@@ -697,7 +699,7 @@ incrementBeersBtn.addEventListener('click', () => {
     const currentValue = parseInt(howManyBeersInput.value);
     const maxValue = parseInt(howManyBeersInput.max);
     if (currentValue < maxValue) {
-        howToManyBeersInput.value = currentValue + 1;
+        howManyBeersInput.value = currentValue + 1;
     }
 });
 

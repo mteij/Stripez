@@ -86,6 +86,13 @@ export function initListRandomizer(ledgerData) {
 let diceSpinBtn, diceResultsContainer;
 let diceMaxValueSlider, diceSliderValueSpan;
 
+// New elements for punishment assignment
+let dicePunishmentAssignContainer;
+let assignPersonSelect;
+let rolledStripesDisplay;
+let actualRolledValueSpan;
+let assignStripesBtn;
+
 function handleDiceSpin() {
     // rand(min, max) is used. The slider's min is now 1, so no adjustment needed here.
     const sliderValue = parseInt(diceMaxValueSlider.value);
@@ -96,6 +103,9 @@ function handleDiceSpin() {
     resultDiv.className = `font-cinzel-decorative text-5xl font-bold mt-4 text-[#5c3d2e]`;
     resultDiv.textContent = finalDiceResult;
     diceResultsContainer.appendChild(resultDiv);
+
+    // After manual spin, hide punishment assignment section
+    dicePunishmentAssignContainer.classList.add('hidden');
 }
 
 export function initDiceRandomizer() {
@@ -104,13 +114,23 @@ export function initDiceRandomizer() {
     diceMaxValueSlider = document.getElementById('dice-max-value-slider');
     diceSliderValueSpan = document.getElementById('dice-slider-value');
 
-    if (!diceSpinBtn || !diceResultsContainer || !diceMaxValueSlider || !diceSliderValueSpan) {
+    // New elements
+    dicePunishmentAssignContainer = document.getElementById('dice-punishment-assign-container');
+    assignPersonSelect = document.getElementById('assign-person-select');
+    rolledStripesDisplay = document.getElementById('rolled-stripes-display');
+    actualRolledValueSpan = document.getElementById('actual-rolled-value');
+    assignStripesBtn = document.getElementById('assign-stripes-btn');
+
+
+    if (!diceSpinBtn || !diceResultsContainer || !diceMaxValueSlider || !diceSliderValueSpan ||
+        !dicePunishmentAssignContainer || !assignPersonSelect || !rolledStripesDisplay || !actualRolledValueSpan || !assignStripesBtn) {
         console.error("Dice randomizer elements not found!");
         return;
     }
 
     // Clear previous results when initialized (modal opened)
     diceResultsContainer.innerHTML = '';
+    dicePunishmentAssignContainer.classList.add('hidden'); // Ensure hidden on normal open
 
     diceSpinBtn.onclick = handleDiceSpin;
 
@@ -118,17 +138,19 @@ export function initDiceRandomizer() {
     diceSliderValueSpan.textContent = diceMaxValueSlider.value;
     diceMaxValueSlider.addEventListener('input', () => {
         diceSliderValueSpan.textContent = diceMaxValueSlider.value;
+        // If slider is changed, hide the assignment section until a new roll
+        dicePunishmentAssignContainer.classList.add('hidden');
     });
 }
 
-// New exported function to roll a specific dice value
-export function rollSpecificDice(maxValue) {
-    // Always call init to ensure elements are found and event listeners set up
-    initDiceRandomizer();
+// New exported function to roll a specific dice value and set up assignment
+export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerData) {
+    initDiceRandomizer(); // Ensure elements are found and event listeners set up
 
     // Now, check if elements were successfully found by initDiceRandomizer
-    if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan) {
-        console.error("Dice randomizer elements are still not found after initialization. Cannot perform programmatic roll.");
+    if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan ||
+        !dicePunishmentAssignContainer || !assignPersonSelect || !rolledStripesDisplay || !actualRolledValueSpan || !assignStripesBtn) {
+        console.error("Dice randomizer elements are still not found after initialization. Cannot perform programmatic roll and assignment setup.");
         return;
     }
 
@@ -136,10 +158,74 @@ export function rollSpecificDice(maxValue) {
     diceMaxValueSlider.value = maxValue;
     diceSliderValueSpan.textContent = maxValue;
 
+    // Perform the automatic roll
+    const finalDiceResult = rand(1, maxValue);
+    diceResultsContainer.innerHTML = ''; // Clear previous result
+    let resultDiv = document.createElement("div");
+    resultDiv.className = `font-cinzel-decorative text-5xl font-bold mt-4 text-[#5c3d2e]`;
+    resultDiv.textContent = finalDiceResult;
+    diceResultsContainer.appendChild(resultDiv);
+
+    // Show the assignment section
+    dicePunishmentAssignContainer.classList.remove('hidden');
+    actualRolledValueSpan.textContent = finalDiceResult;
+
+    // Populate the select dropdown with ledger names
+    assignPersonSelect.innerHTML = '';
+    ledgerData.forEach(person => {
+        const option = document.createElement('option');
+        option.value = person.id; // Store person ID as value
+        option.textContent = person.name;
+        if (person.id === targetPerson.id) { // Pre-select the target person from AI judgment
+            option.selected = true;
+        }
+        assignPersonSelect.appendChild(option);
+    });
+
+    // Set up the button to assign stripes
+    assignStripesBtn.onclick = async () => {
+        const selectedPersonId = assignPersonSelect.value;
+        const stripesToAdd = finalDiceResult;
+
+        if (selectedPersonId && stripesToAdd > 0) {
+            // Call the addStripeToPerson function from main.js (passed as addStripeFn)
+            for (let i = 0; i < stripesToAdd; i++) {
+                await addStripeFn(selectedPersonId);
+            }
+            alert(`${stripesToAdd} stripes assigned to ${assignPersonSelect.options[assignPersonSelect.selectedIndex].text}!`);
+            // Optionally close the modal or hide the assignment section
+            document.getElementById('dice-randomizer-modal').classList.add('hidden');
+            dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
+            diceResultsContainer.innerHTML = ''; // Clear dice result
+            // Clear current selection and hide assignment section
+            assignPersonSelect.value = '';
+        } else {
+            alert('Please select a person and ensure a rolled value exists.');
+        }
+    };
+
     // Ensure the dice randomizer modal is open to show the result
     const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
     if (diceRandomizerModal) {
         diceRandomizerModal.classList.remove('hidden');
     }
-    // DO NOT call handleDiceSpin() here. The roll should only happen when the user clicks the button.
+}
+
+// Old rollSpecificDice is no longer needed with rollDiceAndAssign
+export function rollSpecificDice(maxValue) {
+    console.warn("rollSpecificDice is deprecated. Use rollDiceAndAssign for AI-triggered rolls.");
+    initDiceRandomizer();
+    if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan) {
+        console.error("Dice randomizer elements are still not found after initialization. Cannot perform programmatic roll.");
+        return;
+    }
+    diceMaxValueSlider.value = maxValue;
+    diceSliderValueSpan.textContent = maxValue;
+    const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
+    if (diceRandomizerModal) {
+        diceRandomizerModal.classList.remove('hidden');
+    }
+    // Automatically perform the roll for direct calls for backward compatibility if needed
+    // In the new flow, rollDiceAndAssign handles the roll
+    handleDiceSpin(); 
 }

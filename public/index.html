@@ -197,7 +197,15 @@
                 <div id="dice-roulette-results" class="mt-4">
                     </div>
             </div>
-            <!-- The manual stripe assignment section is now removed as per your request -->
+
+            <div id="dice-punishment-assign-container" class="mt-6 pt-4 border-t-2 border-dotted border-[#b9987e] hidden">
+                <p class="font-cinzel-decorative text-lg text-[#6f4e37] mb-2 text-center">Assign Rolled Stripes:</p>
+                <label for="assign-person-select" class="sr-only">Select Person</label>
+                <select id="assign-person-select" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4"></select>
+                <p id="rolled-stripes-display" class="text-center font-cinzel-decorative text-xl font-bold text-[#c0392b] mb-4">Rolled: <span id="actual-rolled-value">0</span> Stripes</p>
+                <button id="assign-stripes-btn" class="btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg w-full">Assign Stripes</button>
+            </div>
+
         </div>
     </div>
 
