@@ -130,6 +130,8 @@ function showStatsModal(person) {
         // Get the selected option's text for dynamic title
         const selectedOptionText = stripeFilterSelect.options[stripeFilterSelect.selectedIndex].text;
 
+        const THIRTY_MINUTES_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+
         let displayValue = 0; // Initialize display value for the text
         if (filterType === 'total') {
             displayValue = normalStripeTimestamps.length;
@@ -144,28 +146,24 @@ function showStatsModal(person) {
 
 
         if (filterType === 'total' || filterType === 'drunk' || filterType === 'left') { 
-            let timestamps = [];
+            let rawTimestamps = [];
             if (filterType === 'total') {
-                timestamps = normalStripeTimestamps; 
-            } else if (filterType === 'drunk') { 
-                timestamps = drunkStripeTimestamps; 
+                rawTimestamps = normalStripeTimestamps;
+            } else if (filterType === 'drunk') {
+                rawTimestamps = drunkStripeTimestamps;
             } else if (filterType === 'left') {
-                // For "Stripes Left", we need to calculate cumulative remaining stripes.
-                // This is a bit more complex as it's not just a cumulative count of one type.
-                // Let's create a combined event stream and track the difference.
                 const allEvents = [
                     ...normalStripeTimestamps.map(ts => ({ type: 'normal', timestamp: ts })),
                     ...drunkStripeTimestamps.map(ts => ({ type: 'drunk', timestamp: ts }))
                 ].sort((a, b) => a.timestamp - b.timestamp);
 
-                // Add a starting point at the first event time, with 0 count, for visual clarity, only if there are events
-                if (allEvents.length > 0) {
-                    dataPoints.push({ x: new Date(Math.min(...allEvents.map(e => e.timestamp.getTime())) - 1000), y: 0 }); // A bit before the first event
-                }
-
                 let currentNormal = 0;
                 let currentDrunk = 0;
+                let syntheticTimestamps = []; 
                 
+                if (allEvents.length > 0) {
+                    syntheticTimestamps.push({ timestamp: new Date(allEvents[0].getTime() - 1000), count: 0 });
+                }
 
                 allEvents.forEach(event => {
                     if (event.type === 'normal') {
@@ -173,71 +171,70 @@ function showStatsModal(person) {
                     } else {
                         currentDrunk++;
                     }
-                    dataPoints.push({ x: event.timestamp, y: currentNormal - currentDrunk });
+                    syntheticTimestamps.push({ timestamp: event.timestamp, count: currentNormal - currentDrunk });
                 });
-
-                // If no events, explicitly state
-                if (allEvents.length === 0) {
-                    stripeChart = new Chart(stripeChartCanvas, {
-                        type: 'line', data: { datasets: [] },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            plugins: { title: { display: true, text: `No ${selectedOptionText} to display.`, font: { size: 16 }, color: '#6f4e37' } }, 
-                            scales: { x: { display: false }, y: { display: false } }
-                        }
-                    });
-                    return;
-                }
-
-                label = selectedOptionText; 
-                borderColor = 'rgba(192, 57, 43, 1)'; // Red for remaining
-                backgroundColor = 'rgba(192, 57, 43, 0.2)';
-
+                rawTimestamps = syntheticTimestamps; 
+            } else { 
+                return;
             }
-            
-            // For 'total' and 'drunk' filters, plot cumulative count over time
+
+            if (rawTimestamps.length === 0) {
+                stripeChart = new Chart(stripeChartCanvas, {
+                    type: 'line', data: { datasets: [] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { title: { display: true, text: `No ${selectedOptionText} to display.`, font: { size: 16 }, color: '#6f4e37' } }, 
+                        scales: { x: { display: false }, y: { display: false } }
+                    }
+                });
+                return;
+            }
+
+            let groupedDataPoints = [];
+
             if (filterType === 'total' || filterType === 'drunk') {
-                if (timestamps.length === 0) {
-                    stripeChart = new Chart(stripeChartCanvas, {
-                        type: 'line', data: { datasets: [] },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            plugins: { title: { display: true, text: `No ${selectedOptionText} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } }, 
-                            scales: { x: { display: false }, y: { display: false } }
-                        }
-                    });
-                    return;
-                }
+                let cumulative = 0;
+                groupedDataPoints.push({ x: new Date(rawTimestamps[0].getTime() - 1000), y: 0 });
 
-                label = selectedOptionText; 
-                borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : 'rgba(243, 156, 18, 1)';
-                backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : 'rgba(243, 156, 18, 0.2)';
+                rawTimestamps.forEach(timestamp => {
+                    cumulative++;
+                    const lastPoint = groupedDataPoints[groupedDataPoints.length - 1];
 
-                dataPoints = [];
-                let cumulativeCount = 0;
-                // Add a starting point at the first event time, with 0 count, for visual clarity
-                if (timestamps.length > 0) {
-                    dataPoints.push({ x: new Date(timestamps[0].getTime() - 1000), y: 0 }); // Start a bit before the first event
-                }
-
-                timestamps.forEach(timestamp => {
-                    cumulativeCount++;
-                    dataPoints.push({ x: timestamp, y: cumulativeCount });
+                    if (timestamp.getTime() - lastPoint.x.getTime() <= THIRTY_MINUTES_MS) {
+                        lastPoint.x = timestamp;
+                        lastPoint.y = cumulative;
+                    } else {
+                        groupedDataPoints.push({ x: timestamp, y: cumulative });
+                    }
                 });
-                
-                // To ensure the line extends to the last point even if it's the only one
-                if (timestamps.length > 0 && dataPoints[dataPoints.length - 1]?.x !== timestamps[timestamps.length - 1]) {
-                    dataPoints.push({ x: timestamps[timestamps.length - 1], y: cumulativeCount });
+            } else if (filterType === 'left') {
+                groupedDataPoints.push({ x: rawTimestamps[0].timestamp, y: rawTimestamps[0].count });
+
+                for (let i = 1; i < rawTimestamps.length; i++) {
+                    const currentEvent = rawTimestamps[i];
+                    const lastPoint = groupedDataPoints[groupedDataPoints.length - 1];
+
+                    if (currentEvent.timestamp.getTime() - lastPoint.x.getTime() <= THIRTY_MINUTES_MS) {
+                        lastPoint.x = currentEvent.timestamp;
+                        lastPoint.y = currentEvent.count;
+                    } else {
+                        groupedDataPoints.push({ x: currentEvent.timestamp, y: currentEvent.count });
+                    }
                 }
             }
-        }
 
+            label = selectedOptionText; 
+            borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : (filterType === 'drunk' ? 'rgba(243, 156, 18, 1)' : 'rgba(192, 57, 43, 1)');
+            backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : (filterType === 'drunk' ? 'rgba(243, 156, 18, 0.2)' : 'rgba(192, 57, 43, 0.2)');
+
+            dataPoints = groupedDataPoints; 
+        }
 
         const chartData = {
             datasets: [{
                 label: label, data: dataPoints,
                 borderColor: borderColor, backgroundColor: backgroundColor,
-                fill: true, tension: 0.0 // Changed tension to 0.0 for less smoothness
+                fill: true, tension: 0.4 // Changed tension to 0.4 for smoothness
             }]
         };
 
@@ -267,15 +264,6 @@ function showStatsModal(person) {
                         }
                     },
                     // Removed the main chart title when data exists
-                    // title: {
-                    //     display: true,
-                    //     text: `Cumulative ${selectedOptionText} Over Time`,
-                    //     font: {
-                    //         size: 18,
-                    //         family: 'Cinzel Decorative'
-                    //     },
-                    //     color: '#5c3d2e'
-                    // }
                 },
                 scales: {
                     x: {
