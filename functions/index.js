@@ -117,18 +117,26 @@ exports.getOracleJudgement = onCall(
 
           Based on the rules, determine a fitting consequence. Your response
           MUST be a JSON object with the following properties.
-          - "type": (string) "addStripes", "rollDice", "addStripesAndRollDice", "innocent", or "acknowledge".
+          - "type": (string) "addStripes", "rollDice", "addStripesAndRollDice",
+            "innocent", or "acknowledge".
             - "addStripes": For assigning stripes.
             - "rollDice": For requiring a dice roll.
             - "addStripesAndRollDice": For both stripes and dice roll.
             - "innocent": If no rules are clearly broken.
-            - "acknowledge": If the prompt is unclear, irrelevant, or not a transgression.
-          - "name": (string, optional) The name of the person involved, e.g., "Noud". Only include if a person is clearly identified.
-          - "count": (number, optional) The number of stripes, e.g., 3. Only if "type" is "addStripes" or "addStripesAndRollDice".
-          - "diceValue": (number, optional) The maximum value of the die, e.g., 6. Only if "type" is "rollDice" or "addStripesAndRollDice".
-          - "rulesBroken": (array of strings, optional) E.g., ["Rule 2", "Rule 3"]. Only include if rules are broken.
-          - "displayMessage": (string) A natural language judgment string. This message should reflect all actions determined by the 'type' and include the 'rulesBroken' in brackets at the end.
-
+            - "acknowledge": If the prompt is unclear, irrelevant, or not a
+              transgression.
+          - "name": (string, optional) The name of the person, e.g., "Noud".
+            Only include if a person is clearly identified.
+          - "count": (number, optional) The number of stripes, e.g., 3. Only if
+            type involves stripes.
+          - "diceValue": (number, optional) Max value of die, e.g., 6. Only if
+            type involves dice.
+          - "rulesBroken": (array of strings, optional) E.g., ["Rule 2",
+            "Rule 3"]. Only include if rules are broken.
+          - "displayMessage": (string) A natural language judgment string. This
+            message should reflect all actions determined by the 'type' and
+            include the 'rulesBroken' in brackets at the end.
+          
           Example JSON Output:
           {
             "type": "addStripesAndRollDice",
@@ -136,7 +144,7 @@ exports.getOracleJudgement = onCall(
             "count": 3,
             "diceValue": 6,
             "rulesBroken": ["Rule 2", "Rule 3"],
-            "displayMessage": "Noud gets 3 stripes and rolls a 6-sided die [Rule 2, 3]."
+            "displayMessage": "Noud gets 3 stripes and rolls a 6-sided die [R2,3]."
           }
           If no rules are broken:
           {
@@ -149,7 +157,8 @@ exports.getOracleJudgement = onCall(
             "displayMessage": "Oracle acknowledges the message. No specific judgment."
           }
 
-          Ensure the JSON is valid and complete. Only output the JSON object. Do NOT include any other text or formatting outside the JSON.
+          Ensure the JSON is valid and complete. Only output the JSON object. Do
+          NOT include any other text or formatting outside the JSON.
         `;
 
         const rawResult = await model.generateContent(fullPrompt);
@@ -168,8 +177,10 @@ exports.getOracleJudgement = onCall(
         }
         
         // Ensure structuredJudgement has necessary fields
-        if (!structuredJudgement || !structuredJudgement.type || !structuredJudgement.displayMessage) {
-            logger.error("AI output JSON missing required fields:", structuredJudgement);
+        if (!structuredJudgement || !structuredJudgement.type ||
+            !structuredJudgement.displayMessage) {
+            logger.error("AI output JSON missing required fields:",
+                structuredJudgement);
             throw new HttpsError(
                 "internal",
                 "Oracle's judgment format was incomplete.",
@@ -178,33 +189,34 @@ exports.getOracleJudgement = onCall(
 
         // Apply fuzzy matching to the name in structuredJudgement.name
         if (structuredJudgement.name && ledgerNames && ledgerNames.length > 0) {
-            let aiSuggestedName = structuredJudgement.name;
-            let closestName = aiSuggestedName;
-            let minDistance = -1;
+          const aiSuggestedName = structuredJudgement.name;
+          let closestName = aiSuggestedName;
+          let minDistance = -1;
 
-            ledgerNames.forEach((actualName) => {
-                const distance = levenshteinDistance(
-                    aiSuggestedName.toLowerCase(),
-                    actualName.toLowerCase(),
-                );
-                if (minDistance === -1 || distance < minDistance) {
-                    minDistance = distance;
-                    closestName = actualName;
-                }
-            });
-
-            const isNotTooDifferent = minDistance < 3;
-            // Ensure we don't accidentally replace a name if the AI said "innocent"
-            // The AI should handle 'innocent' type itself, but this is a safeguard.
-            const isNotInnocentJudgement = structuredJudgement.type !== 'innocent';
-
-            if (isNotTooDifferent && isNotInnocentJudgement) {
-                // Replace the original name with the fuzzy-matched name in the display message
-                // and update the name in the structured object itself
-                const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi");
-                structuredJudement.displayMessage = structuredJudgement.displayMessage.replace(nameRegex, closestName);
-                structuredJudgement.name = closestName; // Update name in structured object
+          ledgerNames.forEach((actualName) => {
+            const distance = levenshteinDistance(
+                aiSuggestedName.toLowerCase(),
+                actualName.toLowerCase(),
+            );
+            if (minDistance === -1 || distance < minDistance) {
+              minDistance = distance;
+              closestName = actualName;
             }
+          });
+
+          const isNotTooDifferent = minDistance < 3;
+          // Ensure we don't accidentally replace a name if the AI said "innocent"
+          // The AI should handle 'innocent' type itself, but this is a safeguard.
+          const isNotInnocentJudgement = structuredJudgement.type !== "innocent";
+
+          if (isNotTooDifferent && isNotInnocentJudgement) {
+            // Replace the original name with the fuzzy-matched name in the
+            // display message and update the name in the structured object itself
+            const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi");
+            structuredJudgement.displayMessage = 
+                structuredJudgement.displayMessage.replace(nameRegex, closestName);
+            structuredJudgement.name = closestName; // Update name in structured object
+          }
         }
 
         logger.info("Oracle structured judgement:", structuredJudgement);
