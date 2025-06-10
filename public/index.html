@@ -125,7 +125,8 @@
                 <button id="open-randomizer-hub-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Randomizers">
                     🎲📝
                 </button>
-                <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]" list="ledger-names">
+                <datalist id="ledger-names"></datalist>
                 <button id="add-btn" class="btn-ancient w-[56px] h-[56px] flex items-center justify-center rounded-md text-3xl font-bold" title="Inscribe Name">
                     +
                 </button>
@@ -196,28 +197,7 @@
                 <div id="dice-roulette-results" class="mt-4">
                     </div>
             </div>
-
-            <!-- Manual stripe assignment in Dice Roller - Now only appears conditionally via JS -->
-            <div id="manual-stripe-section" class="hidden">
-                <div class="section-divider my-8"></div>
-                <h3 class="font-cinzel-decorative text-2xl text-center text-[#5c3d2e] mb-4">Bestow Stripes Manually</h3>
-                <p class="block text-lg font-cinzel-decorative text-[#5c3d2e] mb-2 text-center">Select a person and the amount of stripes.</p>
-
-                <div class="flex flex-col items-center gap-4 mb-6">
-                    <input type="text" id="manual-stripe-person-input" placeholder="Person's Name..." class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]" list="ledger-names">
-                    <datalist id="ledger-names"></datalist>
-                    
-                    <div class="flex items-center justify-center gap-4 w-full">
-                        <button id="decrement-manual-stripes-btn" class="btn-ancient text-2xl font-bold px-4 py-2 rounded-md">-</button>
-                        <input type="number" id="manual-stripe-amount-input" value="1" min="1" class="w-24 text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
-                        <button id="increment-manual-stripes-btn" class="btn-ancient text-2xl font-bold px-4 py-2 rounded-md">+</button>
-                    </div>
-                    
-                    <button id="confirm-manual-stripes-btn" class="btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Confirm Stripes</button>
-                </div>
-            </div>
-            <!-- End Manual stripe assignment -->
-
+            <!-- The manual stripe assignment section is now removed as per your request -->
         </div>
     </div>
 

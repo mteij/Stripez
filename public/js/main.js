@@ -47,17 +47,12 @@ const decreesContent = document.getElementById('decrees-content');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
 const ruleSearchInput = document.getElementById('rule-search-input');
 const appInfoFooter = document.getElementById('app-info-footer');
+const ledgerNamesDatalist = document.getElementById('ledger-names');
 
 
 // Dice randomizer modal and buttons
 const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
 const closeDiceRandomizerModalBtn = document.getElementById('close-dice-randomizer-modal');
-// New: Manual stripe assignment in Dice Roller
-const manualStripePersonInput = document.getElementById('manual-stripe-person-input');
-const manualStripeAmountInput = document.getElementById('manual-stripe-amount-input');
-const incrementManualStripesBtn = document.getElementById('decrement-manual-stripes-btn');
-const decrementManualStripesBtn = document.getElementById('increment-manual-stripes-btn');
-const confirmManualStripesBtn = document.getElementById('confirm-manual-stripes-btn');
 
 
 // List randomizer modal and buttons
@@ -103,6 +98,7 @@ onAuthStateChanged(auth, (user) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
             handleRender();
+            updateDatalist(); // Update datalist whenever ledger data changes
         });
         setupRealtimeListener('rules', (data) => {
             rulesDataCache = data.sort((a, b) => a.order - b.order);
@@ -113,6 +109,52 @@ onAuthStateChanged(auth, (user) => {
         signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
     }
 });
+
+// --- HELPER FUNCTIONS ---
+/**
+ * Updates the datalist for the main input field with current ledger names.
+ */
+function updateDatalist() {
+    if (ledgerNamesDatalist) {
+        ledgerNamesDatalist.innerHTML = ''; // Clear existing options
+        ledgerDataCache.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.name;
+            ledgerNamesDatalist.appendChild(option);
+        });
+    }
+}
+
+/**
+ * Calculates the Levenshtein distance between two strings.
+ * Used for fuzzy string matching.
+ * @param {string} a The first string.
+ * @param {string} b The second string.
+ * @return {number} The Levenshtein distance between the two strings.
+ */
+function levenshteinDistance(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                );
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
+
 
 // --- RENDER LOGIC ---
 function handleRender() {
@@ -185,63 +227,6 @@ function updateAppFooter() {
         <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
         ${lastPunishmentText}
     `;
-}
-
-/**
- * Calculates the Levenshtein distance between two strings.
- * Used for fuzzy string matching.
- * @param {string} a The first string.
- * @param {string} b The second string.
- * @return {number} The Levenshtein distance between the two strings.
- */
-function levenshteinDistance(a, b) {
-    const matrix = [];
-    for (let i = 0; i <= b.length; i++) {
-        matrix[i] = [i];
-    }
-    for (let j = 0; j <= a.length; j++) {
-        matrix[0][j] = j;
-    }
-    for (let i = 1; i <= b.length; i++) {
-        for (let j = 1; j <= a.length; j++) {
-            if (b.charAt(i - 1) == a.charAt(j - 1)) {
-                matrix[i][j] = matrix[i - 1][j - 1];
-            } else {
-                matrix[i][j] = Math.min(
-                    matrix[i - 1][j - 1] + 1,
-                    Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
-                );
-            }
-        }
-    }
-    return matrix[b.length][a.length];
-}
-
-/**
- * Finds the closest matching person name from the ledger based on input.
- * @param {string} inputName The name entered by the user.
- * @returns {object|null} The closest person object from ledgerDataCache, or null if no close match.
- */
-function findClosestPerson(inputName) {
-    if (!inputName) return null;
-    let closestPerson = null;
-    let minDistance = Infinity;
-    const lowerInputName = inputName.toLowerCase();
-
-    ledgerDataCache.forEach(person => {
-        const distance = levenshteinDistance(lowerInputName, person.name.toLowerCase());
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestPerson = person;
-        }
-    });
-
-    // Set a threshold for "close enough" match
-    // Adjust this threshold based on your needs
-    if (minDistance <= 2 || (closestPerson && lowerInputName === closestPerson.name.toLowerCase())) {
-        return closestPerson;
-    }
-    return null;
 }
 
 
@@ -683,9 +668,6 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
     initDiceRandomizer();
-    // Clear manual stripe fields when opening dice modal
-    manualStripePersonInput.value = '';
-    manualStripeAmountInput.value = 1;
 });
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
 closeDiceRandomizerModalBtn?.addEventListener('click', () => diceRandomizerModal.classList.add('hidden'));
@@ -715,7 +697,7 @@ incrementBeersBtn.addEventListener('click', () => {
     const currentValue = parseInt(howManyBeersInput.value);
     const maxValue = parseInt(howManyBeersInput.max);
     if (currentValue < maxValue) {
-        howManyBeersInput.value = currentValue + 1;
+        howToManyBeersInput.value = currentValue + 1;
     }
 });
 
@@ -751,52 +733,3 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         currentPersonIdForDrunkStripes = null; 
     }
 });
-
-// New: Manual Stripes in Dice Roller Listeners
-if (incrementManualStripesBtn) {
-    incrementManualStripesBtn.addEventListener('click', () => {
-        manualStripeAmountInput.value = parseInt(manualStripeAmountInput.value) + 1;
-    });
-}
-
-if (decrementManualStripesBtn) {
-    decrementManualStripesBtn.addEventListener('click', () => {
-        const currentValue = parseInt(manualStripeAmountInput.value);
-        if (currentValue > 1) {
-            manualStripeAmountInput.value = currentValue - 1;
-        }
-    });
-}
-
-if (confirmManualStripesBtn) {
-    confirmManualStripesBtn.addEventListener('click', async () => {
-        const personName = manualStripePersonInput.value.trim();
-        const stripeAmount = parseInt(manualStripeAmountInput.value);
-
-        if (!personName || isNaN(stripeAmount) || stripeAmount <= 0) {
-            alert("Please enter a valid person's name and a positive number of stripes.");
-            return;
-        }
-
-        const person = findClosestPerson(personName);
-
-        if (person) {
-            for (let i = 0; i < stripeAmount; i++) {
-                await addStripeToPerson(person.id);
-            }
-            lastPunishmentInfo = {
-                name: person.name,
-                amount: stripeAmount,
-                type: 'stripes',
-                timestamp: new Date()
-            };
-            updateAppFooter();
-            alert(`Added ${stripeAmount} stripes to ${person.name}.`);
-            diceRandomizerModal.classList.add('hidden'); // Close modal after action
-            manualStripePersonInput.value = ''; // Clear fields
-            manualStripeAmountInput.value = 1;
-        } else {
-            alert(`Person "${personName}" not found on the ledger. Please check the name or add them first.`);
-        }
-    });
-}
