@@ -11,6 +11,36 @@ const geminiApiKey = process.env.GEMINI_KEY;
 // Initialize the Generative AI client with the API key
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
+// Helper function for Levenshtein distance (simple implementation)
+function levenshteinDistance(a, b) {
+    const matrix = [];
+
+    // increment along the first column of each row
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+
+    // increment along the first row
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+
+    // Fill in the rest of the matrix
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, // substitution
+                                        Math.min(matrix[i][j - 1] + 1, // insertion
+                                                 matrix[i - 1][j] + 1)); // deletion
+            }
+        }
+    }
+
+    return matrix[b.length][a.length];
+}
+
 exports.getOracleJudgement = onCall(
     {
       region: "europe-west4",
@@ -19,12 +49,10 @@ exports.getOracleJudgement = onCall(
       secrets: ["GEMINI_KEY"],
     },
     async (request) => {
-      // NEW DEBUGGING LINE: Let's see what the function thinks the API key is.
       logger.info("Verifying API Key loaded in environment:", geminiApiKey);
-
       logger.info("Full request data received from client:", request.data);
 
-      const {promptText, rules} = request.data;
+      const {promptText, rules, ledgerNames} = request.data; // NEW: get ledgerNames
 
       if (!promptText) {
         throw new HttpsError(
@@ -41,13 +69,17 @@ exports.getOracleJudgement = onCall(
         const rulesText = rules
             .map((rule, index) => `${index + 1}. ${rule.text}`)
             .join("\n");
-        const fullPrompt = `
+
+        // Instruct AI to use a placeholder or identify a subject
+        const promptForInitialJudgement = `
           You are an ancient, wise, and slightly dramatic Oracle for a game
           called "Schikko Rules". Your task is to pass judgement on a
           transgression described by a user.
           You must determine a fitting consequence, strictly based on the
           provided rules. If a rule is broken, you MUST explicitly reference
           it by its number.
+          If the transgression involves a person, identify their name from the description.
+          If you identify a person, use their name directly in the judgement.
 
           Here are the official "Schikko's Decrees":
           ---
@@ -68,9 +100,44 @@ exports.getOracleJudgement = onCall(
           Always try to assign a punishment if a rule is clearly broken.
         `;
 
-        const result = await model.generateContent(fullPrompt);
+        const result = await model.generateContent(promptForInitialJudgement);
         const response = await result.response;
-        const judgement = response.text().trim();
+        let judgement = response.text().trim();
+
+        // Fuzzy match the name in the judgement
+        if (ledgerNames && ledgerNames.length > 0) {
+            // Attempt to extract a name from the AI's judgement
+            // This regex tries to find a capitalized word at the beginning of the sentence
+            // or after "gets", "rolls", "must" etc.
+            const nameMatch = judgement.match(/^(\w+)(?= gets|\s+must|\s+rolls|\s+roll)|\s(?:gets|rolls|roll|must)\s(\w+)/i);
+            let aiSuggestedName = null;
+            if (nameMatch) {
+                // Prioritize name at the beginning, then after keywords
+                aiSuggestedName = nameMatch[1] || nameMatch[2];
+            }
+            
+            if (aiSuggestedName) {
+                let closestName = aiSuggestedName;
+                let minDistance = -1;
+
+                ledgerNames.forEach(actualName => {
+                    const distance = levenshteinDistance(aiSuggestedName.toLowerCase(), actualName.toLowerCase());
+                    if (minDistance === -1 || distance < minDistance) {
+                        minDistance = distance;
+                        closestName = actualName;
+                    }
+                });
+
+                // Define a threshold for "closeness"
+                // If the distance is small enough (e.g., < 3) and it's not an "innocent" judgment, replace the name.
+                if (minDistance < 3 && !judgement.toLowerCase().includes('innocent')) {
+                    // Replace the AI's suggested name with the closest matched name from the ledger
+                    // This regex needs to be careful not to replace parts of other words
+                    const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, 'gi');
+                    judgement = judgement.replace(nameRegex, closestName);
+                }
+            }
+        }
 
         logger.info("Oracle judgement rendered:", {judgement});
 

@@ -296,7 +296,8 @@ async function handleGeminiSubmit() {
         // Call the function with the required payload
         const result = await getOracleJudgement({
             promptText: inputText,
-            rules: rulesDataCache
+            rules: rulesDataCache,
+            ledgerNames: ledgerDataCache.map(person => person.name) // Pass names from ledger
         });
 
         // Display the judgement from the AI
