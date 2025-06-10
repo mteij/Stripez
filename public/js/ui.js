@@ -26,10 +26,7 @@ function renderLedger(viewData, term) {
 
     // A more robust way would be to measure the actual available width of the parent container at runtime.
     // For now, let's use a breakpoint-based logic or a more fixed threshold, and ensure layout handles overflow.
-    // Let's try a fixed threshold that works well on most small screens, and ensure the `overflow-x-auto` handles anything beyond that.
-    
-    // Previous calculation: STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.floor(estimatedStripeAreaWidth / effectiveStripeWidthPx);
-    // This made the threshold very low on small screens. Let's make it a fixed number that allows for some scrolling.
+    // Let's make it a fixed number that allows for some scrolling.
     
     STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20; // Default to 20 stripes before showing number
 
@@ -92,6 +89,7 @@ function renderLedger(viewData, term) {
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
                     <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-52 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
                         <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Remove Last Stripe</a>
+                        <a href="#" data-action="remove-drunk-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Revert Drunk Stripe</a>
                         <a href="#" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
                         <div class="border-t border-[#b9987e] my-1"></div>
                         <a href="#" data-action="delete" data-id="${person.id}" class="block px-4 py-2 text-md text-red-700 hover:bg-[#f5eeda] hover:text-red-800 font-bold">Delete Person</a>

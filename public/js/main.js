@@ -561,6 +561,6 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
             await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count); 
         }
         drunkStripesModal.classList.add('hidden'); 
-        currentPersonIdForDrunkStripes = null; 
+        currentPersonIdForDrunkStripes = null; // Corrected typo here
     }
 });
