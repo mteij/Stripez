@@ -112,12 +112,17 @@ function showStatsModal(person) {
     const statsName = document.getElementById('stats-name');
     const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d');
     const stripeFilterSelect = document.getElementById('stripe-filter-select'); // Get the new select element
+    const remainingStripesDisplay = document.getElementById('remaining-stripes-display'); // New element
+
 
     statsName.textContent = `Statistics for ${person.name}`;
     if (stripeChart) stripeChart.destroy();
 
     const normalStripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
     const drunkenStripeTimestamps = (person.drunkenStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
+    const remainingCount = normalStripeTimestamps.length - drunkenStripeTimestamps.length;
+    remainingStripesDisplay.textContent = `Remaining Penalties: ${Math.max(0, remainingCount)}`; // Always show remaining
+
 
     // Function to update the chart based on the selected filter
     const updateChart = (filterType) => {
@@ -172,13 +177,13 @@ function showStatsModal(person) {
             }
 
         } else if (filterType === 'remaining') {
-            const remainingCount = normalStripeTimestamps.length - drunkenStripeTimestamps.length;
-            statsName.textContent = `Remaining Penalties for ${person.name}: ${Math.max(0, remainingCount)}`;
+            const currentRemainingCount = normalStripeTimestamps.length - drunkenStripeTimestamps.length;
+            // This case is primarily for display, not a time series chart
             stripeChart = new Chart(stripeChartCanvas, {
                 type: 'line', data: { datasets: [] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, remainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } },
+                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, currentRemainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } },
                     scales: { x: { display: false }, y: { display: false } }
                 }
             });
@@ -234,7 +239,7 @@ function showStatsModal(person) {
         });
     };
 
-    // Initial chart render (default to total)
+    // Initial chart render based on current select value
     updateChart(stripeFilterSelect.value);
 
     // Attach event listeners to filter dropdown

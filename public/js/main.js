@@ -73,6 +73,8 @@ const howManyBeersInput = document.getElementById('how-many-beers-input');
 const incrementBeersBtn = document.getElementById('increment-beers-btn');
 const decrementBeersBtn = document.getElementById('decrement-beers-btn');
 const confirmDrunkenStripesBtn = document.getElementById('confirm-drunken-stripes-btn');
+const availableStripesDisplay = document.getElementById('available-stripes-display'); // New element
+
 
 let currentPersonIdForDrunkenStripes = null; // To store the ID of the person for whom the modal is open
 
@@ -410,7 +412,7 @@ showDecreesBtn?.addEventListener('click', () => {
         showDecreesBtn.querySelector('span:first-child').textContent = "Schikko's Decrees";
         if (rulesListOl.classList.contains('rules-list-editing')) {
             rulesListOl.classList.remove('rules-list-editing');
-            editRulesBtn.textContent = 'Edit Decrees';
+            editRulesBtn.textContent = 'Finish Editing';
         }
         ruleSearchInput.value = '';
         currentRuleSearchTerm = '';
@@ -429,15 +431,36 @@ punishmentListDiv.addEventListener('click', (e) => {
         case 'add-stripe': addStripeToPerson(id); break;
         case 'add-drunken-stripe': // New action to open drunken stripes modal
             currentPersonIdForDrunkenStripes = id;
+            const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkenStripes);
+            const normalStripes = (person?.stripes?.length || 0) - (person?.drunkenStripes?.length || 0); // Calculate truly available stripes
+            
             howManyBeersInput.value = 1; // Reset input
+            howManyBeersInput.max = normalStripes; // Set max value
+            availableStripesDisplay.textContent = `Available Penalties: ${normalStripes}`; // Update display
+            
+            if (normalStripes <= 0) {
+                // Disable buttons and input if no stripes available
+                howManyBeersInput.disabled = true;
+                incrementBeersBtn.disabled = true;
+                decrementBeersBtn.disabled = true;
+                confirmDrunkenStripesBtn.disabled = true;
+                availableStripesDisplay.textContent = 'No penalties available to fulfill!';
+            } else {
+                // Enable if stripes are available
+                howManyBeersInput.disabled = false;
+                incrementBeersBtn.disabled = false;
+                decrementBeersBtn.disabled = false;
+                confirmDrunkenStripesBtn.disabled = false;
+            }
+
             drunkenStripesModal.classList.remove('hidden');
             break;
         case 'remove-stripe': handleRemoveStripe(id); break;
         case 'rename': handleRename(id); break;
         case 'delete': handleDeletePerson(id); break;
         case 'show-stats':
-            const person = ledgerDataCache.find(p => p.id === id);
-            if (person) showStatsModal(person);
+            const personToShowStats = ledgerDataCache.find(p => p.id === id);
+            if (personToShowStats) showStatsModal(personToShowStats);
             break;
     }
 });
@@ -502,7 +525,11 @@ closeDrunkenStripesModalBtn.addEventListener('click', () => {
 });
 
 incrementBeersBtn.addEventListener('click', () => {
-    howManyBeersInput.value = parseInt(howManyBeersInput.value) + 1;
+    const currentValue = parseInt(howManyBeersInput.value);
+    const maxValue = parseInt(howManyBeersInput.max);
+    if (currentValue < maxValue) {
+        howManyBeersInput.value = currentValue + 1;
+    }
 });
 
 decrementBeersBtn.addEventListener('click', () => {
@@ -512,13 +539,4 @@ decrementBeersBtn.addEventListener('click', () => {
     }
 });
 
-confirmDrunkenStripesBtn.addEventListener('click', async () => {
-    if (currentPersonIdForDrunkenStripes) {
-        const count = parseInt(howManyBeersInput.value);
-        if (count > 0) {
-            await addDrunkenStripeToPerson(currentPersonIdForDrunkenStripes, count);
-        }
-        drunkenStripesModal.classList.add('hidden');
-        currentPersonIdForDrunkenStripes = null; // Clear the stored ID
-    }
-});
+confirmDrunken
