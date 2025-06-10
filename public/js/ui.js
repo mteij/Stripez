@@ -45,7 +45,7 @@ function renderLedger(viewData, term) {
 
     viewData.forEach(person => {
         const normalStripesCount = person.stripes?.length || 0;
-        const drunkenStripesCount = person.drunkenStripes?.length || 0; // New: Get drunken stripes count
+        const drunkStripesCount = person.drunkenStripes?.length || 0; // Renamed variable and property access
         
         let stripesContentHtml = ''; // Will hold either individual stripe divs or the number string
         let stripeContainerDynamicClasses = ''; // Classes for the div wrapping stripes/number
@@ -53,16 +53,16 @@ function renderLedger(viewData, term) {
         // Decide whether to show individual stripes or a number
         if (normalStripesCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drunken: ${drunkenStripesCount})</p>`;
+            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drunk: ${drunkStripesCount})</p>`; // Renamed text
             stripeContainerDynamicClasses += 'justify-start'; // Left-align the number
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
             const stripesToDisplay = normalStripesCount; // Always display based on total penalties
 
             for (let i = 0; i < stripesToDisplay; i++) {
-                if (i < drunkenStripesCount) { // This stripe is drunken
+                if (i < drunkStripesCount) { // This stripe is drunk (Renamed variable)
                     stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk"></div>`;
-                } else { // This stripe is normal (un-drunken)
+                } else { // This stripe is normal (un-drunk)
                     const isFifthStripe = (i + 1) % 5 === 0;
                     
                     // Apply black stripe if it's a 5th undrunken stripe
@@ -118,8 +118,8 @@ function showStatsModal(person) {
     if (stripeChart) stripeChart.destroy();
 
     const normalStripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
-    const drunkenStripeTimestamps = (person.drunkenStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
-    const remainingCount = normalStripeTimestamps.length - drunkenStripeTimestamps.length;
+    const drunkStripeTimestamps = (person.drunkenStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b); // Renamed variable and property access
+    const remainingCount = normalStripeTimestamps.length - drunkStripeTimestamps.length; // Renamed variable
     remainingStripesDisplay.textContent = `Remaining Penalties: ${Math.max(0, remainingCount)}`; // Always show remaining
 
 
@@ -132,14 +132,14 @@ function showStatsModal(person) {
         let borderColor = '';
         let backgroundColor = '';
 
-        if (filterType === 'total' || filterType === 'normal' || filterType === 'drunken') {
+        if (filterType === 'total' || filterType === 'normal' || filterType === 'drunk') { // Renamed 'drunken' to 'drunk'
             let timestamps = [];
             if (filterType === 'total') {
-                timestamps = [...normalStripeTimestamps, ...drunkenStripeTimestamps].sort((a, b) => a - b);
+                timestamps = [...normalStripeTimestamps, ...drunkStripeTimestamps].sort((a, b) => a - b); // Renamed variable
             } else if (filterType === 'normal') {
                 timestamps = normalStripeTimestamps;
-            } else if (filterType === 'drunken') {
-                timestamps = drunkenStripeTimestamps;
+            } else if (filterType === 'drunk') { // Renamed 'drunken' to 'drunk'
+                timestamps = drunkStripeTimestamps; // Renamed variable
             }
 
             if (timestamps.length === 0) {
@@ -147,14 +147,14 @@ function showStatsModal(person) {
                     type: 'line', data: { datasets: [] },
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        plugins: { title: { display: true, text: `No ${filterType === 'normal' ? 'penalties given' : (filterType === 'drunken' ? 'penalties fulfilled (drunk)' : 'events')} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } },
+                        plugins: { title: { display: true, text: `No ${filterType === 'normal' ? 'penalties given' : (filterType === 'drunk' ? 'penalties fulfilled (drunk)' : 'events')} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } }, // Renamed text
                         scales: { x: { display: false }, y: { display: false } }
                     }
                 });
                 return;
             }
 
-            label = filterType === 'total' ? 'Total Stripes' : (filterType === 'normal' ? 'Penalties Given (Red Stripes)' : 'Penalties Fulfilled (Drunken Stripes)');
+            label = filterType === 'total' ? 'Total Stripes' : (filterType === 'normal' ? 'Penalties Given (Red Stripes)' : 'Penalties Fulfilled (Drunk Stripes)'); // Renamed text
             borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 1)' : 'rgba(243, 156, 18, 1)');
             backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 0.2)' : 'rgba(243, 156, 18, 0.2)');
 
@@ -176,7 +176,7 @@ function showStatsModal(person) {
             }
 
         } else if (filterType === 'remaining') { // This block is now effectively removed as an option
-            const currentRemainingCount = normalStripeTimestamps.length - drunkenStripeTimestamps.length;
+            const currentRemainingCount = normalStripeTimestamps.length - drunkStripeTimestamps.length; // Renamed variable
             // This case is primarily for display, not a time series chart
             stripeChart = new Chart(stripeChartCanvas, {
                 type: 'line', data: { datasets: [] },
