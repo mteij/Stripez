@@ -1,6 +1,5 @@
 // In functions/index.js
 
-// CORRECTED: HttpsError is now imported directly
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
@@ -17,6 +16,9 @@ exports.getOracleJudgement = onCall(
       cors: [/nicat\.mteij\.nl$/, /web\.app$/, /firebaseapp\.com$/],
     },
     async (request) => {
+      // NEW DEBUGGING LINE: Let's see what the function thinks the API key is.
+      logger.info("Verifying API Key loaded in environment:", geminiApiKey);
+
       logger.info("Full request data received from client:", request.data);
 
       const {promptText, rules} = request.data;
@@ -29,7 +31,6 @@ exports.getOracleJudgement = onCall(
       }
 
       try {
-        // CORRECTED: Line reformatted to be under 80 characters
         const model = genAI.getGenerativeModel({
           model: "gemini-1.5-flash",
         });
@@ -67,7 +68,6 @@ exports.getOracleJudgement = onCall(
 
         return {judgement};
       } catch (error) {
-        // CORRECTED: Line reformatted to be under 80 characters
         logger.error("Error calling Gemini API:", error);
         throw new HttpsError(
             "internal",
