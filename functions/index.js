@@ -57,7 +57,7 @@ function levenshteinDistance(a, b) {
  * @param {object} request.data The request data sent by the client.
  * @param {string} request.data.promptText The user's transgression description.
  * @param {Array<object>} request.data.rules The list of existing rules.
- * @param {Array<string>} request.data.ledgerNames The list of names from the ledger.
+ * @param {Array<string>} request.data.ledgerNames List of names from the ledger.
  * @return {object} An object containing the generated judgement string.
  * @throws {HttpsError} If promptText is missing or Gemini API call fails.
  */
@@ -76,7 +76,7 @@ exports.getOracleJudgement = onCall(
       logger.info("Verifying API Key loaded in environment:", geminiApiKey);
       logger.info("Full request data received from client:", request.data);
 
-      const {promptText, rules, ledgerNames} = request.data; // NEW: get ledgerNames
+      const {promptText, rules, ledgerNames} = request.data; // Get ledgerNames
 
       if (!promptText) {
         throw new HttpsError(
@@ -132,8 +132,6 @@ exports.getOracleJudgement = onCall(
         // Fuzzy match the name in the judgement
         if (ledgerNames && ledgerNames.length > 0) {
           // Attempt to extract a name from the AI's judgement
-          // This regex tries to find a capitalized word at the beginning of the sentence
-          // or after "gets", "rolls", "must" etc.
           const nameAtStart = judgement.match(
               /^(\w+)(?=\s+(?:gets|must|rolls|roll))/i,
           );
@@ -169,8 +167,7 @@ exports.getOracleJudgement = onCall(
             );
 
             if (isNotTooDifferent && isNotInnocentJudgement) {
-              // Replace the AI's suggested name with the closest matched name
-              // This regex needs to be careful not to replace parts of other words
+              // Avoid replacing partial words with this regex
               const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi");
               judgement = judgement.replace(nameRegex, closestName);
             }
