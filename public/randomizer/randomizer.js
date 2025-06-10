@@ -67,7 +67,7 @@ export function initListRandomizer(ledgerData) {
     listOutput = document.getElementById('list-output');
 
     if (!shuffleListBtn || !pickRandomItemBtn || !listOutput) {
-        console.error("Name randomizer elements not found!");
+        console.error("Name randomizer elements not found! Check IDs in index.html.");
         return;
     }
 
@@ -114,19 +114,23 @@ export function initDiceRandomizer() {
     diceMaxValueSlider = document.getElementById('dice-max-value-slider');
     diceSliderValueSpan = document.getElementById('dice-slider-value');
 
-    // New elements
+    // New elements for assignment section
     dicePunishmentAssignContainer = document.getElementById('dice-punishment-assign-container');
     assignPersonSelect = document.getElementById('assign-person-select');
     rolledStripesDisplay = document.getElementById('rolled-stripes-display');
     actualRolledValueSpan = document.getElementById('actual-rolled-value');
     assignStripesBtn = document.getElementById('assign-stripes-btn');
 
-
-    if (!diceSpinBtn || !diceResultsContainer || !diceMaxValueSlider || !diceSliderValueSpan ||
-        !dicePunishmentAssignContainer || !assignPersonSelect || !rolledStripesDisplay || !actualRolledValueSpan || !assignStripesBtn) {
-        console.error("Dice randomizer elements not found!");
-        return;
-    }
+    // Check if all essential elements are found
+    if (!diceSpinBtn) { console.error("Dice randomizer: 'dice-spin-btn' not found!"); return; }
+    if (!diceResultsContainer) { console.error("Dice randomizer: 'dice-roulette-results' not found!"); return; }
+    if (!diceMaxValueSlider) { console.error("Dice randomizer: 'dice-max-value-slider' not found!"); return; }
+    if (!diceSliderValueSpan) { console.error("Dice randomizer: 'dice-slider-value' not found!"); return; }
+    if (!dicePunishmentAssignContainer) { console.error("Dice randomizer: 'dice-punishment-assign-container' not found!"); return; }
+    if (!assignPersonSelect) { console.error("Dice randomizer: 'assign-person-select' not found!"); return; }
+    if (!rolledStripesDisplay) { console.error("Dice randomizer: 'rolled-stripes-display' not found!"); return; }
+    if (!actualRolledValueSpan) { console.error("Dice randomizer: 'actual-rolled-value' not found!"); return; }
+    if (!assignStripesBtn) { console.error("Dice randomizer: 'assign-stripes-btn' not found!"); return; }
 
     // Clear previous results when initialized (modal opened)
     diceResultsContainer.innerHTML = '';
@@ -143,14 +147,22 @@ export function initDiceRandomizer() {
     });
 }
 
-// New exported function to roll a specific dice value and set up assignment
+/**
+ * Rolls a dice with the given max value, displays the result, and sets up
+ * the UI for assigning the rolled stripes to a selected person.
+ * This is intended for AI-triggered rolls.
+ * @param {number} maxValue The maximum value for the dice roll.
+ * @param {object} targetPerson The person object suggested by the AI to pre-select.
+ * @param {function} addStripeFn The function to call to add stripes to a person.
+ * @param {Array} ledgerData The full array of people from the ledger.
+ */
 export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerData) {
     initDiceRandomizer(); // Ensure elements are found and event listeners set up
 
-    // Now, check if elements were successfully found by initDiceRandomizer
-    if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan ||
-        !dicePunishmentAssignContainer || !assignPersonSelect || !rolledStripesDisplay || !actualRolledValueSpan || !assignStripesBtn) {
-        console.error("Dice randomizer elements are still not found after initialization. Cannot perform programmatic roll and assignment setup.");
+    // After initialization, re-check if the modal element itself is available
+    const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
+    if (!diceRandomizerModal) {
+        console.error("Dice randomizer modal element not found after initialization. Cannot display modal.");
         return;
     }
 
@@ -193,39 +205,37 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
                 await addStripeFn(selectedPersonId);
             }
             alert(`${stripesToAdd} stripes assigned to ${assignPersonSelect.options[assignPersonSelect.selectedIndex].text}!`);
-            // Optionally close the modal or hide the assignment section
-            document.getElementById('dice-randomizer-modal').classList.add('hidden');
+            
+            // Clear current selection and hide assignment section
+            assignPersonSelect.value = ''; // Reset dropdown
             dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
             diceResultsContainer.innerHTML = ''; // Clear dice result
-            // Clear current selection and hide assignment section
-            assignPersonSelect.value = '';
+            diceRandomizerModal.classList.add('hidden'); // Close the dice modal after assignment
         } else {
             alert('Please select a person and ensure a rolled value exists.');
         }
     };
 
     // Ensure the dice randomizer modal is open to show the result
-    const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
-    if (diceRandomizerModal) {
-        diceRandomizerModal.classList.remove('hidden');
-    }
+    console.log("Attempting to unhide dice randomizer modal...");
+    diceRandomizerModal.classList.remove('hidden');
+    console.log("Modal unhide command sent.");
 }
 
-// Old rollSpecificDice is no longer needed with rollDiceAndAssign
+// Old rollSpecificDice is deprecated with rollDiceAndAssign
 export function rollSpecificDice(maxValue) {
-    console.warn("rollSpecificDice is deprecated. Use rollDiceAndAssign for AI-triggered rolls.");
+    console.warn("rollSpecificDice is deprecated. Use rollDiceAndAssign for AI-triggered rolls, or handleDiceSpin for manual dice rolls.");
     initDiceRandomizer();
-    if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan) {
-        console.error("Dice randomizer elements are still not found after initialization. Cannot perform programmatic roll.");
+    const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
+    if (!diceRandomizerModal) {
+        console.error("Dice randomizer modal element not found for rollSpecificDice. Cannot display modal.");
         return;
     }
     diceMaxValueSlider.value = maxValue;
     diceSliderValueSpan.textContent = maxValue;
-    const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
-    if (diceRandomizerModal) {
-        diceRandomizerModal.classList.remove('hidden');
-    }
+    diceRandomizerModal.classList.remove('hidden');
     // Automatically perform the roll for direct calls for backward compatibility if needed
-    // In the new flow, rollDiceAndAssign handles the roll
     handleDiceSpin(); 
+    // For direct calls, immediately hide the assignment section, as it's not needed here
+    dicePunishmentAssignContainer.classList.add('hidden');
 }
