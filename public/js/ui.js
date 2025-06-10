@@ -167,7 +167,7 @@ function showStatsModal(person) {
                 let syntheticTimestamps = []; 
                 
                 if (allEvents.length > 0) {
-                    syntheticTimestamps.push({ timestamp: new Date(allEvents[0].getTime() - 1000), count: 0 });
+                    syntheticTimestamps.push({ timestamp: new Date(allEvents[0].timestamp.getTime() - 1000), count: 0 });
                 }
 
                 allEvents.forEach(event => {
