@@ -56,6 +56,14 @@ const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
+// New Gemini Oracle elements
+const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn');
+const geminiModal = document.getElementById('gemini-modal');
+const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
+const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
+const geminiInput = document.getElementById('gemini-input');
+const geminiOutput = document.getElementById('gemini-output');
+
 
 // --- AUTHENTICATION & INITIALIZATION ---
 onAuthStateChanged(auth, (user) => {
@@ -161,6 +169,38 @@ function updateAppFooter() {
         <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
     `;
 }
+
+/**
+ * Placeholder function to handle the Gemini Oracle submission.
+ * In a real application, this would make a secure call to a backend service.
+ */
+function handleGeminiSubmit() {
+    const inputText = geminiInput.value.toLowerCase().trim();
+    let judgement = '';
+
+    // --- AI Logic Simulation ---
+    // This is a simplified placeholder. A real AI would analyze the text
+    // against the rules stored in `rulesDataCache`.
+    if (inputText.includes('noud')) {
+        if (inputText.includes('spoke ill') || inputText.includes('defied')) {
+            judgement = 'The Oracle has spoken:\nNoud gets 3 stripes.';
+        } else if (inputText.includes('forgot')) {
+            judgement = 'The Oracle\'s decree is clear:\nNoud must roll a die with 2 dotts. ⚁';
+        } else {
+            judgement = 'The Oracle finds no fault in Noud for this.';
+        }
+    } else if (inputText === '') {
+        judgement = 'The Oracle cannot judge the unspoken. Inscribe the transgression.';
+    } 
+    else {
+        judgement = 'The Oracle ponders... and decrees a standard penance:\nRoll a die with 6 dotts. ⚅';
+    }
+    // --- End Simulation ---
+
+    geminiOutput.textContent = judgement;
+    geminiOutput.classList.remove('hidden');
+}
+
 
 // --- CONFIRMATION ---
 function confirmSchikko() {
@@ -395,3 +435,17 @@ closeListRandomizerModalBtn?.addEventListener('click', () => {
 closeDiceRandomizerModalBtn?.addEventListener('click', () => {
     diceRandomizerModal.classList.add('hidden');
 });
+
+// Gemini Oracle Listeners
+openGeminiFromHubBtn?.addEventListener('click', () => {
+    randomizerHubModal.classList.add('hidden'); // Close hub
+    geminiModal.classList.remove('hidden'); // Open gemini modal
+    geminiOutput.classList.add('hidden'); // Hide previous output
+    geminiInput.value = ''; // Clear previous input
+});
+
+closeGeminiModalBtn?.addEventListener('click', () => {
+    geminiModal.classList.add('hidden');
+});
+
+geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);

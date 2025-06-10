@@ -214,7 +214,26 @@
             <div class="flex flex-col gap-4">
                 <button id="open-list-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Name Randomizer</button>
                 <button id="open-dice-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Dice Roller</button>
+                <button id="open-gemini-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Oracle's Judgement</button>
             </div>
+        </div>
+    </div>
+
+    <div id="gemini-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-gemini-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Seek the Oracle's Judgement</h2>
+            
+            <p class="block text-lg text-[#5c3d2e] mb-4 text-center">Describe the transgression below, and the Oracle shall decree the consequence.</p>
+            
+            <textarea id="gemini-input" rows="4" placeholder="e.g., 'Noud spoke ill of the Schikko during the sacred feast...'" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]"></textarea>
+
+            <div class="text-center mt-4">
+                <button id="gemini-submit-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Consult the Oracle</button>
+            </div>
+
+            <div id="gemini-output" class="mt-6 p-4 min-h-[60px] text-lg text-center font-bold text-[#c0392b] whitespace-pre-wrap hidden">
+                </div>
         </div>
     </div>
 
