@@ -144,7 +144,7 @@ exports.getOracleJudgement = onCall(
           } else if (nameAfterKeyword) {
             aiSuggestedName = nameAfterKeyword[1];
           }
-            
+
           if (aiSuggestedName) {
             let closestName = aiSuggestedName;
             let minDistance = -1;
