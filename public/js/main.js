@@ -188,9 +188,9 @@ function parseOracleJudgment(judgementText) {
         };
     }
 
-    // Example: "Test must roll dice 🎲 3." or "Test must roll dice 3."
-    // This regex now accounts for an optional dice symbol (🎲) and whitespace between "dice" and the number.
-    const rollDiceMatch = judgementText.match(/(?:roll|rolls) dice\s*🎲?\s*(\d+)/i);
+    // Example: "Test must roll dice 軸 3." or "Test must roll dice 3."
+    // This regex now accounts for an optional dice symbol (軸) and whitespace between "dice" and the number.
+    const rollDiceMatch = judgementText.match(/(?:roll|rolls) dice\s*軸?\s*(\d+)/i);
     if (rollDiceMatch) {
         return {
             type: 'rollDice',
@@ -217,7 +217,7 @@ function createActionButton(parsedJudgement) {
     actionButton.className = 'btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4';
 
     if (parsedJudgement.type === 'addStripes') {
-        actionButton.textContent = `Add ${parsedJudgement.count} Stripe(s) to ${parsedJudgement.name}`;
+        actionButton.textContent = `Add ${parsedJudgement.count} 🟥 to ${parsedJudgement.name}`;
         actionButton.onclick = async () => {
             const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
             if (person) {
@@ -232,14 +232,14 @@ function createActionButton(parsedJudgement) {
             }
         };
     } else if (parsedJudgement.type === 'rollDice') {
-        actionButton.textContent = `Roll a ${parsedJudgement.value}-sided die`;
+        actionButton.textContent = `Roll 🎲 ${parsedJudgement.value}`;
         actionButton.onclick = () => {
             rollSpecificDice(parsedJudgement.value);
             geminiModal.classList.add('hidden');
             actionButton.remove();
         };
     } else if (parsedJudgement.type === 'addStripesAndRollDice') {
-        actionButton.textContent = `Add ${parsedJudgement.count} Stripe(s) to ${parsedJudgement.name} and Roll a ${parsedJudgement.diceValue}-sided die`;
+        actionButton.textContent = `Add ${parsedJudgement.count} 🟥 & Roll 🎲 ${parsedJudgement.diceValue} to ${parsedJudgement.name}`;
         actionButton.onclick = async () => {
             const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
             if (person) {
@@ -481,7 +481,7 @@ editRulesBtn?.addEventListener('click', () => {
 rulesListOl?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-rule-action]');
     if (!target || !rulesListOl.classList.contains('rules-list-editing')) return;
-    const action = target.dataset.ruleAction;
+    const action = target.dataset.action;
     const id = target.dataset.id;
     const ruleIndex = rulesDataCache.findIndex(r => r.id === id);
     if (ruleIndex === -1) return;
