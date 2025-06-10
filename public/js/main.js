@@ -7,8 +7,8 @@ import {
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore,
-    addDrunkStripeToPerson, // Renamed: Import addDrunkStripeToPerson
-    removeLastDrunkStripeFromPerson // New: Import removeLastDrunkStripeFromPerson
+    addDrunkStripeToPerson, // Corrected: Import addDrunkStripeToPerson
+    removeLastDrunkStripeFromPerson // Corrected: Import removeLastDrunkStripeFromPerson
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js';
@@ -67,17 +67,17 @@ const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
 const geminiInput = document.getElementById('gemini-input');
 const geminiOutput = document.getElementById('gemini-output');
 
-// Drunk Stripes Modal Elements (Renamed variables)
-const drunkStripesModal = document.getElementById('drunk-stripes-modal'); // Renamed ID
-const closeDrunkStripesModalBtn = document.getElementById('close-drunk-stripes-modal'); // Renamed ID
+// Drunk Stripes Modal Elements
+const drunkStripesModal = document.getElementById('drunk-stripes-modal');
+const closeDrunkStripesModalBtn = document.getElementById('close-drunk-stripes-modal');
 const howManyBeersInput = document.getElementById('how-many-beers-input');
 const incrementBeersBtn = document.getElementById('increment-beers-btn');
 const decrementBeersBtn = document.getElementById('decrement-beers-btn');
-const confirmDrunkStripesBtn = document.getElementById('confirm-drunk-stripes-btn'); // Renamed ID
-const availableStripesDisplay = document.getElementById('available-stripes-display'); // New element
+const confirmDrunkStripesBtn = document.getElementById('confirm-drunk-stripes-btn');
+const availableStripesDisplay = document.getElementById('available-stripes-display');
 
 
-let currentPersonIdForDrunkStripes = null; // Renamed variable
+let currentPersonIdForDrunkStripes = null;
 
 
 // --- AUTHENTICATION & INITIALIZATION ---
@@ -430,11 +430,11 @@ punishmentListDiv.addEventListener('click', (e) => {
     switch (action) {
         case 'toggle-menu': document.getElementById(`menu-${id}`)?.classList.toggle('hidden'); break;
         case 'add-stripe': addStripeToPerson(id); break;
-        case 'add-drunken-stripe': // Note: HTML uses 'add-drunken-stripe' as data-action, but JS uses 'addDrunkenStripeToPerson'
+        case 'add-drunk-stripe': // Changed to 'drunk'
             currentPersonIdForDrunkStripes = id; 
             const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
             // Calculate available penalties that can still be fulfilled (normal minus already drunk)
-            const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkenStripes?.length || 0); 
+            const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); // Changed to 'drunk'
             
             howManyBeersInput.value = Math.min(1, availablePenaltiesToFulfill); // Default to 1, or 0 if no unfulfilled penalties
             howManyBeersInput.max = availablePenaltiesToFulfill; // Set max value
@@ -458,7 +458,7 @@ punishmentListDiv.addEventListener('click', (e) => {
             drunkStripesModal.classList.remove('hidden'); 
             break;
         case 'remove-stripe': handleRemoveStripe(id); break;
-        case 'remove-drunk-stripe': // New case for removing drunk stripe
+        case 'remove-drunk-stripe': 
             const personToRemoveDrunkStripe = ledgerDataCache.find(p => p.id === id);
             if (personToRemoveDrunkStripe) removeLastDrunkStripeFromPerson(personToRemoveDrunkStripe);
             break;
@@ -497,7 +497,7 @@ document.addEventListener('click', (e) => {
         closeMenus(); 
     }
     // Close drunk stripes modal if click outside and it's open
-    if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunken-stripe"]')) { 
+    if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) { // Changed to 'drunk'
         drunkStripesModal.classList.add('hidden'); 
     }
 });
@@ -525,7 +525,7 @@ openGeminiFromHubBtn?.addEventListener('click', () => { // This is the button mo
 closeGeminiModalBtn?.addEventListener('click', () => geminiModal.classList.add('hidden'));
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
 
-// Drunk Stripes Modal Event Listeners (Renamed variables)
+// Drunk Stripes Modal Event Listeners
 closeDrunkStripesModalBtn.addEventListener('click', () => { 
     drunkStripesModal.classList.add('hidden'); 
 });
@@ -550,7 +550,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         const count = parseInt(howManyBeersInput.value);
         const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes); 
         // Calculate available penalties to fulfill (normal minus already drunk)
-        const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkenStripes?.length || 0); 
+        const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); // Changed to 'drunk'
 
         if (count > availablePenaltiesToFulfill) {
             alert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} penalties remaining.`);
@@ -561,6 +561,6 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
             await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count); 
         }
         drunkStripesModal.classList.add('hidden'); 
-        currentPersonIdForDrunkStripes = null; // Corrected typo here
+        currentPersonIdForDrunkStripes = null; 
     }
 });

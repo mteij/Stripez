@@ -41,7 +41,7 @@ const setupRealtimeListener = (collectionName, callback) => {
 };
 
 const addNameToLedger = async (name, userId) => {
-    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkenStripes: [], addedBy: userId }); 
+    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkStripes: [], addedBy: userId }); // Changed to 'drunkStripes'
 };
 
 const addStripeToPerson = async (docId) => {
@@ -109,7 +109,7 @@ const addDrunkStripeToPerson = async (docId, count) => {
         // Create a distinct timestamp for each stripe.
         // Adding 'i' milliseconds ensures uniqueness even if calls are very fast.
         const distinctTimestamp = new Date(Date.now() + i); 
-        batch.update(docRef, { drunkenStripes: arrayUnion(distinctTimestamp) }); 
+        batch.update(docRef, { drunkStripes: arrayUnion(distinctTimestamp) }); // Changed to 'drunkStripes'
     }
     
     await batch.commit();
@@ -120,12 +120,12 @@ const addDrunkStripeToPerson = async (docId, count) => {
  * @param {object} person - The person object from the ledger.
  */
 const removeLastDrunkStripeFromPerson = async (person) => {
-    if (person && Array.isArray(person.drunkenStripes) && person.drunkenStripes.length > 0) {
+    if (person && Array.isArray(person.drunkStripes) && person.drunkStripes.length > 0) { // Changed to 'drunkStripes'
         const docRef = doc(db, 'punishments', person.id);
         // Sort by timestamp (most recent first) to remove the last one added
-        const sortedDrunkStripes = [...person.drunkenStripes].sort((a, b) => b.toMillis() - a.toMillis());
+        const sortedDrunkStripes = [...person.drunkStripes].sort((a, b) => b.toMillis() - a.toMillis()); // Changed to 'drunkStripes'
         const lastDrunkStripe = sortedDrunkStripes[0];
-        await updateDoc(docRef, { drunkenStripes: arrayRemove(lastDrunkStripe) });
+        await updateDoc(docRef, { drunkStripes: arrayRemove(lastDrunkStripe) }); // Changed to 'drunkStripes'
     }
 };
 
@@ -146,5 +146,5 @@ export {
     updateRuleOrderInFirestore,
     updateRuleTextInFirestore,
     addDrunkStripeToPerson, 
-    removeLastDrunkStripeFromPerson // New: Export the new function
+    removeLastDrunkStripeFromPerson 
 };
