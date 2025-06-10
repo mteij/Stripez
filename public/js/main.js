@@ -8,7 +8,7 @@ import {
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore,
     addDrunkStripeToPerson, // Corrected: Import addDrunkStripeToPerson
-    removeLastDrunkStripeFromPerson // Corrected: Import removeLastDrunkStripeFromPerson
+    removeLastDrunkStripeFromPerson // Corrected: Import removeLastDrunkStripeToPerson
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js';
@@ -167,8 +167,12 @@ function updateAppFooter() {
  * @returns {object|null} An object containing action type and parameters, or null if unparseable.
 */
 function parseOracleJudgment(judgementText) {
-    // Example: "Noud gets 3 stripes and rolls a 6-sided die [Rule 2, Rule 3]."
-    const combinedMatch = judgementText.match(/(\w+) gets (\d+) stripe(?:s)? and (?:rolls|roll) a (\d+)-sided die(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i);
+    // Regex for: "[Name] gets X stripes and rolls Y-sided die [Rule(s) ...]"
+    // Covers variations like "gets", "is assigned", "receives", "has" for stripes.
+    // And "rolls", "roll a" for dice.
+    const combinedMatch = judgementText.match(
+        /(\w+)\s+(?:gets|is assigned|receives|has)\s+(\d+)\s+stripes?\s+and\s+(?:rolls?|roll)\s+(?:a\s+)?(\d+)-sided\s+die(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i
+    );
     if (combinedMatch) {
         return {
             type: 'addStripesAndRollDice',
@@ -178,8 +182,11 @@ function parseOracleJudgment(judgementText) {
         };
     }
 
-    // Example: "Noud gets 3 stripes [Rule 2]"
-    const stripesMatch = judgementText.match(/(\w+) gets (\d+) stripe(?:s)?(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i);
+    // Regex for: "[Name] gets X stripes [Rule(s) ...]"
+    // Covers variations like "gets", "is assigned", "receives", "has" for stripes.
+    const stripesMatch = judgementText.match(
+        /(\w+)\s+(?:gets|is assigned|receives|has)\s+(\d+)\s+stripes?(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i
+    );
     if (stripesMatch) {
         return {
             type: 'addStripes',
@@ -188,8 +195,11 @@ function parseOracleJudgment(judgementText) {
         };
     }
 
-    // Example: "Test must roll dice 3 [Rule 1]."
-    const rollDiceMatch = judgementText.match(/(?:roll|rolls) dice\s*(\d+)(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i);
+    // Regex for: "[Name] must roll (a) die (with) X (sides)." or "Roll die X."
+    // Captures the number following "dice" or "die".
+    const rollDiceMatch = judgementText.match(
+        /(?:\w+\s+(?:must|should|is to)\s+)?(?:roll|rolls)\s+(?:a\s+)?(?:dice|die)?\s*(\d+)(?:-sided)?(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i
+    );
     if (rollDiceMatch) {
         return {
             type: 'rollDice',
