@@ -105,6 +105,10 @@ exports.getOracleJudgement = onCall(
           the description.
           If you identify a person, use their name directly in the judgement.
 
+          IMPORTANT: If multiple rules are broken, calculate and combine their respective penalties.
+          - Add up all the numerical stripe penalties from each broken rule.
+          - Include all specified dice rolls from each broken rule, specifying the type of die if mentioned (e.g., "3-sided die", "6-sided die").
+
           Here are the official "Schikko's Decrees":
           ---
           ${rulesText}
@@ -117,10 +121,15 @@ exports.getOracleJudgement = onCall(
 
           Based on the rules, determine a fitting consequence. Your response
           must be short and in the format: "[Main Judgement] [Broken Rule(s)]".
-          Examples: 'Noud gets 3 stripes [Rule 2]'; 'Noud rolls a 3-sided die [Rule 1, 3]';
-          'Noud gets 3 stripes and rolls a 6-sided die [Rule 2, 3]'.
-          If the described action does not break any rules, you may declare
-          the person innocent and explicitly state 'No rules broken'.
+
+          These examples are illustrative of the output format and logic, and do not represent the actual penalties for the specific rules above. They are designed to show how to combine penalties from multiple rules.
+          Examples:
+          - 'Noud gets 3 stripes [Rule 2]' (for a single rule broken)
+          - 'Emma gets 5 stripes and rolls a 4-sided die [Rule 1, Rule 3]' (for multiple rules broken, summing stripes and including a dice roll)
+          - 'Liam gets 12 stripes, rolls a 6-sided die, and rolls an 8-sided die [Rule 5, Rule 7, Rule 9]' (for multiple rules broken, summing stripes and including multiple distinct dice rolls)
+          - 'Sophie gets 20 stripes and rolls a 10-sided die [Rule 4, Rule 6, Rule 8, Rule 10]' (for several rules broken, summing many stripes and including a specific dice roll)
+          - 'The Oracle declares them innocent. No rules broken.' (if no rules are broken)
+
           Always try to assign a punishment if a rule is clearly broken.
           `; // Reverted to previous natural language prompt
 
