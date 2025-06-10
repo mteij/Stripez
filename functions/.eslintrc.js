@@ -22,7 +22,7 @@ module.exports = {
       "ignoreUrls": true, // Ignore URLs from max-len check
       "ignoreStrings": true, // Ignore long strings from max-len check
       "ignoreTemplateLiterals": true, // Ignore template literals from max-len check
-      "ignoreRegExpLiterals": true // Ignore regex literals from max-len check
+      "ignoreRegExpLiterals": true, // Ignore regex literals from max-len check
     }],
     "indent": "off", // **IMPORTANT: Turn off the indent rule to bypass persistent indentation issues.**
     "no-trailing-spaces": "off", // Turn off the rule for trailing spaces
