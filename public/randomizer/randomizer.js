@@ -19,7 +19,7 @@ function shuffleArray(array) {
     return array;
 }
 
-function renderListOutput(names, isShuffled = true) { // Corrected isShuffed to isShuffled
+function renderListOutput(names, isShuffled = true) {
     if (names.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names available from the ledger.</span>';
         listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
@@ -27,7 +27,7 @@ function renderListOutput(names, isShuffled = true) { // Corrected isShuffed to 
     }
 
     let outputHTML = '';
-    if (isShuffled) { // Corrected isShuffed to isShuffled
+    if (isShuffled) {
         outputHTML = '<h3>Shuffled Names:</h3><ol class="list-output-ol">';
         names.forEach(name => {
             outputHTML += `<li>${name}</li>`;
@@ -136,12 +136,10 @@ export function rollSpecificDice(maxValue) {
     diceMaxValueSlider.value = maxValue;
     diceSliderValueSpan.textContent = maxValue;
 
-    // Trigger the actual roll
-    handleDiceSpin();
-
     // Ensure the dice randomizer modal is open to show the result
     const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
     if (diceRandomizerModal) {
         diceRandomizerModal.classList.remove('hidden');
     }
+    // DO NOT call handleDiceSpin() here. The roll should only happen when the user clicks the button.
 }
