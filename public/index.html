@@ -1,3 +1,4 @@
+// public/index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -164,10 +165,14 @@
             <button id="close-stats-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
             <h2 id="stats-name" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Statistics for...</h2>
             <div id="stats-filters" class="flex justify-center gap-4 mb-4 font-cinzel-decorative text-[#5c3d2e]">
-                <label><input type="radio" name="stripe-filter" value="total" checked> Total Stripes</label>
-                <label><input type="radio" name="stripe-filter" value="normal"> Penalties Given</label>
-                <label><input type="radio" name="stripe-filter" value="drunken"> Penalties Fulfilled</label>
-                <label><input type="radio" name="stripe-filter" value="remaining"> Penalties Remaining</label>
+                <label>
+                    <select id="stripe-filter-select" class="bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                        <option value="total">Total Stripes</option>
+                        <option value="normal">Penalties Given (Red Stripes)</option>
+                        <option value="drunken">Penalties Fulfilled (Drunken Stripes)</option>
+                        <option value="remaining">Remaining Penalties</option>
+                    </select>
+                </label>
             </div>
             <div class="w-full h-80">
                 <canvas id="stripe-chart"></canvas>

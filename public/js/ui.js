@@ -1,4 +1,5 @@
 // public/js/ui.js
+// public/js/ui.js
 
 let stripeChart = null;
 
@@ -87,7 +88,7 @@ function renderLedger(viewData, term) {
             </div>
             <div class="flex items-center gap-2 flex-shrink-0 mt-2 md:mt-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
-                <button data-action="add-drunken-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">🍺 Pour Liquid</button>
+                <button data-action="add-drunken-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">🍺</button>
                 <div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
                     <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-52 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
@@ -110,15 +111,13 @@ function showStatsModal(person) {
     const statsModal = document.getElementById('stats-modal');
     const statsName = document.getElementById('stats-name');
     const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d');
+    const stripeFilterSelect = document.getElementById('stripe-filter-select'); // Get the new select element
 
     statsName.textContent = `Statistics for ${person.name}`;
     if (stripeChart) stripeChart.destroy();
 
     const normalStripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
     const drunkenStripeTimestamps = (person.drunkenStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
-
-    // Get filter options from the DOM
-    const statsFilters = document.getElementById('stats-filters');
 
     // Function to update the chart based on the selected filter
     const updateChart = (filterType) => {
@@ -151,7 +150,7 @@ function showStatsModal(person) {
                 return;
             }
 
-            label = filterType === 'total' ? 'Total Stripes (Penalties + Fulfilled)' : (filterType === 'normal' ? 'Penalties Given (Red Stripes)' : 'Penalties Fulfilled (Drunken Stripes)');
+            label = filterType === 'total' ? 'Total Stripes' : (filterType === 'normal' ? 'Penalties Given (Red Stripes)' : 'Penalties Fulfilled (Drunken Stripes)');
             borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 1)' : 'rgba(243, 156, 18, 1)');
             backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 0.2)' : 'rgba(243, 156, 18, 0.2)');
 
@@ -190,7 +189,7 @@ function showStatsModal(person) {
             datasets: [{
                 label: label, data: dataPoints,
                 borderColor: borderColor, backgroundColor: backgroundColor,
-                fill: true, tension: 0.4
+                fill: true, tension: 0.0 // Changed tension to 0.0 for less smoothness
             }]
         };
 
@@ -236,13 +235,11 @@ function showStatsModal(person) {
     };
 
     // Initial chart render (default to total)
-    updateChart('total');
+    updateChart(stripeFilterSelect.value);
 
-    // Attach event listeners to filter radio buttons (delegation)
-    statsFilters.addEventListener('change', (e) => {
-        if (e.target.name === 'stripe-filter') {
-            updateChart(e.target.value);
-        }
+    // Attach event listeners to filter dropdown
+    stripeFilterSelect.addEventListener('change', (e) => {
+        updateChart(e.target.value);
     });
 
     statsModal.classList.remove('hidden');

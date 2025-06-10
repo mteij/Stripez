@@ -71,6 +71,29 @@ body {
     box-shadow: 0 3px 6px rgba(0,0,0,0.15); /* Slightly more prominent shadow on hover */
 }
 
+/* Square Beer Button */
+.btn-square-beer-button {
+    background-color: #f39c12; /* Beer color */
+    color: white;
+    border: 2px solid #e67e22; /* Darker border */
+    width: 44px; /* Fixed width */
+    height: 44px; /* Fixed height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px; /* Rounded corners */
+    font-size: 1.5rem; /* Larger emoji */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    flex-shrink: 0; /* Prevent it from shrinking */
+}
+
+.btn-square-beer-button:hover {
+    background-color: #e67e22; /* Darker beer color on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
 
 /* Styling for the punishment stripes */
 .punishment-stripe {
