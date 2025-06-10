@@ -8,7 +8,7 @@ import {
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
-import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js'; // Import rollSpecificDice
+import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js';
 // New: Import functions from the Firebase SDK to call our backend
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -200,6 +200,7 @@ function createActionButton(parsedJudgement) {
                 }
                 alert(`${parsedJudgement.count} stripe(s) added to ${person.name}.`);
                 geminiModal.classList.add('hidden'); // Close modal after action
+                actionButton.remove(); // Remove button after click
             } else {
                 alert(`Person '${parsedJudgement.name}' not found on the ledger. Manual action required.`);
             }
@@ -209,11 +210,13 @@ function createActionButton(parsedJudgement) {
         actionButton.onclick = () => {
             rollSpecificDice(parsedJudgement.value);
             geminiModal.classList.add('hidden'); // Close modal after action
+            actionButton.remove(); // Remove button after click
         };
     } else { // Innocent or unhandled judgment, just acknowledge
         actionButton.textContent = 'Acknowledge Judgement';
         actionButton.onclick = () => {
             geminiModal.classList.add('hidden'); // Close modal
+            actionButton.remove(); // Remove button after click
         };
     }
     return actionButton;
