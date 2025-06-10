@@ -97,7 +97,6 @@ function handleRender() {
         if (term) {
             const aStartsWith = nameA.startsWith(term);
             const bStartsWith = nameB.startsWith(term);
-            if (aStartsWith && !bStartsWith) return -1;
             if (!aStartsWith && bStartsWith) return 1;
         }
         switch (currentSortOrder) {
@@ -163,8 +162,9 @@ function parseOracleJudgment(judgementText) {
         };
     }
 
-    // Example: "Noud must roll a die with 3 dotts."
-    const rollDiceMatch = judgementText.match(/roll a die with (\d+) dotts/i);
+    // Example: "Test must roll dice 🎲 3." or "Test must roll dice 3."
+    // This regex now accounts for an optional dice symbol (🎲) and whitespace between "dice" and the number.
+    const rollDiceMatch = judgementText.match(/(?:roll|rolls) dice\s*🎲?\s*(\d+)/i);
     if (rollDiceMatch) {
         return {
             type: 'rollDice',
@@ -198,11 +198,9 @@ function createActionButton(parsedJudgement) {
                 for (let i = 0; i < parsedJudgement.count; i++) {
                     await addStripeToPerson(person.id);
                 }
-                // No alert pop-up here
                 geminiModal.classList.add('hidden');
                 actionButton.remove();
             } else {
-                // No alert pop-up here
                 geminiModal.classList.add('hidden'); // Close modal even if person not found
                 actionButton.remove(); // Remove button
             }
