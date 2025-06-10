@@ -11,7 +11,11 @@ const geminiApiKey = process.env.GEMINI_KEY;
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
 exports.getOracleJudgement = onCall(
-    {region: "europe-west4"},
+    {
+      // We are adding a 'cors' property here
+      region: "europe-west4",
+      cors: [/nicat\.mteij\.nl$/, /web\.app$/, /firebaseapp\.com$/],
+    },
     async (request) => {
       // Log the incoming request data for debugging
       logger.info("Oracle request received", {data: request.data});
