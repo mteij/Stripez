@@ -6,7 +6,8 @@ import {
     auth, onAuthStateChanged, signInAnonymously, setupRealtimeListener,
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
-    deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore
+    deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore,
+    addDrunkenStripeToPerson // New: Import addDrunkenStripeToPerson
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js';
@@ -64,6 +65,16 @@ const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
 const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
 const geminiInput = document.getElementById('gemini-input');
 const geminiOutput = document.getElementById('gemini-output');
+
+// New Drunken Stripes Modal Elements
+const drunkenStripesModal = document.getElementById('drunken-stripes-modal');
+const closeDrunkenStripesModalBtn = document.getElementById('close-drunken-stripes-modal');
+const howManyBeersInput = document.getElementById('how-many-beers-input');
+const incrementBeersBtn = document.getElementById('increment-beers-btn');
+const decrementBeersBtn = document.getElementById('decrement-beers-btn');
+const confirmDrunkenStripesBtn = document.getElementById('confirm-drunken-stripes-btn');
+
+let currentPersonIdForDrunkenStripes = null; // To store the ID of the person for whom the modal is open
 
 
 // --- AUTHENTICATION & INITIALIZATION ---
@@ -151,7 +162,7 @@ function updateAppFooter() {
  * Parses the Oracle's judgment text to extract action and parameters.
  * @param {string} judgementText - The raw judgment string from the Oracle.
  * @returns {object|null} An object containing action type and parameters, or null if unparseable.
- */
+*/
 function parseOracleJudgment(judgementText) {
     // Example: "Noud gets 3 stripes and rolls a 6-sided die."
     const combinedMatch = judgementText.match(/(\w+) gets (\d+) stripe(?:s)? and (?:rolls|roll) a (\d+)-sided die/i);
@@ -416,6 +427,11 @@ punishmentListDiv.addEventListener('click', (e) => {
     switch (action) {
         case 'toggle-menu': document.getElementById(`menu-${id}`)?.classList.toggle('hidden'); break;
         case 'add-stripe': addStripeToPerson(id); break;
+        case 'add-drunken-stripe': // New action to open drunken stripes modal
+            currentPersonIdForDrunkenStripes = id;
+            howManyBeersInput.value = 1; // Reset input
+            drunkenStripesModal.classList.remove('hidden');
+            break;
         case 'remove-stripe': handleRemoveStripe(id); break;
         case 'rename': handleRename(id); break;
         case 'delete': handleDeletePerson(id); break;
@@ -447,7 +463,15 @@ rulesListOl?.addEventListener('click', async (e) => {
         case 'edit': await handleEditRule(id); break;
     }
 });
-document.addEventListener('click', (e) => { if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) closeMenus(); });
+document.addEventListener('click', (e) => { 
+    if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
+        closeMenus(); 
+    }
+    // Close drunken stripes modal if click outside and it's open
+    if (!drunkenStripesModal.classList.contains('hidden') && !e.target.closest('#drunken-stripes-modal') && !e.target.closest('[data-action="add-drunken-stripe"]')) {
+        drunkenStripesModal.classList.add('hidden');
+    }
+});
 openRandomizerHubBtn?.addEventListener('click', () => randomizerHubModal.classList.remove('hidden'));
 closeRandomizerHubModalBtn?.addEventListener('click', () => randomizerHubModal.classList.add('hidden'));
 openListRandomizerFromHubBtn?.addEventListener('click', () => {
@@ -471,3 +495,30 @@ openGeminiFromHubBtn?.addEventListener('click', () => { // This is the button mo
 });
 closeGeminiModalBtn?.addEventListener('click', () => geminiModal.classList.add('hidden'));
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
+
+// New Drunken Stripes Modal Event Listeners
+closeDrunkenStripesModalBtn.addEventListener('click', () => {
+    drunkenStripesModal.classList.add('hidden');
+});
+
+incrementBeersBtn.addEventListener('click', () => {
+    howManyBeersInput.value = parseInt(howManyBeersInput.value) + 1;
+});
+
+decrementBeersBtn.addEventListener('click', () => {
+    const currentValue = parseInt(howManyBeersInput.value);
+    if (currentValue > 1) { // Ensure it doesn't go below 1
+        howManyBeersInput.value = currentValue - 1;
+    }
+});
+
+confirmDrunkenStripesBtn.addEventListener('click', async () => {
+    if (currentPersonIdForDrunkenStripes) {
+        const count = parseInt(howManyBeersInput.value);
+        if (count > 0) {
+            await addDrunkenStripeToPerson(currentPersonIdForDrunkenStripes, count);
+        }
+        drunkenStripesModal.classList.add('hidden');
+        currentPersonIdForDrunkenStripes = null; // Clear the stored ID
+    }
+});

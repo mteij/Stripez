@@ -89,6 +89,17 @@ body {
     border-left: 1px solid #1a242f;
 }
 
+/* New styling for drunken punishment stripes */
+.punishment-stripe-drunk {
+    display: inline-block;
+    width: 5px;
+    height: 20px;
+    background-color: #f39c12; /* A beer-like orange/yellow color */
+    margin-right: 3px;
+    border-left: 1px solid #e67e22; /* Darker border for contrast */
+    transform: skew(-15deg);
+}
+
 /* Set a readable text color for the dropdown options */
 #sort-select option {
     color: black;

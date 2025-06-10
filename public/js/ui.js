@@ -44,24 +44,33 @@ function renderLedger(viewData, term) {
 
 
     viewData.forEach(person => {
-        const stripeCount = person.stripes?.length || 0;
+        const normalStripesCount = person.stripes?.length || 0;
+        const drunkenStripesCount = person.drunkenStripes?.length || 0; // New: Get drunken stripes count
+        
         let stripesContentHtml = ''; // Will hold either individual stripe divs or the number string
         let stripeContainerDynamicClasses = ''; // Classes for the div wrapping stripes/number
         
-        if (stripeCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
+        // Decide whether to show individual stripes or a number
+        if (normalStripesCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${stripeCount}</p>`;
+            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drunken: ${drunkenStripesCount})</p>`;
             stripeContainerDynamicClasses += 'justify-start'; // Left-align the number
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
-            for (let i = 0; i < stripeCount; i++) {
-                const isFifthStripe = (i + 1) % 5 === 0;
-                const isLastStripe = (i + 1) === stripeCount;
+            const stripesToDisplay = normalStripesCount; // Always display based on total penalties
 
-                if (isFifthStripe && !isLastStripe) {
-                    stripesContentHtml += `<div class="punishment-stripe punishment-stripe-black"></div>`;
-                } else {
-                    stripesContentHtml += `<div class="punishment-stripe"></div>`;
+            for (let i = 0; i < stripesToDisplay; i++) {
+                if (i < drunkenStripesCount) { // This stripe is drunken
+                    stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk"></div>`;
+                } else { // This stripe is normal (un-drunken)
+                    const isFifthStripe = (i + 1) % 5 === 0;
+                    
+                    // Apply black stripe if it's a 5th undrunken stripe
+                    if (isFifthStripe) {
+                        stripesContentHtml += `<div class="punishment-stripe punishment-stripe-black"></div>`;
+                    } else {
+                        stripesContentHtml += `<div class="punishment-stripe"></div>`;
+                    }
                 }
             }
             // Add classes for horizontal scrolling, nowrap, min-height, items-start, and padding-left/right
@@ -74,11 +83,11 @@ function renderLedger(viewData, term) {
         personDiv.innerHTML = `
             <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <!-- Stripe/Number container with common and dynamic classes -->
                 <div class="mt-2 flex items-center min-h-[32px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0 mt-2 md:mt-0">
                 <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
+                <button data-action="add-drunken-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">🍺 Pour Liquid</button>
                 <div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
                     <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-52 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
@@ -105,81 +114,134 @@ function showStatsModal(person) {
     statsName.textContent = `Statistics for ${person.name}`;
     if (stripeChart) stripeChart.destroy();
 
-    const stripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
+    const normalStripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
+    const drunkenStripeTimestamps = (person.drunkenStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
 
-    if (stripeTimestamps.length === 0) {
-        stripeChart = new Chart(stripeChartCanvas, {
-            type: 'line', data: { datasets: [] },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { title: { display: true, text: 'No stripes have been recorded for this transgressor.', font: { size: 16 }, color: '#6f4e37' } },
-                scales: { x: { display: false }, y: { display: false } }
+    // Get filter options from the DOM
+    const statsFilters = document.getElementById('stats-filters');
+
+    // Function to update the chart based on the selected filter
+    const updateChart = (filterType) => {
+        if (stripeChart) stripeChart.destroy(); // Destroy existing chart before creating a new one
+
+        let dataPoints = [];
+        let label = '';
+        let borderColor = '';
+        let backgroundColor = '';
+
+        if (filterType === 'total' || filterType === 'normal' || filterType === 'drunken') {
+            let timestamps = [];
+            if (filterType === 'total') {
+                timestamps = [...normalStripeTimestamps, ...drunkenStripeTimestamps].sort((a, b) => a - b);
+            } else if (filterType === 'normal') {
+                timestamps = normalStripeTimestamps;
+            } else if (filterType === 'drunken') {
+                timestamps = drunkenStripeTimestamps;
             }
-        });
-        statsModal.classList.remove('hidden');
-        return;
-    }
 
-    const TIME_WINDOW_MS = 5000;
-    const graphPoints = [];
-    graphPoints.push({ x: stripeTimestamps[0], y: 0 });
-    let lastTimestamp = stripeTimestamps[0];
-    let cumulativeCount = 1;
-    for (let i = 1; i < stripeTimestamps.length; i++) {
-        const currentTimestamp = stripeTimestamps[i];
-        if (currentTimestamp.getTime() - lastTimestamp.getTime() > TIME_WINDOW_MS) {
-            graphPoints.push({ x: lastTimestamp, y: cumulativeCount });
+            if (timestamps.length === 0) {
+                stripeChart = new Chart(stripeChartCanvas, {
+                    type: 'line', data: { datasets: [] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { title: { display: true, text: `No ${filterType === 'normal' ? 'penalties given' : (filterType === 'drunken' ? 'penalties fulfilled (drunk)' : 'events')} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } },
+                        scales: { x: { display: false }, y: { display: false } }
+                    }
+                });
+                return;
+            }
+
+            label = filterType === 'total' ? 'Total Stripes (Penalties + Fulfilled)' : (filterType === 'normal' ? 'Penalties Given (Red Stripes)' : 'Penalties Fulfilled (Drunken Stripes)');
+            borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 1)' : 'rgba(243, 156, 18, 1)');
+            backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 0.2)' : 'rgba(243, 156, 18, 0.2)');
+
+            dataPoints = [];
+            let cumulativeCount = 0;
+            // Add a starting point at the first event time, with 0 count, for visual clarity
+            if (timestamps.length > 0) {
+                dataPoints.push({ x: timestamps[0], y: 0 });
+            }
+
+            timestamps.forEach(timestamp => {
+                cumulativeCount++;
+                dataPoints.push({ x: timestamp, y: cumulativeCount });
+            });
+            
+            // To ensure the line extends to the last point even if it's the only one
+            if (timestamps.length > 0 && dataPoints[dataPoints.length - 1]?.x !== timestamps[timestamps.length - 1]) {
+                dataPoints.push({ x: timestamps[timestamps.length - 1], y: cumulativeCount });
+            }
+
+        } else if (filterType === 'remaining') {
+            const remainingCount = normalStripeTimestamps.length - drunkenStripeTimestamps.length;
+            statsName.textContent = `Remaining Penalties for ${person.name}: ${Math.max(0, remainingCount)}`;
+            stripeChart = new Chart(stripeChartCanvas, {
+                type: 'line', data: { datasets: [] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, remainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } },
+                    scales: { x: { display: false }, y: { display: false } }
+                }
+            });
+            return;
         }
-        cumulativeCount++;
-        lastTimestamp = currentTimestamp;
-    }
-    graphPoints.push({ x: lastTimestamp, y: cumulativeCount });
 
-    const chartData = {
-        datasets: [{
-            label: 'Total Stripes Over Time', data: graphPoints,
-            borderColor: 'rgba(192, 57, 43, 1)', backgroundColor: 'rgba(192, 57, 43, 0.2)',
-            fill: true, tension: 0.4
-        }]
-    };
+        const chartData = {
+            datasets: [{
+                label: label, data: dataPoints,
+                borderColor: borderColor, backgroundColor: backgroundColor,
+                fill: true, tension: 0.4
+            }]
+        };
 
-    stripeChart = new Chart(stripeChartCanvas, {
-        type: 'line', data: chartData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            const date = new Date(tooltipItems[0].parsed.x);
-                            return date.toLocaleString(undefined, {
-                                year: 'numeric', month: 'short', day: 'numeric',
-                                hour: '2-digit', minute: '2-digit'
-                            });
-                        },
-                        label: function(tooltipItem) {
-                            const value = tooltipItem.parsed.y;
-                            return `Total Stripes: ${value}`;
+        stripeChart = new Chart(stripeChartCanvas, {
+            type: 'line', data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const date = new Date(tooltipItems[0].parsed.x);
+                                return date.toLocaleString(undefined, {
+                                    year: 'numeric', month: 'short', day: 'numeric',
+                                    hour: '2-digit', minute: '2-digit'
+                                });
+                            },
+                            label: function(tooltipItem) {
+                                const value = tooltipItem.parsed.y;
+                                return `${label}: ${value}`;
+                            }
                         }
                     }
-                }
-            },
-            scales: {
-                x: {
-                    type: 'time',
-                    title: { display: true, text: 'Date of Transgression' }
                 },
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'Total Stripes' },
-                    ticks: { stepSize: 1 }
+                scales: {
+                    x: {
+                        type: 'time',
+                        title: { display: true, text: 'Date of Event' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Count' },
+                        ticks: { stepSize: 1 }
+                    }
                 }
             }
+        });
+    };
+
+    // Initial chart render (default to total)
+    updateChart('total');
+
+    // Attach event listeners to filter radio buttons (delegation)
+    statsFilters.addEventListener('change', (e) => {
+        if (e.target.name === 'stripe-filter') {
+            updateChart(e.target.value);
         }
     });
 

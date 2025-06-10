@@ -163,6 +163,12 @@
         <div class="bg-[#fdf8e9] w-full max-w-3xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
             <button id="close-stats-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
             <h2 id="stats-name" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Statistics for...</h2>
+            <div id="stats-filters" class="flex justify-center gap-4 mb-4 font-cinzel-decorative text-[#5c3d2e]">
+                <label><input type="radio" name="stripe-filter" value="total" checked> Total Stripes</label>
+                <label><input type="radio" name="stripe-filter" value="normal"> Penalties Given</label>
+                <label><input type="radio" name="stripe-filter" value="drunken"> Penalties Fulfilled</label>
+                <label><input type="radio" name="stripe-filter" value="remaining"> Penalties Remaining</label>
+            </div>
             <div class="w-full h-80">
                 <canvas id="stripe-chart"></canvas>
             </div>
@@ -235,6 +241,25 @@
 
             <div id="gemini-output" class="mt-6 p-4 min-h-[60px] text-lg text-center font-bold text-[#c0392b] whitespace-pre-wrap hidden">
                 </div>
+        </div>
+    </div>
+
+    <div id="drunken-stripes-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-sm p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-drunken-stripes-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Pour the Golden Liquid</h2>
+            
+            <p class="block text-lg text-[#5c3d2e] mb-4 text-center">How many draughts were consumed?</p>
+            
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <button id="decrement-beers-btn" class="btn-ancient text-2xl font-bold px-4 py-2 rounded-md">-</button>
+                <input type="number" id="how-many-beers-input" value="1" min="1" class="w-24 text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                <button id="increment-beers-btn" class="btn-ancient text-2xl font-bold px-4 py-2 rounded-md">+</button>
+            </div>
+
+            <div class="text-center">
+                <button id="confirm-drunken-stripes-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Confirm Draughts</button>
+            </div>
         </div>
     </div>
 

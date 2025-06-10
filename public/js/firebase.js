@@ -41,7 +41,7 @@ const setupRealtimeListener = (collectionName, callback) => {
 };
 
 const addNameToLedger = async (name, userId) => {
-    await addDoc(ledgerCollectionRef, { name, stripes: [], addedBy: userId });
+    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkenStripes: [], addedBy: userId }); // Added drunkenStripes array
 };
 
 const addStripeToPerson = async (docId) => {
@@ -95,6 +95,18 @@ const updateRuleTextInFirestore = async (docId, newText) => {
     await updateDoc(docRef, { text: newText.trim(), updatedAt: serverTimestamp() });
 };
 
+/**
+ * Adds 'count' drunken stripes to a person's document.
+ * @param {string} docId - The document ID of the person.
+ * @param {number} count - The number of drunken stripes to add.
+ */
+const addDrunkenStripeToPerson = async (docId, count) => {
+    const docRef = doc(db, 'punishments', docId);
+    const newDrunkenStripes = Array.from({ length: count }, () => new Date());
+    await updateDoc(docRef, { drunkenStripes: arrayUnion(...newDrunkenStripes) });
+};
+
+
 // Export everything needed by other modules
 export {
     auth,
@@ -109,5 +121,6 @@ export {
     addRuleToFirestore,
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
-    updateRuleTextInFirestore
+    updateRuleTextInFirestore,
+    addDrunkenStripeToPerson // Export the new function
 };
