@@ -89,9 +89,13 @@ let diceMaxValueSlider, diceSliderValueSpan;
 // New elements for punishment assignment
 let dicePunishmentAssignContainer;
 let assignPersonSelect;
-let rolledStripesDisplay;
-let actualRolledValueSpan;
+// let rolledStripesDisplay; // Removed as per user request
+// let actualRolledValueSpan; // Removed as per user request
 let assignStripesBtn;
+
+// New: store addStripeToPerson and ledgerData globally within randomizer.js scope.
+let _addStripeToPersonFn = null;
+let _ledgerData = [];
 
 function handleDiceSpin() {
     // rand(min, max) is used. The slider's min is now 1, so no adjustment needed here.
@@ -106,50 +110,36 @@ function handleDiceSpin() {
 
     // Show punishment assignment section for manual rolls
     dicePunishmentAssignContainer.classList.remove('hidden');
-    actualRolledValueSpan.textContent = finalDiceResult;
+    // actualRolledValueSpan.textContent = finalDiceResult; // Removed as per user request
 
-    // Clear previous selection and populate dropdown for manual rolls
+    // Populate the select dropdown with ledger names for manual rolls
     assignPersonSelect.innerHTML = '';
-    // Populate the select dropdown with ledger names (assuming availableNames is populated by initListRandomizer)
-    // If not, it needs to be passed here or fetched. For now, we assume it's set up.
-    // However, availableNames from list randomizer is only person names. We need person IDs.
-    // This function will need the full ledger data. Let's adapt.
-    // For manual roll, we don't have targetPerson, so we just populate the full list.
-    const ledgerDataFromMain = window.ledgerDataCache || []; // Access global cache or pass it
-    ledgerDataFromMain.forEach(person => {
+    _ledgerData.forEach(person => { // Use the stored _ledgerData
         const option = document.createElement('option');
-        option.value = person.id;
+        option.value = person.id; // Store person ID as value
         option.textContent = person.name;
         assignPersonSelect.appendChild(option);
     });
 
-    // Re-attach the click listener for the assign button to the newly rolled value
+    // Set up the button to assign stripes for manual rolls
     assignStripesBtn.onclick = async () => {
         const selectedPersonId = assignPersonSelect.value;
-        const stripesToAdd = finalDiceResult;
-        if (selectedPersonId && stripesToAdd > 0) {
-            // Need access to addStripeToPerson from main.js or firebase.js
-            // This is a limitation if not explicitly passed. For now, assume it's accessible.
-            // In main.js, we explicitly pass addStripeToPerson to rollDiceAndAssign.
-            // For manual spin, we need a way to get addStripeToPerson.
-            // A simple fix for now is to pass it during initDiceRandomizer or have main.js trigger the assignment from here.
-            // For now, I'll assume addStripeToPerson is available globally or through window for simplicity.
-            // A better way is to pass the addStripeToPerson as a parameter to initDiceRandomizer as well.
-            // Let's modify initDiceRandomizer to accept addStripeFn and ledgerData.
+        const stripesToAdd = finalDiceResult; // Use the rolled value
 
-            // Since this is handleDiceSpin for manual trigger, we need access to addStripeToPerson.
-            // A robust way would be to pass it to initDiceRandomizer and store it.
-            if (window.addStripeToPersonGlobal) { // Assuming main.js makes it global for simplicity
+        if (selectedPersonId && stripesToAdd > 0) {
+            if (_addStripeToPersonFn) { // Use the stored addStripeToPersonFn
                 for (let i = 0; i < stripesToAdd; i++) {
-                    await window.addStripeToPersonGlobal(selectedPersonId);
+                    await _addStripeToPersonFn(selectedPersonId);
                 }
                 alert(`${stripesToAdd} stripes assigned to ${assignPersonSelect.options[assignPersonSelect.selectedIndex].text}!`);
-                document.getElementById('dice-randomizer-modal').classList.add('hidden');
-                dicePunishmentAssignContainer.classList.add('hidden');
-                diceResultsContainer.innerHTML = '';
-                assignPersonSelect.value = '';
+                
+                // Clear and hide modal elements after assignment
+                assignPersonSelect.value = ''; // Reset dropdown
+                dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
+                diceResultsContainer.innerHTML = ''; // Clear dice result
+                document.getElementById('dice-randomizer-modal').classList.add('hidden'); // Close the dice modal after assignment
             } else {
-                console.error("addStripeToPerson function not available globally.");
+                console.error("addStripeToPerson function not available for manual assignment.");
                 alert("Error: Cannot assign stripes. Function not found.");
             }
         } else {
@@ -157,10 +147,6 @@ function handleDiceSpin() {
         }
     };
 }
-
-// New: store addStripeToPerson and ledgerData globally within randomizer.js scope.
-let _addStripeToPersonFn = null;
-let _ledgerData = [];
 
 
 // initDiceRandomizer now accepts ledgerData and addStripeToPersonFn
@@ -173,8 +159,8 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null) 
     // New elements for assignment section
     dicePunishmentAssignContainer = document.getElementById('dice-punishment-assign-container');
     assignPersonSelect = document.getElementById('assign-person-select');
-    rolledStripesDisplay = document.getElementById('rolled-stripes-display');
-    actualRolledValueSpan = document.getElementById('actual-rolled-value');
+    // rolledStripesDisplay = document.getElementById('rolled-stripes-display'); // Removed from HTML
+    // actualRolledValueSpan = document.getElementById('actual-rolled-value'); // Removed from HTML
     assignStripesBtn = document.getElementById('assign-stripes-btn');
 
     _ledgerData = ledgerData; // Store ledger data
@@ -187,9 +173,8 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null) 
     if (!diceSliderValueSpan) { console.error("Dice randomizer: 'dice-slider-value' not found!"); return; }
     if (!dicePunishmentAssignContainer) { console.error("Dice randomizer: 'dice-punishment-assign-container' not found!"); return; }
     if (!assignPersonSelect) { console.error("Dice randomizer: 'assign-person-select' not found!"); return; }
-    if (!rolledStripesDisplay) { console.error("Dice randomizer: 'rolled-stripes-display' not found!"); return; }
-    if (!actualRolledValueSpan) { console.error("Dice randomizer: 'actual-rolled-value' not found!"); return; }
     if (!assignStripesBtn) { console.error("Dice randomizer: 'assign-stripes-btn' not found!"); return; }
+    // No longer checking for rolledStripesDisplay and actualRolledValueSpan as they are removed from HTML
 
     // Clear previous results when initialized (modal opened)
     diceResultsContainer.innerHTML = '';
@@ -212,7 +197,7 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null) 
 /**
  * Rolls a dice with the given max value, displays the result, and sets up
  * the UI for assigning the rolled stripes to a selected person.
- * This is intended for AI-triggered rolls.
+ * This is intended for AI-triggered rolls, and will pre-select the target person.
  * @param {number} maxValue The maximum value for the dice roll.
  * @param {object} targetPerson The person object suggested by the AI to pre-select.
  * @param {function} addStripeFn The function to call to add stripes to a person.
@@ -243,7 +228,7 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
 
     // Show the assignment section
     dicePunishmentAssignContainer.classList.remove('hidden');
-    actualRolledValueSpan.textContent = finalDiceResult;
+    // actualRolledValueSpan.textContent = finalDiceResult; // Removed as per user request
 
     // Populate the select dropdown with ledger names
     assignPersonSelect.innerHTML = '';
@@ -251,7 +236,7 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
         const option = document.createElement('option');
         option.value = person.id; // Store person ID as value
         option.textContent = person.name;
-        if (person.id === targetPerson.id) { // Pre-select the target person from AI judgment
+        if (targetPerson && person.id === targetPerson.id) { // Pre-select the target person from AI judgment
             option.selected = true;
         }
         assignPersonSelect.appendChild(option);

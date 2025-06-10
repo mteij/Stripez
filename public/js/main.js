@@ -669,7 +669,8 @@ openListRandomizerFromHubBtn?.addEventListener('click', () => {
 openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
-    initDiceRandomizer();
+    // Ensure initDiceRandomizer receives ledgerDataCache and addStripeToPerson for manual rolls
+    initDiceRandomizer(ledgerDataCache, addStripeToPerson); 
 });
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
 closeDiceRandomizerModalBtn?.addEventListener('click', () => diceRandomizerModal.classList.add('hidden'));
