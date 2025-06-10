@@ -188,7 +188,7 @@ function parseOracleJudgment(judgementText) {
  */
 function createActionButton(parsedJudgement) {
     const actionButton = document.createElement('button');
-    actionButton.className = 'btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4'; // Added py-3 px-6 and text-lg for consistency
+    actionButton.className = 'btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4';
 
     if (parsedJudgement.type === 'addStripes') {
         actionButton.textContent = `Add ${parsedJudgement.count} Stripe(s) to ${parsedJudgement.name}`;
@@ -198,25 +198,27 @@ function createActionButton(parsedJudgement) {
                 for (let i = 0; i < parsedJudgement.count; i++) {
                     await addStripeToPerson(person.id);
                 }
-                alert(`${parsedJudgement.count} stripe(s) added to ${person.name}.`);
-                geminiModal.classList.add('hidden'); // Close modal after action
-                actionButton.remove(); // Remove button after click
+                // No alert pop-up here
+                geminiModal.classList.add('hidden');
+                actionButton.remove();
             } else {
-                alert(`Person '${parsedJudgement.name}' not found on the ledger. Manual action required.`);
+                // No alert pop-up here
+                geminiModal.classList.add('hidden'); // Close modal even if person not found
+                actionButton.remove(); // Remove button
             }
         };
     } else if (parsedJudgement.type === 'rollDice') {
         actionButton.textContent = `Roll a ${parsedJudgement.value}-sided die`;
         actionButton.onclick = () => {
             rollSpecificDice(parsedJudgement.value);
-            geminiModal.classList.add('hidden'); // Close modal after action
-            actionButton.remove(); // Remove button after click
+            geminiModal.classList.add('hidden');
+            actionButton.remove();
         };
     } else { // Innocent or unhandled judgment, just acknowledge
         actionButton.textContent = 'Acknowledge Judgement';
         actionButton.onclick = () => {
-            geminiModal.classList.add('hidden'); // Close modal
-            actionButton.remove(); // Remove button after click
+            geminiModal.classList.add('hidden');
+            actionButton.remove();
         };
     }
     return actionButton;
@@ -236,7 +238,7 @@ async function handleGeminiSubmit() {
 
     // Clear previous output and any existing action button
     geminiOutput.innerHTML = '';
-    const existingActionButton = geminiOutput.nextElementSibling; // Assuming button is next sibling
+    const existingActionButton = geminiOutput.nextElementSibling;
     if (existingActionButton && existingActionButton.classList.contains('btn-ancient')) {
         existingActionButton.remove();
     }
