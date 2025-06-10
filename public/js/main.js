@@ -23,6 +23,12 @@ let currentSortOrder = 'stripes_desc';
 let currentSearchTerm = ''; // For ledger search
 let currentRuleSearchTerm = ''; // New: For rules search
 let isSchikkoConfirmed = false; // Track confirmation status for the session
+let lastPunishmentInfo = { // New state for last punishment awarded
+    name: null,
+    amount: null,
+    type: null, // 'stripes' or 'drunkStripes'
+    timestamp: null
+};
 
 // --- DOM ELEMENTS ---
 const loadingState = document.getElementById('loading-state');
@@ -46,6 +52,13 @@ const appInfoFooter = document.getElementById('app-info-footer');
 // Dice randomizer modal and buttons
 const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
 const closeDiceRandomizerModalBtn = document.getElementById('close-dice-randomizer-modal');
+// New: Manual stripe assignment in Dice Roller
+const manualStripePersonInput = document.getElementById('manual-stripe-person-input');
+const manualStripeAmountInput = document.getElementById('manual-stripe-amount-input');
+const incrementManualStripesBtn = document.getElementById('decrement-manual-stripes-btn');
+const decrementManualStripesBtn = document.getElementById('increment-manual-stripes-btn');
+const confirmManualStripesBtn = document.getElementById('confirm-manual-stripes-btn');
+
 
 // List randomizer modal and buttons
 const listRandomizerModal = document.getElementById('list-randomizer-modal');
@@ -157,11 +170,80 @@ function updateAppFooter() {
                 year: 'numeric', month: 'long', day: 'numeric',
                 hour: '2-digit', minute: '2-digit', hour12: false
             }) : 'Unknown Date';
+    
+    let lastPunishmentText = '';
+    if (lastPunishmentInfo.name && lastPunishmentInfo.amount !== null && lastPunishmentInfo.timestamp) {
+        const punishmentType = lastPunishmentInfo.type === 'stripes' ? 'stripes' : 'draughts of golden liquid';
+        const timeAgo = lastPunishmentInfo.timestamp.toLocaleTimeString(undefined, {
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        lastPunishmentText = `<br><span class="font-cinzel-decorative text-[#c0392b]">The Oracle last decreed ${lastPunishmentInfo.amount} ${punishmentType} to ${lastPunishmentInfo.name} at the hour of ${timeAgo}.</span>`;
+    }
+
     appInfoFooter.innerHTML = `
         <span class="font-cinzel-decorative">Crafted by the hand of Michiel, with the wisdom of the Oracles (ChatGPT).</span><br>
         <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
+        ${lastPunishmentText}
     `;
 }
+
+/**
+ * Calculates the Levenshtein distance between two strings.
+ * Used for fuzzy string matching.
+ * @param {string} a The first string.
+ * @param {string} b The second string.
+ * @return {number} The Levenshtein distance between the two strings.
+ */
+function levenshteinDistance(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                );
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
+
+/**
+ * Finds the closest matching person name from the ledger based on input.
+ * @param {string} inputName The name entered by the user.
+ * @returns {object|null} The closest person object from ledgerDataCache, or null if no close match.
+ */
+function findClosestPerson(inputName) {
+    if (!inputName) return null;
+    let closestPerson = null;
+    let minDistance = Infinity;
+    const lowerInputName = inputName.toLowerCase();
+
+    ledgerDataCache.forEach(person => {
+        const distance = levenshteinDistance(lowerInputName, person.name.toLowerCase());
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestPerson = person;
+        }
+    });
+
+    // Set a threshold for "close enough" match
+    // Adjust this threshold based on your needs
+    if (minDistance <= 2 || (closestPerson && lowerInputName === closestPerson.name.toLowerCase())) {
+        return closestPerson;
+    }
+    return null;
+}
+
 
 /**
  * Creates and appends action buttons based on the parsed judgment.
@@ -198,7 +280,7 @@ function createActionButtons(parsedJudgement) {
     }
 
     let totalStripes = 0;
-    const uniqueDiceValues = new Set(); // To handle multiple dice rolls
+    const uniqueDiceValues = new Set(); 
     
     parsedJudgement.penalties.forEach(penalty => {
         if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
@@ -208,39 +290,89 @@ function createActionButtons(parsedJudgement) {
         }
     });
 
-    // Create Stripes Button (if applicable)
-    if (totalStripes > 0) {
-        const stripesBtn = document.createElement('button');
-        stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-        stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
-        stripesBtn.onclick = async () => {
+    const hasStripes = totalStripes > 0;
+    const hasDice = uniqueDiceValues.size > 0;
+
+    // --- Combined Button for Stripes and Dice ---
+    if (hasStripes && hasDice) {
+        const combinedBtn = document.createElement('button');
+        combinedBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        
+        let diceText = '';
+        const sortedDice = [...uniqueDiceValues].sort((a, b) => a - b);
+        if (sortedDice.length === 1) {
+            diceText = `Roll 🎲 ${sortedDice[0]}`;
+        } else {
+            diceText = `Roll Dice: ${sortedDice.map(d => `🎲${d}`).join(', ')}`;
+        }
+
+        combinedBtn.textContent = `Add ${totalStripes} Stripes & ${diceText} for ${person.name}`;
+        
+        combinedBtn.onclick = async () => {
+            // Apply stripes
             for (let i = 0; i < totalStripes; i++) {
                 await addStripeToPerson(person.id);
             }
-            geminiModal.classList.add('hidden');
-        };
-        geminiActionButtonsContainer.appendChild(stripesBtn);
-    }
+            // Update last punishment info
+            lastPunishmentInfo = {
+                name: person.name,
+                amount: totalStripes,
+                type: 'stripes',
+                timestamp: new Date()
+            };
+            updateAppFooter(); // Update footer immediately
 
-    // Create Dice Roll Buttons (one for each unique die value)
-    uniqueDiceValues.forEach(diceValue => {
-        const diceBtn = document.createElement('button');
-        diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-        diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
-        diceBtn.onclick = () => {
-            rollSpecificDice(diceValue);
-            geminiModal.classList.add('hidden');
+            // Open dice roller for each unique die value
+            sortedDice.forEach(diceValue => {
+                rollSpecificDice(diceValue); // This opens the dice modal
+            });
+            geminiModal.classList.add('hidden'); // Close Gemini modal
         };
-        geminiActionButtonsContainer.appendChild(diceBtn);
-    });
+        geminiActionButtonsContainer.appendChild(combinedBtn);
+    } 
+    // --- Separate Buttons if only Stripes or only Dice ---
+    else {
+        // Stripes Button (if applicable)
+        if (hasStripes) {
+            const stripesBtn = document.createElement('button');
+            stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+            stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
+            stripesBtn.onclick = async () => {
+                for (let i = 0; i < totalStripes; i++) {
+                    await addStripeToPerson(person.id);
+                }
+                lastPunishmentInfo = {
+                    name: person.name,
+                    amount: totalStripes,
+                    type: 'stripes',
+                    timestamp: new Date()
+                };
+                updateAppFooter();
+                geminiModal.classList.add('hidden');
+            };
+            geminiActionButtonsContainer.appendChild(stripesBtn);
+        }
 
-    // If no specific penalties, add a generic acknowledge button
-    if (totalStripes === 0 && uniqueDiceValues.size === 0) {
-        const acknowledgeBtn = document.createElement('button');
-        acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-        acknowledgeBtn.textContent = `Acknowledge Judgement for ${person.name}`;
-        acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
-        geminiActionButtonsContainer.appendChild(acknowledgeBtn);
+        // Dice Roll Buttons (one for each unique die value)
+        uniqueDiceValues.forEach(diceValue => {
+            const diceBtn = document.createElement('button');
+            diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+            diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
+            diceBtn.onclick = () => {
+                rollSpecificDice(diceValue);
+                geminiModal.classList.add('hidden');
+            };
+            geminiActionButtonsContainer.appendChild(diceBtn);
+        });
+
+        // If no specific penalties, add a generic acknowledge button
+        if (!hasStripes && !hasDice) {
+            const acknowledgeBtn = document.createElement('button');
+            acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+            acknowledgeBtn.textContent = `Acknowledge Judgement for ${person.name}`;
+            acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
+            geminiActionButtonsContainer.appendChild(acknowledgeBtn);
+        }
     }
 }
 
@@ -458,7 +590,16 @@ punishmentListDiv.addEventListener('click', (e) => {
     if (action !== 'toggle-menu') closeMenus();
     switch (action) {
         case 'toggle-menu': document.getElementById(`menu-${id}`)?.classList.toggle('hidden'); break;
-        case 'add-stripe': addStripeToPerson(id); break;
+        case 'add-stripe': 
+            addStripeToPerson(id); 
+            lastPunishmentInfo = {
+                name: ledgerDataCache.find(p => p.id === id)?.name,
+                amount: 1, // Single stripe added
+                type: 'stripes',
+                timestamp: new Date()
+            };
+            updateAppFooter();
+            break;
         case 'add-drunk-stripe': 
             currentPersonIdForDrunkStripes = id; 
             const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
@@ -526,6 +667,10 @@ document.addEventListener('click', (e) => {
     if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) { 
         drunkStripesModal.classList.add('hidden'); 
     }
+    // Close dice randomizer modal if click outside and it's open (and not a dice-spin button)
+    if (!diceRandomizerModal.classList.contains('hidden') && !e.target.closest('#dice-randomizer-modal') && !e.target.closest('#open-dice-randomizer-from-hub-btn')) {
+        diceRandomizerModal.classList.add('hidden');
+    }
 });
 openRandomizerHubBtn?.addEventListener('click', () => randomizerHubModal.classList.remove('hidden'));
 closeRandomizerHubModalBtn?.addEventListener('click', () => randomizerHubModal.classList.add('hidden'));
@@ -538,6 +683,9 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
     initDiceRandomizer();
+    // Clear manual stripe fields when opening dice modal
+    manualStripePersonInput.value = '';
+    manualStripeAmountInput.value = 1;
 });
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
 closeDiceRandomizerModalBtn?.addEventListener('click', () => diceRandomizerModal.classList.add('hidden'));
@@ -591,8 +739,64 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
 
         if (count > 0) {
             await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count); 
+            lastPunishmentInfo = {
+                name: person.name,
+                amount: count,
+                type: 'drunkStripes',
+                timestamp: new Date()
+            };
+            updateAppFooter();
         }
         drunkStripesModal.classList.add('hidden'); 
         currentPersonIdForDrunkStripes = null; 
     }
 });
+
+// New: Manual Stripes in Dice Roller Listeners
+if (incrementManualStripesBtn) {
+    incrementManualStripesBtn.addEventListener('click', () => {
+        manualStripeAmountInput.value = parseInt(manualStripeAmountInput.value) + 1;
+    });
+}
+
+if (decrementManualStripesBtn) {
+    decrementManualStripesBtn.addEventListener('click', () => {
+        const currentValue = parseInt(manualStripeAmountInput.value);
+        if (currentValue > 1) {
+            manualStripeAmountInput.value = currentValue - 1;
+        }
+    });
+}
+
+if (confirmManualStripesBtn) {
+    confirmManualStripesBtn.addEventListener('click', async () => {
+        const personName = manualStripePersonInput.value.trim();
+        const stripeAmount = parseInt(manualStripeAmountInput.value);
+
+        if (!personName || isNaN(stripeAmount) || stripeAmount <= 0) {
+            alert("Please enter a valid person's name and a positive number of stripes.");
+            return;
+        }
+
+        const person = findClosestPerson(personName);
+
+        if (person) {
+            for (let i = 0; i < stripeAmount; i++) {
+                await addStripeToPerson(person.id);
+            }
+            lastPunishmentInfo = {
+                name: person.name,
+                amount: stripeAmount,
+                type: 'stripes',
+                timestamp: new Date()
+            };
+            updateAppFooter();
+            alert(`Added ${stripeAmount} stripes to ${person.name}.`);
+            diceRandomizerModal.classList.add('hidden'); // Close modal after action
+            manualStripePersonInput.value = ''; // Clear fields
+            manualStripeAmountInput.value = 1;
+        } else {
+            alert(`Person "${personName}" not found on the ledger. Please check the name or add them first.`);
+        }
+    });
+}
