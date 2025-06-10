@@ -139,9 +139,9 @@ function updateAppFooter() {
     }
     const dateString = latestUpdateTimestamp ?
         latestUpdateTimestamp.toLocaleDateString(undefined, {
-            year: 'numeric', month: 'long', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', hour12: false
-        }) : 'Unknown Date';
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: false
+            }) : 'Unknown Date';
     appInfoFooter.innerHTML = `
         <span class="font-cinzel-decorative">Crafted by the hand of Michiel, with the wisdom of the Oracles (ChatGPT).</span><br>
         <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
@@ -165,9 +165,8 @@ async function handleGeminiSubmit() {
     geminiOutput.classList.add('hidden');
 
     try {
-        // Get a reference to the Firebase Functions service
-        const functions = getFunctions();
-        // Get a reference to the 'getOracleJudgement' callable function
+        // Get a reference to the Firebase Functions service in the correct region
+        const functions = getFunctions(undefined, "europe-west4");
         const getOracleJudgement = httpsCallable(functions, 'getOracleJudgement');
 
         // Call the function with the required payload
