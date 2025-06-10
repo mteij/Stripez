@@ -57,7 +57,7 @@ function renderLedger(viewData, term) {
             stripeContainerDynamicClasses += 'justify-start'; // Left-align the number
         } else {
             // Display individual stripes, allowing horizontal scroll if needed
-            const stripesToDisplay = normalStripesCount; // Always display based on total penalties
+            const stripesToDisplay = normalStripesCount; // All existing stripes (red + drunk)
 
             for (let i = 0; i < stripesToDisplay; i++) {
                 if (i < drunkStripesCount) { // This stripe is drunk (Renamed variable)
@@ -182,7 +182,7 @@ function showStatsModal(person) {
                 type: 'line', data: { datasets: [] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, currentRemainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } },
+                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, currentRemainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } }, // Renamed text
                     scales: { x: { display: false }, y: { display: false } }
                 }
             });

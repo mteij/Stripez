@@ -122,5 +122,5 @@ export {
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
     updateRuleTextInFirestore,
-    addDrunkStripeToPerson // Renamed export
+    addDrunkStripeToPerson
 };
