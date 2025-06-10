@@ -1,4 +1,4 @@
-// In public/js/main.js
+// public/js/main.js
 
 // --- MODULE IMPORTS ---
 import {
@@ -8,7 +8,7 @@ import {
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
-import { initListRandomizer, initDiceRandomizer } from '../randomizer/randomizer.js';
+import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js'; // Import rollSpecificDice
 // New: Import functions from the Firebase SDK to call our backend
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -57,7 +57,7 @@ const openListRandomizerFromHubBtn = document.getElementById('open-list-randomiz
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
 // Gemini Oracle elements
-const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn');
+const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn'); // Moved from modal
 const geminiModal = document.getElementById('gemini-modal');
 const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
 const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
@@ -148,6 +148,79 @@ function updateAppFooter() {
 }
 
 /**
+ * Parses the Oracle's judgment text to extract action and parameters.
+ * @param {string} judgementText - The raw judgment string from the Oracle.
+ * @returns {object|null} An object containing action type and parameters, or null if unparseable.
+ */
+function parseOracleJudgment(judgementText) {
+    // Example: "Noud gets 3 stripes"
+    const stripesMatch = judgementText.match(/(\w+) gets (\d+) stripe/i);
+    if (stripesMatch) {
+        return {
+            type: 'addStripes',
+            name: stripesMatch[1],
+            count: parseInt(stripesMatch[2])
+        };
+    }
+
+    // Example: "Noud must roll a die with 3 dotts."
+    const rollDiceMatch = judgementText.match(/roll a die with (\d+) dotts/i);
+    if (rollDiceMatch) {
+        return {
+            type: 'rollDice',
+            value: parseInt(rollDiceMatch[1])
+        };
+    }
+
+    // Example: "Noud is innocent." or other simple judgments
+    if (judgementText.toLowerCase().includes('innocent')) {
+        return { type: 'innocent' };
+    }
+
+    // Default or unhandled judgment
+    return { type: 'acknowledge' };
+}
+
+/**
+ * Creates a dynamic action button based on the parsed judgment.
+ * @param {object} parsedJudgement - The object returned by parseOracleJudgment.
+ * @returns {HTMLButtonElement} The action button.
+ */
+function createActionButton(parsedJudgement) {
+    const actionButton = document.createElement('button');
+    actionButton.className = 'btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4'; // Added py-3 px-6 and text-lg for consistency
+
+    if (parsedJudgement.type === 'addStripes') {
+        actionButton.textContent = `Add ${parsedJudgement.count} Stripe(s) to ${parsedJudgement.name}`;
+        actionButton.onclick = async () => {
+            const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
+            if (person) {
+                for (let i = 0; i < parsedJudgement.count; i++) {
+                    await addStripeToPerson(person.id);
+                }
+                alert(`${parsedJudgement.count} stripe(s) added to ${person.name}.`);
+                geminiModal.classList.add('hidden'); // Close modal after action
+            } else {
+                alert(`Person '${parsedJudgement.name}' not found on the ledger. Manual action required.`);
+            }
+        };
+    } else if (parsedJudgement.type === 'rollDice') {
+        actionButton.textContent = `Roll a ${parsedJudgement.value}-sided die`;
+        actionButton.onclick = () => {
+            rollSpecificDice(parsedJudgement.value);
+            geminiModal.classList.add('hidden'); // Close modal after action
+        };
+    } else { // Innocent or unhandled judgment, just acknowledge
+        actionButton.textContent = 'Acknowledge Judgement';
+        actionButton.onclick = () => {
+            geminiModal.classList.add('hidden'); // Close modal
+        };
+    }
+    return actionButton;
+}
+
+
+/**
  * Handles the Gemini Oracle submission by calling the backend function.
  */
 async function handleGeminiSubmit() {
@@ -157,6 +230,14 @@ async function handleGeminiSubmit() {
         geminiOutput.classList.remove('hidden');
         return;
     }
+
+    // Clear previous output and any existing action button
+    geminiOutput.innerHTML = '';
+    const existingActionButton = geminiOutput.nextElementSibling; // Assuming button is next sibling
+    if (existingActionButton && existingActionButton.classList.contains('btn-ancient')) {
+        existingActionButton.remove();
+    }
+
 
     // Disable button and show loading state
     geminiSubmitBtn.disabled = true;
@@ -175,16 +256,24 @@ async function handleGeminiSubmit() {
         });
 
         // Display the judgement from the AI
-        geminiOutput.textContent = result.data.judgement;
+        const judgement = result.data.judgement;
+        geminiOutput.textContent = judgement;
+        geminiOutput.classList.remove('hidden');
+
+        // Parse judgment and create action button
+        const parsedJudgement = parseOracleJudgment(judgement);
+        const actionButton = createActionButton(parsedJudgement);
+        geminiOutput.parentNode.insertBefore(actionButton, geminiOutput.nextSibling);
+
 
     } catch (error) {
         console.error("Error calling Oracle function:", error);
         geminiOutput.textContent = `The Oracle is silent. An error occurred: ${error.message}`;
+        geminiOutput.classList.remove('hidden');
     } finally {
         // Re-enable button and show output
         geminiSubmitBtn.disabled = false;
         geminiSubmitBtn.textContent = 'Consult the Oracle';
-        geminiOutput.classList.remove('hidden');
     }
 }
 
@@ -342,10 +431,11 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
 });
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
 closeDiceRandomizerModalBtn?.addEventListener('click', () => diceRandomizerModal.classList.add('hidden'));
-openGeminiFromHubBtn?.addEventListener('click', () => {
-    randomizerHubModal.classList.add('hidden');
+openGeminiFromHubBtn?.addEventListener('click', () => { // This is the button moved to main page
+    randomizerHubModal.classList.add('hidden'); // Ensure hub is closed if clicked from there
     geminiModal.classList.remove('hidden');
     geminiOutput.classList.add('hidden');
+    geminiOutput.innerHTML = ''; // Clear previous judgment and button
     geminiInput.value = '';
 });
 closeGeminiModalBtn?.addEventListener('click', () => geminiModal.classList.add('hidden'));

@@ -27,7 +27,7 @@ function renderListOutput(names, isShuffled = true) {
     }
 
     let outputHTML = '';
-    if (isShuffled) {
+    if (isShuffed) {
         outputHTML = '<h3>Shuffled Names:</h3><ol class="list-output-ol">';
         names.forEach(name => {
             outputHTML += `<li>${name}</li>`;
@@ -116,4 +116,30 @@ export function initDiceRandomizer() {
     diceMaxValueSlider.addEventListener('input', () => {
         diceSliderValueSpan.textContent = diceMaxValueSlider.value;
     });
+}
+
+// New exported function to roll a specific dice value
+export function rollSpecificDice(maxValue) {
+    if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan) {
+        console.error("Dice randomizer elements not found for programmatic roll!");
+        // Attempt to initialize if not already, though initDiceRandomizer is called on modal open
+        initDiceRandomizer();
+        if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan) {
+            console.error("Failed to initialize dice randomizer elements.");
+            return;
+        }
+    }
+
+    // Set slider value and update display
+    diceMaxValueSlider.value = maxValue;
+    diceSliderValueSpan.textContent = maxValue;
+
+    // Trigger the actual roll
+    handleDiceSpin();
+
+    // Ensure the dice randomizer modal is open to show the result
+    const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
+    if (diceRandomizerModal) {
+        diceRandomizerModal.classList.remove('hidden');
+    }
 }
