@@ -25,6 +25,7 @@ let currentRuleSearchTerm = ''; // New: For rules search
 let isSchikkoConfirmed = false; // Track confirmation status for the session
 let lastPunishmentInfo = { // New state for last punishment awarded
     name: null,
+    personId: null, // Added personId
     amount: null,
     type: null, // 'stripes' or 'drunkStripes'
     timestamp: null
@@ -214,12 +215,34 @@ function updateAppFooter() {
             }) : 'Unknown Date';
     
     let lastPunishmentText = '';
-    if (lastPunishmentInfo.name && lastPunishmentInfo.amount !== null && lastPunishmentInfo.timestamp) {
-        const punishmentType = lastPunishmentInfo.type === 'stripes' ? 'stripes' : 'draughts of golden liquid';
-        const timeAgo = lastPunishmentInfo.timestamp.toLocaleTimeString(undefined, {
-            hour: '2-digit', minute: '2-digit', hour12: false
-        });
-        lastPunishmentText = `<br><span class="font-cinzel-decorative text-[#c0392b]">The Oracle last decreed ${lastPunishmentInfo.amount} ${punishmentType} to ${lastPunishmentInfo.name} at the hour of ${timeAgo}.</span>`;
+    if (lastPunishmentInfo.name && lastPunishmentInfo.personId && lastPunishmentInfo.timestamp) { // Check for personId
+        const person = ledgerDataCache.find(p => p.id === lastPunishmentInfo.personId); // Find the person by ID
+        if (person) {
+            const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+            const periodStart = lastPunishmentInfo.timestamp.getTime() - THIRTY_MINUTES_MS;
+
+            const stripesInPeriod = (person.stripes || []).filter(ts => {
+                const millis = ts.toMillis ? ts.toMillis() : ts.getTime(); // Handle Firestore Timestamps vs Date objects
+                return millis >= periodStart && millis <= lastPunishmentInfo.timestamp.getTime();
+            }).length;
+
+            const drunkStripesInPeriod = (person.drunkStripes || []).filter(ts => {
+                const millis = ts.toMillis ? ts.toMillis() : ts.getTime(); // Handle Firestore Timestamps vs Date objects
+                return millis >= periodStart && millis <= lastPunishmentInfo.timestamp.getTime();
+            }).length;
+
+            const timeAgo = lastPunishmentInfo.timestamp.toLocaleTimeString(undefined, {
+                hour: '2-digit', minute: '2-digit', hour12: false
+            });
+
+            lastPunishmentText = `<br><span class="font-cinzel-decorative text-[#c0392b]">The Oracle last decreed for ${lastPunishmentInfo.name} at the hour of ${timeAgo}.</span>`;
+            if (stripesInPeriod > 0) {
+                lastPunishmentText += `<br><span class="font-cinzel-decorative text-[#5c3d2e]">Total stripes in period: ${stripesInPeriod}</span>`;
+            }
+            if (drunkStripesInPeriod > 0) {
+                lastPunishmentText += `<br><span class="font-cinzel-decorative text-[#f39c12]">Draughts consumed in period: ${drunkStripesInPeriod}</span>`;
+            }
+        }
     }
 
     appInfoFooter.innerHTML = `
@@ -308,6 +331,7 @@ function createActionButtons(parsedJudgement) {
             // Update last punishment info
             lastPunishmentInfo = {
                 name: person.name,
+                personId: person.id, // Store person ID
                 amount: totalStripes,
                 type: 'stripes',
                 timestamp: new Date()
@@ -337,6 +361,7 @@ function createActionButtons(parsedJudgement) {
                 }
                 lastPunishmentInfo = {
                     name: person.name,
+                    personId: person.id, // Store person ID
                     amount: totalStripes,
                     type: 'stripes',
                     timestamp: new Date()
@@ -593,6 +618,7 @@ punishmentListDiv.addEventListener('click', (e) => {
             addStripeToPerson(id); 
             lastPunishmentInfo = {
                 name: ledgerDataCache.find(p => p.id === id)?.name,
+                personId: id, // Store person ID
                 amount: 1, // Single stripe added
                 type: 'stripes',
                 timestamp: new Date()
@@ -672,8 +698,6 @@ document.addEventListener('click', (e) => {
     // The e.stopPropagation() on the AI buttons should prevent this listener from firing for their clicks.
     if (!diceRandomizerModal.classList.contains('hidden') && !e.target.closest('#dice-randomizer-modal') && !e.target.closest('#open-dice-randomizer-from-hub-btn')) {
         diceRandomizerModal.classList.add('hidden');
-        // REMOVED: diceRandomizerModal.style.display = 'none'; // Rely on Tailwind's 'hidden' class
-        // REMOVED: diceRandomizerModal.style.zIndex = '';     // Rely on Tailwind's 'z-50' class
     }
 });
 
@@ -693,9 +717,7 @@ openListRandomizerFromHubBtn?.addEventListener('click', () => {
 openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => { // Added event parameter
     e.stopPropagation(); // Stop propagation
     randomizerHubModal.classList.add('hidden');
-    diceRandomizerModal.classList.remove('hidden');
-    // REMOVED: diceRandomizerModal.style.display = 'block'; // Rely on Tailwind's 'flex' for centering
-    // REMOVED: diceRandomizerModal.style.zIndex = '1000';   // Rely on Tailwind's 'z-50' class
+    diceRandomizerModal.classList.remove('hidden'); // This makes the modal visible
     // Ensure initDiceRandomizer receives ledgerDataCache and addStripeToPerson for manual rolls
     initDiceRandomizer(ledgerDataCache, addStripeToPerson); 
 });
@@ -704,8 +726,6 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => { // Added event 
 closeDiceRandomizerModalBtn?.addEventListener('click', (e) => { // Added event parameter
     e.stopPropagation(); // Stop propagation to prevent immediate re-opening by global listener
     diceRandomizerModal.classList.add('hidden');
-    // REMOVED: diceRandomizerModal.style.display = 'none'; // Rely on Tailwind's 'hidden' class
-    // REMOVED: diceRandomizerModal.style.zIndex = '';     // Rely on Tailwind's 'z-50' class
 });
 
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
@@ -765,6 +785,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
             await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count); 
             lastPunishmentInfo = {
                 name: person.name,
+                personId: currentPersonIdForDrunkStripes, // Store person ID
                 amount: count,
                 type: 'drunkStripes',
                 timestamp: new Date()
