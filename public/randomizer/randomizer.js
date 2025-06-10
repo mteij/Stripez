@@ -138,6 +138,8 @@ function handleDiceSpin() {
                 dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
                 diceResultsContainer.innerHTML = ''; // Clear dice result
                 document.getElementById('dice-randomizer-modal').classList.add('hidden'); // Close the dice modal after assignment
+                document.getElementById('dice-randomizer-modal').style.display = 'none'; // Ensure it's hidden
+                document.getElementById('dice-randomizer-modal').style.zIndex = ''; // Reset z-index
             } else {
                 console.error("addStripeToPerson function not available for manual assignment.");
                 alert("Error: Cannot assign stripes. Function not found.");
@@ -254,11 +256,16 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
                 }
                 alert(`${stripesToAdd} stripes assigned to ${assignPersonSelect.options[assignPersonSelect.selectedIndex].text}!`);
                 
-                // Clear current selection and hide assignment section
+                // Clear current selection and hide modal elements after assignment
                 assignPersonSelect.value = ''; // Reset dropdown
                 dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
                 diceResultsContainer.innerHTML = ''; // Clear dice result
-                diceRandomizerModal.classList.add('hidden'); // Close the dice modal after assignment
+                
+                // Explicitly hide and reset display properties
+                diceRandomizerModal.classList.add('hidden');
+                diceRandomizerModal.style.display = 'none'; // Ensure it's hidden
+                diceRandomizerModal.style.zIndex = ''; // Reset z-index
+                
             } else {
                 console.error("addStripeToPerson function not available for assignment.");
                 alert("Error: Cannot assign stripes. Function not found.");
@@ -268,9 +275,19 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
         }
     };
 
-    // Ensure the dice randomizer modal is open to show the result
-    console.log("Attempting to unhide dice randomizer modal from rollDiceAndAssign...");
+    // --- Critical debugging and visibility forcing ---
+    console.log("Before unhiding - diceRandomizerModal classList:", diceRandomizerModal.classList.value);
+    console.log("Before unhiding - diceRandomizerModal style.display:", diceRandomizerModal.style.display);
+    console.log("Before unhiding - diceRandomizerModal style.zIndex:", diceRandomizerModal.style.zIndex);
+
     diceRandomizerModal.classList.remove('hidden');
+    diceRandomizerModal.style.display = 'block'; // Force display to block
+    diceRandomizerModal.style.zIndex = '1000'; // Ensure it's on top
+
+    console.log("After unhiding - diceRandomizerModal classList:", diceRandomizerModal.classList.value);
+    console.log("After unhiding - diceRandomizerModal style.display:", diceRandomizerModal.style.display);
+    console.log("After unhiding - diceRandomizerModal style.zIndex:", diceRandomizerModal.style.zIndex);
+
     console.log("Modal unhide command sent by rollDiceAndAssign.");
 }
 
