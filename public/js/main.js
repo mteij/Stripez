@@ -8,7 +8,7 @@ import {
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore,
     addDrunkStripeToPerson, // Corrected: Import addDrunkStripeToPerson
-    removeLastDrunkStripeFromPerson // Corrected: Import removeLastDrunkStripeToPerson
+    removeLastDrunkStripeFromPerson // Corrected: Import removeLastDrunkStripeFromPerson
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js';
@@ -167,53 +167,59 @@ function updateAppFooter() {
  * @returns {object|null} An object containing action type and parameters, or null if unparseable.
 */
 function parseOracleJudgment(judgementText) {
-    // Regex for: "[Name] gets X stripes and rolls Y-sided die [Rule(s) ...]"
-    // Covers variations like "gets", "is assigned", "receives", "has" for stripes.
-    // And "rolls", "roll a" for dice.
-    const combinedMatch = judgementText.match(
-        /(\w+)\s+(?:gets|is assigned|receives|has)\s+(\d+)\s+stripes?\s+and\s+(?:rolls?|roll)\s+(?:a\s+)?(\d+)-sided\s+die(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i
-    );
-    if (combinedMatch) {
+    const lowerJudgement = judgementText.toLowerCase();
+
+    // Remove the rule citation part for cleaner parsing of actions
+    const textWithoutRules = judgementText.replace(/ \[Rule(?:s)?\s*[\d,\s]+\]/i, '').trim();
+
+    // 1. Try to extract name first (common prefix for many actions)
+    // This regex looks for a capitalized word at the very beginning of the sentence
+    // or after common action verbs, but for parsing the name for the button,
+    // we'll rely on the fuzzy matched name that the backend already corrected.
+    // So we just need to extract the first word as the assumed name.
+    const nameMatch = textWithoutRules.match(/^(\w+)/);
+    const name = nameMatch ? nameMatch[1] : 'Someone'; // Default to 'Someone' if no name is found
+
+    // 2. Look for dice roll pattern
+    // Examples: "rolls a 3-sided die", "roll dice 3", "must roll 10"
+    const diceMatch = textWithoutRules.match(/(?:roll|rolls|roll a)\s+(?:a\s+)?(?:dice|die)?\s*(\d+)(?:-sided)?/i);
+    const diceValue = diceMatch ? parseInt(diceMatch[1]) : null;
+
+    // 3. Look for stripes pattern
+    // Examples: "gets 2 stripes", "has 5 stripes"
+    const stripesMatch = textWithoutRules.match(/(\d+)\s+stripes?/i);
+    const stripesCount = stripesMatch ? parseInt(stripesMatch[1]) : null;
+
+    // Determine type based on what was found
+    if (name && stripesCount && diceValue) {
+        // Combined action: [Name] ... [stripes] ... [dice]
         return {
             type: 'addStripesAndRollDice',
-            name: combinedMatch[1],
-            count: parseInt(combinedMatch[2]),
-            diceValue: parseInt(combinedMatch[3])
+            name: name,
+            count: stripesCount,
+            diceValue: diceValue
         };
-    }
-
-    // Regex for: "[Name] gets X stripes [Rule(s) ...]"
-    // Covers variations like "gets", "is assigned", "receives", "has" for stripes.
-    const stripesMatch = judgementText.match(
-        /(\w+)\s+(?:gets|is assigned|receives|has)\s+(\d+)\s+stripes?(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i
-    );
-    if (stripesMatch) {
+    } else if (name && stripesCount) {
+        // Add stripes only
         return {
             type: 'addStripes',
-            name: stripesMatch[1],
-            count: parseInt(stripesMatch[2])
+            name: name,
+            count: stripesCount
         };
-    }
-
-    // Regex for: "[Name] must roll (a) die (with) X (sides)." or "Roll die X."
-    // Captures the number following "dice" or "die".
-    const rollDiceMatch = judgementText.match(
-        /(?:\w+\s+(?:must|should|is to)\s+)?(?:roll|rolls)\s+(?:a\s+)?(?:dice|die)?\s*(\d+)(?:-sided)?(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i
-    );
-    if (rollDiceMatch) {
+    } else if (name && diceValue) {
+        // Roll dice only
         return {
             type: 'rollDice',
-            value: parseInt(rollDiceMatch[1])
+            name: name, // Although not used in button text, useful for context
+            value: diceValue
         };
-    }
-
-    // Example: "Noud is innocent [Rule 1 not broken]." or other simple judgments
-    if (judgementText.toLowerCase().includes('innocent')) {
+    } else if (lowerJudgement.includes('innocent')) {
+        // Innocent
         return { type: 'innocent' };
+    } else {
+        // Acknowledge (fallback)
+        return { type: 'acknowledge' };
     }
-
-    // Default or unhandled judgment
-    return { type: 'acknowledge' };
 }
 
 /**
@@ -574,7 +580,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
     if (currentPersonIdForDrunkStripes) { 
         const count = parseInt(howManyBeersInput.value);
         const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes); 
-        // Calculate available penalties to fulfill (normal minus already drunk)
+        // Calculate available penalties that can still be fulfilled (normal minus already drunk)
         const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); // Changed to 'drunk'
 
         if (count > availablePenaltiesToFulfill) {
