@@ -1,4 +1,5 @@
 // public/js/main.js
+// public/js/main.js
 
 // --- MODULE IMPORTS ---
 import {
@@ -54,7 +55,7 @@ const closeListRandomizerModalBtn = document.getElementById('close-list-randomiz
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
 const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
-const openListRandomizerFromHubBtn = document = document.getElementById('open-list-randomizer-from-hub-btn');
+const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
 // Gemini Oracle elements
@@ -411,7 +412,7 @@ showDecreesBtn?.addEventListener('click', () => {
         showDecreesBtn.querySelector('span:first-child').textContent = "Schikko's Decrees";
         if (rulesListOl.classList.contains('rules-list-editing')) {
             rulesListOl.classList.remove('rules-list-editing');
-            editRulesBtn.textContent = 'Finish Editing';
+            editRulesBtn.textContent = 'Edit Decrees';
         }
         ruleSearchInput.value = '';
         currentRuleSearchTerm = '';
