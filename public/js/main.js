@@ -62,7 +62,7 @@ const closeListRandomizerModalBtn = document.getElementById('close-list-randomiz
 // Randomizer Hub elements
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
-const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-btn');
+const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
@@ -247,7 +247,10 @@ function createActionButtons(parsedJudgement) {
         const acknowledgeBtn = document.createElement('button');
         acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
         acknowledgeBtn.textContent = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent.`;
-        acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
+        acknowledgeBtn.onclick = (e) => { // Added event parameter
+            e.stopPropagation(); // Stop propagation
+            geminiModal.classList.add('hidden');
+        };
         geminiActionButtonsContainer.appendChild(acknowledgeBtn);
         return;
     }
@@ -259,7 +262,10 @@ function createActionButtons(parsedJudgement) {
         const acknowledgeBtn = document.createElement('button');
         acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
         acknowledgeBtn.textContent = `Person "${targetPersonName}" not found on ledger. Acknowledge Judgement.`;
-        acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
+        acknowledgeBtn.onclick = (e) => { // Added event parameter
+            e.stopPropagation(); // Stop propagation
+            geminiModal.classList.add('hidden');
+        };
         geminiActionButtonsContainer.appendChild(acknowledgeBtn);
         return;
     }
@@ -293,7 +299,8 @@ function createActionButtons(parsedJudgement) {
 
         combinedBtn.textContent = `Add ${totalStripes} Stripes & ${diceText} for ${person.name}`;
         
-        combinedBtn.onclick = async () => {
+        combinedBtn.onclick = async (e) => { // Added event parameter
+            e.stopPropagation(); // Stop propagation
             // Apply stripes
             for (let i = 0; i < totalStripes; i++) {
                 await addStripeToPerson(person.id);
@@ -323,7 +330,8 @@ function createActionButtons(parsedJudgement) {
             const stripesBtn = document.createElement('button');
             stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
-            stripesBtn.onclick = async () => {
+            stripesBtn.onclick = async (e) => { // Added event parameter
+                e.stopPropagation(); // Stop propagation
                 for (let i = 0; i < totalStripes; i++) {
                     await addStripeToPerson(person.id);
                 }
@@ -344,7 +352,8 @@ function createActionButtons(parsedJudgement) {
             const diceBtn = document.createElement('button');
             diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
-            diceBtn.onclick = () => {
+            diceBtn.onclick = (e) => { // Added event parameter
+                e.stopPropagation(); // Stop propagation
                 // Pass ledgerDataCache and addStripeToPerson to the new function
                 rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache); 
                 geminiModal.classList.add('hidden');
@@ -357,7 +366,10 @@ function createActionButtons(parsedJudgement) {
             const acknowledgeBtn = document.createElement('button');
             acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             acknowledgeBtn.textContent = `Acknowledge Judgement for ${person.name}`;
-            acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
+            acknowledgeBtn.onclick = (e) => { // Added event parameter
+                e.stopPropagation(); // Stop propagation
+                geminiModal.classList.add('hidden');
+            };
             geminiActionButtonsContainer.appendChild(acknowledgeBtn);
         }
     }
@@ -647,6 +659,7 @@ rulesListOl?.addEventListener('click', async (e) => {
     }
 });
 document.addEventListener('click', (e) => { 
+    // Do not close menus if the click target is within a toggle menu or the toggle menu button itself
     if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
         closeMenus(); 
     }
@@ -655,6 +668,8 @@ document.addEventListener('click', (e) => {
         drunkStripesModal.classList.add('hidden'); 
     }
     // Close dice randomizer modal if click outside and it's open (and not a dice-spin button)
+    // IMPORTANT: Make sure this doesn't interfere with the AI-triggered open event.
+    // The e.stopPropagation() on the AI buttons should prevent this listener from firing for their clicks.
     if (!diceRandomizerModal.classList.contains('hidden') && !e.target.closest('#dice-randomizer-modal') && !e.target.closest('#open-dice-randomizer-from-hub-btn')) {
         // Reset inline styles when closing via outside click
         diceRandomizerModal.classList.add('hidden');
@@ -663,14 +678,21 @@ document.addEventListener('click', (e) => {
     }
 });
 
-openRandomizerHubBtn?.addEventListener('click', () => randomizerHubModal.classList.remove('hidden'));
+openRandomizerHubBtn?.addEventListener('click', (e) => { // Added event parameter
+    e.stopPropagation(); // Stop propagation
+    randomizerHubModal.classList.remove('hidden');
+});
+
 closeRandomizerHubModalBtn?.addEventListener('click', () => randomizerHubModal.classList.add('hidden'));
+
 openListRandomizerFromHubBtn?.addEventListener('click', () => {
     randomizerHubModal.classList.add('hidden');
     listRandomizerModal.classList.remove('hidden');
     initListRandomizer(ledgerDataCache);
 });
-openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
+
+openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => { // Added event parameter
+    e.stopPropagation(); // Stop propagation
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
     // Ensure initDiceRandomizer receives ledgerDataCache and addStripeToPerson for manual rolls
@@ -678,7 +700,8 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
 });
 
 // FIX: Corrected close button for Dice Randomizer Modal
-closeDiceRandomizerModalBtn?.addEventListener('click', () => {
+closeDiceRandomizerModalBtn?.addEventListener('click', (e) => { // Added event parameter
+    e.stopPropagation(); // Stop propagation to prevent immediate re-opening by global listener
     diceRandomizerModal.classList.add('hidden');
     // Also reset inline styles when closing with the cross button
     diceRandomizerModal.style.display = 'none';
@@ -686,7 +709,9 @@ closeDiceRandomizerModalBtn?.addEventListener('click', () => {
 });
 
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
-openGeminiFromHubBtn?.addEventListener('click', () => { 
+
+openGeminiFromHubBtn?.addEventListener('click', (e) => { // Added event parameter
+    e.stopPropagation(); // Stop propagation
     randomizerHubModal.classList.add('hidden'); 
     geminiModal.classList.remove('hidden');
     geminiOutput.classList.add('hidden');
@@ -694,6 +719,7 @@ openGeminiFromHubBtn?.addEventListener('click', () => {
     geminiInput.value = '';
     geminiActionButtonsContainer.innerHTML = ''; // Clear buttons when opening
 });
+
 closeGeminiModalBtn?.addEventListener('click', () => {
     geminiModal.classList.add('hidden');
     geminiOutput.classList.add('hidden'); 
@@ -701,6 +727,7 @@ closeGeminiModalBtn?.addEventListener('click', () => {
     geminiInput.value = ''; 
     geminiActionButtonsContainer.innerHTML = ''; // Clear buttons when closing
 });
+
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
 
 // Drunk Stripes Modal Event Listeners
