@@ -167,8 +167,8 @@ function updateAppFooter() {
  * @returns {object|null} An object containing action type and parameters, or null if unparseable.
 */
 function parseOracleJudgment(judgementText) {
-    // Example: "Noud gets 3 stripes and rolls a 6-sided die."
-    const combinedMatch = judgementText.match(/(\w+) gets (\d+) stripe(?:s)? and (?:rolls|roll) a (\d+)-sided die/i);
+    // Example: "Noud gets 3 stripes and rolls a 6-sided die [Rule 2, Rule 3]."
+    const combinedMatch = judgementText.match(/(\w+) gets (\d+) stripe(?:s)? and (?:rolls|roll) a (\d+)-sided die(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i);
     if (combinedMatch) {
         return {
             type: 'addStripesAndRollDice',
@@ -178,8 +178,8 @@ function parseOracleJudgment(judgementText) {
         };
     }
 
-    // Example: "Noud gets 3 stripes"
-    const stripesMatch = judgementText.match(/(\w+) gets (\d+) stripe/i);
+    // Example: "Noud gets 3 stripes [Rule 2]"
+    const stripesMatch = judgementText.match(/(\w+) gets (\d+) stripe(?:s)?(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i);
     if (stripesMatch) {
         return {
             type: 'addStripes',
@@ -188,9 +188,8 @@ function parseOracleJudgment(judgementText) {
         };
     }
 
-    // Example: "Test must roll dice 軸 3." or "Test must roll dice 3."
-    // This regex now accounts for an optional dice symbol (軸) and whitespace between "dice" and the number.
-    const rollDiceMatch = judgementText.match(/(?:roll|rolls) dice\s*軸?\s*(\d+)/i);
+    // Example: "Test must roll dice 3 [Rule 1]."
+    const rollDiceMatch = judgementText.match(/(?:roll|rolls) dice\s*(\d+)(?: \[Rule(?:s)?\s*[\d,\s]+\])?/i);
     if (rollDiceMatch) {
         return {
             type: 'rollDice',
@@ -198,7 +197,7 @@ function parseOracleJudgment(judgementText) {
         };
     }
 
-    // Example: "Noud is innocent." or other simple judgments
+    // Example: "Noud is innocent [Rule 1 not broken]." or other simple judgments
     if (judgementText.toLowerCase().includes('innocent')) {
         return { type: 'innocent' };
     }
@@ -217,7 +216,7 @@ function createActionButton(parsedJudgement) {
     actionButton.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4';
 
     if (parsedJudgement.type === 'addStripes') {
-        actionButton.textContent = `Add ${parsedJudgement.count} 🟥 to ${parsedJudgement.name}`;
+        actionButton.textContent = `Add ${parsedJudgement.count} Stripes to ${parsedJudgement.name}`;
         actionButton.onclick = async () => {
             const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
             if (person) {
@@ -239,7 +238,7 @@ function createActionButton(parsedJudgement) {
             actionButton.remove();
         };
     } else if (parsedJudgement.type === 'addStripesAndRollDice') {
-        actionButton.textContent = `Add ${parsedJudgement.count} 🟥 & Roll 🎲 ${parsedJudgement.diceValue} to ${parsedJudgement.name}`;
+        actionButton.textContent = `Add ${parsedJudgement.count} Stripes & Roll 🎲 ${parsedJudgement.diceValue} to ${parsedJudgement.name}`;
         actionButton.onclick = async () => {
             const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
             if (person) {
@@ -519,10 +518,25 @@ openGeminiFromHubBtn?.addEventListener('click', () => { // This is the button mo
     randomizerHubModal.classList.add('hidden'); // Ensure hub is closed if clicked from there
     geminiModal.classList.remove('hidden');
     geminiOutput.classList.add('hidden');
-    geminiOutput.innerHTML = ''; // Clear previous judgment and button
+    geminiOutput.innerHTML = ''; // Clear previous judgment
     geminiInput.value = '';
+    // Remove the action button if it exists
+    const existingActionButton = geminiOutput.nextElementSibling;
+    if (existingActionButton && existingActionButton.classList.contains('btn-punishment')) {
+        existingActionButton.remove();
+    }
 });
-closeGeminiModalBtn?.addEventListener('click', () => geminiModal.classList.add('hidden'));
+closeGeminiModalBtn?.addEventListener('click', () => {
+    geminiModal.classList.add('hidden');
+    geminiOutput.classList.add('hidden'); // Ensure output is hidden when closing
+    geminiOutput.innerHTML = ''; // Clear previous judgment
+    geminiInput.value = ''; // Clear input
+    // Remove the action button if it exists
+    const existingActionButton = geminiOutput.nextElementSibling;
+    if (existingActionButton && existingActionButton.classList.contains('btn-punishment')) {
+        existingActionButton.remove();
+    }
+});
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
 
 // Drunk Stripes Modal Event Listeners

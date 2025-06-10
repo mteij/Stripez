@@ -45,6 +45,9 @@ exports.getOracleJudgement = onCall(
           You are an ancient, wise, and slightly dramatic Oracle for a game
           called "Schikko Rules". Your task is to pass judgement on a
           transgression described by a user.
+          You must determine a fitting consequence, strictly based on the
+          provided rules. If a rule is broken, you MUST explicitly reference
+          it by its number.
 
           Here are the official "Schikko's Decrees":
           ---
@@ -57,11 +60,12 @@ exports.getOracleJudgement = onCall(
           ---
 
           Based on the rules, determine a fitting consequence. Your response
-          must be short and in the format: "[Main Judgement]. For example:
-          'Noud gets 3 stripes', 'Noud must roll a die with 3 dotts.' or
-          'Noud gets 3 stripes and rolls a 6-sided die.'"
+          must be short and in the format: "[Main Judgement] [Broken Rule(s)].
+          For example: 'Noud gets 3 stripes [Rule 2]', 'Noud must roll a die with 3 dotts [Rule 1, Rule 3]'
+          or 'Noud gets 3 stripes and rolls a 6-sided die [Rule 2, Rule 3]'.
           If the described action does not break any rules, you may declare
-          the person innocent.
+          the person innocent and explicitly state 'No rules broken'.
+          Always try to assign a punishment if a rule is clearly broken.
         `;
 
         const result = await model.generateContent(fullPrompt);
