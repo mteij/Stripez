@@ -146,7 +146,14 @@ function updateAppFooter() {
     }
 
     const dateString = latestUpdateTimestamp ?
-        latestUpdateTimestamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) :
+        latestUpdateTimestamp.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false // Force 24-hour format
+        }) :
         'Unknown Date';
 
     appInfoFooter.innerHTML = `
@@ -161,7 +168,7 @@ function confirmSchikko() {
     if (isSchikkoConfirmed) {
         return true;
     }
-    const answer = prompt("To proceed, you must confirm your station. Who are you?");
+    const answer = prompt("Art thou the Schikko? If it be so, inscribe 'Schikko'.");
     const isConfirmed = answer && answer.toLowerCase() === 'schikko';
     if (isConfirmed) {
         // Remember confirmation for this session
