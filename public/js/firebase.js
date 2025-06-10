@@ -3,7 +3,7 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
 
 // Firebase configuration. These placeholders will be replaced by GitHub Actions
 // during the build/deploy process using a string replacement utility.
@@ -52,9 +52,44 @@ const addStripeToPerson = async (docId) => {
 const removeLastStripeFromPerson = async (person) => {
     if (person && Array.isArray(person.stripes) && person.stripes.length > 0) {
         const docRef = doc(db, 'punishments', person.id);
+        
+        // Sort in descending order to get the latest timestamp to remove
         const sortedStripes = [...person.stripes].sort((a, b) => b.toMillis() - a.toMillis());
-        const lastStripe = sortedStripes[0];
-        await updateDoc(docRef, { stripes: arrayRemove(lastStripe) });
+        const lastStripeToRemove = sortedStripes[0];
+
+        // 1. Remove the normal stripe from Firestore
+        await updateDoc(docRef, { stripes: arrayRemove(lastStripeToRemove) });
+
+        // 2. Fetch the updated document immediately to get the latest state after the first update
+        const updatedSnap = await getDoc(docRef);
+        const updatedPersonData = updatedSnap.data();
+
+        let currentNormalStripes = updatedPersonData.stripes?.length || 0;
+        let currentDrunkStripes = updatedPersonData.drunkStripes?.length || 0;
+        
+        // Determine how many drunk stripes need to be removed to maintain consistency
+        let drunkStripesToRemove = [];
+        if (currentDrunkStripes > currentNormalStripes) {
+            const diff = currentDrunkStripes - currentNormalStripes;
+            // Sort drunk stripes by timestamp in descending order to remove the most recent ones
+            const sortedDrunkStripes = [...(updatedPersonData.drunkStripes || [])].sort((a, b) => b.toMillis() - a.toMillis());
+            
+            // Collect the timestamps of the drunk stripes to be removed
+            for (let i = 0; i < diff; i++) {
+                if (sortedDrunkStripes[i]) {
+                    drunkStripesToRemove.push(sortedDrunkStripes[i]);
+                }
+            }
+        }
+
+        // 3. If any drunk stripes need to be removed, perform this update in a batch
+        if (drunkStripesToRemove.length > 0) {
+            const batch = writeBatch(db);
+            drunkStripesToRemove.forEach(ts => {
+                batch.update(docRef, { drunkStripes: arrayRemove(ts) });
+            });
+            await batch.commit();
+        }
     }
 };
 
