@@ -130,14 +130,17 @@ function showStatsModal(person) {
         let borderColor = '';
         let backgroundColor = '';
 
-        if (filterType === 'total' || filterType === 'normal' || filterType === 'drunk') { // Renamed 'drunken' to 'drunk'
+        // Get the selected option's text for dynamic title
+        const selectedOptionText = stripeFilterSelect.options[stripeFilterSelect.selectedIndex].text;
+
+        if (filterType === 'total' || filterType === 'normal' || filterType === 'drunk') { 
             let timestamps = [];
             if (filterType === 'total') {
-                timestamps = [...normalStripeTimestamps, ...drunkStripeTimestamps].sort((a, b) => a - b); // Renamed variable
+                timestamps = [...normalStripeTimestamps, ...drunkStripeTimestamps].sort((a, b) => a - b); 
             } else if (filterType === 'normal') {
                 timestamps = normalStripeTimestamps;
-            } else if (filterType === 'drunk') { // Renamed 'drunken' to 'drunk'
-                timestamps = drunkStripeTimestamps; // Renamed variable
+            } else if (filterType === 'drunk') { 
+                timestamps = drunkStripeTimestamps; 
             }
 
             if (timestamps.length === 0) {
@@ -145,14 +148,14 @@ function showStatsModal(person) {
                     type: 'line', data: { datasets: [] },
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        plugins: { title: { display: true, text: `No ${filterType === 'normal' ? 'penalties given' : (filterType === 'drunk' ? 'penalties fulfilled (drunk)' : 'events')} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } }, // Renamed text
+                        plugins: { title: { display: true, text: `No ${selectedOptionText} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } }, 
                         scales: { x: { display: false }, y: { display: false } }
                     }
                 });
                 return;
             }
 
-            label = filterType === 'total' ? 'Total Stripes' : (filterType === 'normal' ? 'Penalties Given (Red Stripes)' : 'Penalties Fulfilled (Drunk Stripes)'); // Renamed text
+            label = selectedOptionText; // Use the selected option's text for the label
             borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 1)' : 'rgba(243, 156, 18, 1)');
             backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 0.2)' : 'rgba(243, 156, 18, 0.2)');
 
@@ -174,13 +177,13 @@ function showStatsModal(person) {
             }
 
         } else if (filterType === 'remaining') { // This block is now effectively removed as an option
-            const currentRemainingCount = normalStripeTimestamps.length - drunkStripeTimestamps.length; // Renamed variable
+            const currentRemainingCount = normalStripeTimestamps.length - drunkStripeTimestamps.length; 
             // This case is primarily for display, not a time series chart
             stripeChart = new Chart(stripeChartCanvas, {
                 type: 'line', data: { datasets: [] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, currentRemainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } }, // Renamed text
+                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, currentRemainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } }, 
                     scales: { x: { display: false }, y: { display: false } }
                 }
             });
