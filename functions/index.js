@@ -152,7 +152,7 @@ exports.getOracleJudgement = onCall(
                 const isNotInnocentJudgement = !judgement.toLowerCase().includes('innocent');
 
                 if (isNotTooDifferent && isNotInnocentJudgement) {
-                    const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi");
+                    const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi"); // Define nameRegex for scope.
                     judgement = judgement.replace(nameRegex, closestName);
                 }
             }
