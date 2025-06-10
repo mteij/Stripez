@@ -116,12 +116,9 @@ function showStatsModal(person) {
     if (stripeChart) stripeChart.destroy();
 
     const normalStripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
-    const drunkStripeTimestamps = (person.drunkStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b); // Changed to 'drunkStripes'
-    const remainingCount = normalStripeTimestamps.length - drunkStripeTimestamps.length; 
-    remainingStripesDisplay.textContent = `Remaining Penalties: ${Math.max(0, remainingCount)}`; 
-
-
-    // Function to update the chart based on the selected filter
+    const drunkStripeTimestamps = (person.drunkStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
+    
+    // Function to update the chart and the display text based on the selected filter
     const updateChart = (filterType) => {
         if (stripeChart) stripeChart.destroy(); // Destroy existing chart before creating a new one
 
@@ -133,61 +130,103 @@ function showStatsModal(person) {
         // Get the selected option's text for dynamic title
         const selectedOptionText = stripeFilterSelect.options[stripeFilterSelect.selectedIndex].text;
 
-        if (filterType === 'total' || filterType === 'normal' || filterType === 'drunk') { 
+        let displayValue = 0; // Initialize display value for the text
+        if (filterType === 'total') {
+            displayValue = normalStripeTimestamps.length;
+            remainingStripesDisplay.textContent = `Total Stripes: ${displayValue}`;
+        } else if (filterType === 'drunk') {
+            displayValue = drunkStripeTimestamps.length;
+            remainingStripesDisplay.textContent = `Drunk Stripes: ${displayValue}`;
+        } else if (filterType === 'left') {
+            displayValue = Math.max(0, normalStripeTimestamps.length - drunkStripeTimestamps.length);
+            remainingStripesDisplay.textContent = `Stripes Left: ${displayValue}`;
+        }
+
+
+        if (filterType === 'total' || filterType === 'drunk' || filterType === 'left') { 
             let timestamps = [];
             if (filterType === 'total') {
-                timestamps = [...normalStripeTimestamps, ...drunkStripeTimestamps].sort((a, b) => a - b); 
-            } else if (filterType === 'normal') {
-                timestamps = normalStripeTimestamps;
+                timestamps = normalStripeTimestamps; 
             } else if (filterType === 'drunk') { 
                 timestamps = drunkStripeTimestamps; 
-            }
+            } else if (filterType === 'left') {
+                // For "Stripes Left", we need to calculate cumulative remaining stripes.
+                // This is a bit more complex as it's not just a cumulative count of one type.
+                // Let's create a combined event stream and track the difference.
+                const allEvents = [
+                    ...normalStripeTimestamps.map(ts => ({ type: 'normal', timestamp: ts })),
+                    ...drunkStripeTimestamps.map(ts => ({ type: 'drunk', timestamp: ts }))
+                ].sort((a, b) => a.timestamp - b.timestamp);
 
-            if (timestamps.length === 0) {
-                stripeChart = new Chart(stripeChartCanvas, {
-                    type: 'line', data: { datasets: [] },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: { title: { display: true, text: `No ${selectedOptionText} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } }, 
-                        scales: { x: { display: false }, y: { display: false } }
+                let currentNormal = 0;
+                let currentDrunk = 0;
+                dataPoints.push({ x: allEvents.length > 0 ? allEvents[0].timestamp : new Date(), y: 0 }); // Start at 0 for "left"
+
+                allEvents.forEach(event => {
+                    if (event.type === 'normal') {
+                        currentNormal++;
+                    } else {
+                        currentDrunk++;
                     }
+                    dataPoints.push({ x: event.timestamp, y: currentNormal - currentDrunk });
                 });
-                return;
-            }
 
-            label = selectedOptionText; 
-            borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 1)' : 'rgba(243, 156, 18, 1)');
-            backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : (filterType === 'normal' ? 'rgba(192, 57, 43, 0.2)' : 'rgba(243, 156, 18, 0.2)');
-
-            dataPoints = [];
-            let cumulativeCount = 0;
-            // Add a starting point at the first event time, with 0 count, for visual clarity
-            if (timestamps.length > 0) {
-                dataPoints.push({ x: timestamps[0], y: 0 });
-            }
-
-            timestamps.forEach(timestamp => {
-                cumulativeCount++;
-                dataPoints.push({ x: timestamp, y: cumulativeCount });
-            });
-            
-            // To ensure the line extends to the last point even if it's the only one
-            if (timestamps.length > 0 && dataPoints[dataPoints.length - 1]?.x !== timestamps[timestamps.length - 1]) {
-                dataPoints.push({ x: timestamps[timestamps.length - 1], y: cumulativeCount });
-            }
-
-        } else if (filterType === 'remaining') { 
-            const currentRemainingCount = normalStripeTimestamps.length - drunkStripeTimestamps.length; 
-            stripeChart = new Chart(stripeChartCanvas, {
-                type: 'line', data: { datasets: [] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: `Current Penalties Remaining: ${Math.max(0, currentRemainingCount)}. This is not a time series graph.`, font: { size: 16 }, color: '#6f4e37' } }, 
-                    scales: { x: { display: false }, y: { display: false } }
+                // If no events, explicitly state
+                if (allEvents.length === 0) {
+                    stripeChart = new Chart(stripeChartCanvas, {
+                        type: 'line', data: { datasets: [] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { title: { display: true, text: `No ${selectedOptionText} to display.`, font: { size: 16 }, color: '#6f4e37' } }, 
+                            scales: { x: { display: false }, y: { display: false } }
+                        }
+                    });
+                    return;
                 }
-            });
-            return;
+
+                label = selectedOptionText; 
+                borderColor = 'rgba(192, 57, 43, 1)'; // Red for remaining
+                backgroundColor = 'rgba(192, 57, 43, 0.2)';
+
+            }
+            
+            // For 'total' and 'drunk' filters, plot cumulative count over time
+            if (filterType === 'total' || filterType === 'drunk') {
+                if (timestamps.length === 0) {
+                    stripeChart = new Chart(stripeChartCanvas, {
+                        type: 'line', data: { datasets: [] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { title: { display: true, text: `No ${selectedOptionText} for this transgressor.`, font: { size: 16 }, color: '#6f4e37' } }, 
+                            scales: { x: { display: false }, y: { display: false } }
+                        }
+                    });
+                    return;
+                }
+
+                label = selectedOptionText; 
+                borderColor = filterType === 'total' ? 'rgba(96, 108, 129, 1)' : 'rgba(243, 156, 18, 1)';
+                backgroundColor = filterType === 'total' ? 'rgba(96, 108, 129, 0.2)' : 'rgba(243, 156, 18, 0.2)';
+
+                dataPoints = [];
+                let cumulativeCount = 0;
+                // Add a starting point at the first event time, with 0 count, for visual clarity
+                if (timestamps.length > 0) {
+                    dataPoints.push({ x: timestamps[0], y: 0 });
+                }
+
+                timestamps.forEach(timestamp => {
+                    cumulativeCount++;
+                    dataPoints.push({ x: timestamp, y: cumulativeCount });
+                });
+                
+                // To ensure the line extends to the last point even if it's the only one
+                if (timestamps.length > 0 && dataPoints[dataPoints.length - 1]?.x !== timestamps[timestamps.length - 1]) {
+                    dataPoints.push({ x: timestamps[timestamps.length - 1], y: cumulativeCount });
+                }
+            }
         }
+
 
         const chartData = {
             datasets: [{
@@ -221,6 +260,15 @@ function showStatsModal(person) {
                                 return `${label}: ${value}`;
                             }
                         }
+                    },
+                    title: { // Add title to the chart itself
+                        display: true,
+                        text: `Cumulative ${selectedOptionText} Over Time`,
+                        font: {
+                            size: 18,
+                            family: 'Cinzel Decorative'
+                        },
+                        color: '#5c3d2e'
                     }
                 },
                 scales: {
