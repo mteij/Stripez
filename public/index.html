@@ -87,15 +87,18 @@
                 <li>He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the NICAT until penance is made.</li>
             </ol>
             
-            <div id="show-decrees-container" class="text-center mt-8">
+            <div id="show-decrees-container" class="flex justify-center items-center gap-4 mt-8">
                 <button id="show-decrees-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base cursor-pointer focus:outline-none flex items-center justify-center space-x-2" data-state="collapsed">
                     <span>Schikko's Decrees</span>
                     <span class="decree-arrow"></span>
                 </button>
+                <button id="open-gemini-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base">
+                    Oracle's Judgement
+                </button>
             </div>
 
             <div id="decrees-content" class="hidden mt-6">
-                <div class="pt-4 border-t-2 border-dotted border-[#b9987e]">
+                <div class="pt-4 border-t-4 border-dotted border-[#b9987e]">
                     <div class="flex flex-col sm:flex-row items-center justify-end gap-2 mb-4">
                         <input type="text" id="rule-search-input" placeholder="Search decrees..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
                         <button id="add-decree-btn" class="btn-ancient w-[44px] h-[44px] flex items-center justify-center rounded-md text-2xl font-bold" title="Add Decree">
@@ -213,8 +216,7 @@
             <div class="flex flex-col gap-4">
                 <button id="open-list-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Name Randomizer</button>
                 <button id="open-dice-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Dice Roller</button>
-                <button id="open-gemini-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Oracle's Judgement</button>
-            </div>
+                </div>
         </div>
     </div>
 
