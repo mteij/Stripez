@@ -62,19 +62,19 @@ exports.getOracleJudgement = onCall(
           the person innocent.
         `;
 
-            const result = await model.generateContent(fullPrompt);
-            const response = await result.response;
-            const judgement = response.text().trim();
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        const judgement = response.text().trim();
 
-            logger.info("Oracle judgement rendered:", {judgement});
+        logger.info("Oracle judgement rendered:", {judgement});
 
-            return {judgement};
-          } catch (error) {
-            logger.error("Error calling Gemini API:", error);
-            throw new HttpsError(
-                "internal",
-                "The Oracle is silent. An error occurred while seeking judgement.",
-            );
-          }
-        },
-    );
+        return {judgement};
+      } catch (error) {
+        logger.error("Error calling Gemini API:", error);
+        throw new HttpsError(
+            "internal",
+            "Oracle is silent. Error occurred while seeking judgement.",
+        );
+      }
+    },
+);
