@@ -98,16 +98,27 @@ exports.getOracleJudgement = onCall(
           You are an ancient, wise, and slightly dramatic Oracle for a game
           called "Schikko Rules". Your task is to pass judgement on a
           transgression described by a user.
-          You must determine a fitting consequence, strictly based on the
-          provided rules. If a rule is broken, you MUST explicitly reference
-          it by its number.
-          If the transgression involves a person, identify their name from
-          the description.
-          If you identify a person, use their name directly in the judgement.
+          You must determine the broken rules and their individual penalties.
+          You will output your judgement as a JSON string. Do NOT output anything else.
 
-          IMPORTANT: If multiple rules are broken, calculate and combine their respective penalties.
-          - Add up all the numerical stripe penalties from each broken rule.
-          - Include all specified dice rolls from each broken rule, specifying the type of die if mentioned (e.g., "3-sided die", "6-sided die").
+          The JSON must have the following structure:
+          {
+            "person": "string" (Name of the person, or "Someone" if unclear),
+            "penalties": [
+              { "type": "stripes", "amount": number },
+              { "type": "dice", "value": number },
+              // ... more penalties if multiple rules are broken or a rule has multiple penalties
+            ],
+            "rulesBroken": [number, number, ...], // Array of rule numbers (e.g., [1, 5])
+            "innocent": boolean (true if no rules broken, false otherwise)
+          }
+
+          Important:
+          - For "penalties", list each penalty from each broken rule individually. Do NOT sum stripes or combine dice rolls in the JSON; the client-side will handle that.
+          - If a rule specifies "X stripes", add one object: {"type": "stripes", "amount": X}.
+          - If a rule specifies "a Y-sided die", add one object: {"type": "dice", "value": Y}.
+          - If no rules are broken, set "innocent" to true, and "person", "penalties", "rulesBroken" can be empty or default.
+          - If you identify a person, use their name directly in the "person" field.
 
           Here are the official "Schikko's Decrees":
           ---
@@ -119,57 +130,113 @@ exports.getOracleJudgement = onCall(
           "${promptText}"
           ---
 
-          Based on the rules, determine a fitting consequence. Your response
-          must be short and in the format: "[Main Judgement] [Broken Rule(s)]".
+          Illustrative Examples of JSON Output (these do not represent the actual penalties for the specific rules above, but show the desired format):
 
-          These examples are illustrative of the output format and logic, and do not represent the actual penalties for the specific rules above. They are designed to show how to combine penalties from multiple rules.
-          Examples:
-          - 'Noud gets 3 stripes [Rule 2]' (for a single rule broken)
-          - 'Emma gets 5 stripes and rolls a 4-sided die [Rule 1, Rule 3]' (for multiple rules broken, summing stripes and including a dice roll)
-          - 'Liam gets 12 stripes, rolls a 6-sided die, and rolls an 8-sided die [Rule 5, Rule 7, Rule 9]' (for multiple rules broken, summing stripes and including multiple distinct dice rolls)
-          - 'Sophie gets 20 stripes and rolls a 10-sided die [Rule 4, Rule 6, Rule 8, Rule 10]' (for several rules broken, summing many stripes and including a specific dice roll)
-          - 'The Oracle declares them innocent. No rules broken.' (if no rules are broken)
+          Example 1: Single rule broken, only stripes.
+          \`\`\`json
+          {
+            "person": "Noud",
+            "penalties": [
+              { "type": "stripes", "amount": 3 }
+            ],
+            "rulesBroken": [2],
+            "innocent": false
+          }
+          \`\`\`
 
-          Always try to assign a punishment if a rule is clearly broken.
-          `; // Reverted to previous natural language prompt
+          Example 2: Multiple rules broken, stripes and one die.
+          \`\`\`json
+          {
+            "person": "Emma",
+            "penalties": [
+              { "type": "stripes", "amount": 5 },
+              { "type": "dice", "value": 4 }
+            ],
+            "rulesBroken": [1, 3],
+            "innocent": false
+          }
+          \`\`\`
+
+          Example 3: Multiple rules broken, stripes and multiple different dice.
+          \`\`\`json
+          {
+            "person": "Liam",
+            "penalties": [
+              { "type": "stripes", "amount": 10 },
+              { "type": "dice", "value": 6 },
+              { "type": "dice", "value": 8 }
+            ],
+            "rulesBroken": [5, 7, 9],
+            "innocent": false
+          }
+          \`\`\`
+
+          Example 4: Many rules broken, summing many stripes, and multiple dice.
+          \`\`\`json
+          {
+            "person": "Sophie",
+            "penalties": [
+              { "type": "stripes", "amount": 7 },
+              { "type": "stripes", "amount": 13 },
+              { "type": "dice", "value": 10 },
+              { "type": "dice", "value": 20 }
+            ],
+            "rulesBroken": [4, 6, 8, 10],
+            "innocent": false
+          }
+          \`\`\`
+
+          Example 5: No rules broken.
+          \`\`\`json
+          {
+            "person": "Someone",
+            "penalties": [],
+            "rulesBroken": [],
+            "innocent": true
+          }
+          \`\`\`
+          `;
 
         const result = await model.generateContent(fullPrompt);
-        let judgement = result.response.text().trim(); // Get natural language string
+        const judgementText = result.response.text().trim(); // Get natural language string, which should be JSON now
 
-        // Apply fuzzy matching to the name in the natural language judgement string
-        if (ledgerNames && ledgerNames.length > 0) {
-            // Attempt to extract a name from the AI's judgement
-            const nameMatch = judgement.match(/^(\w+)(?= gets|\s+must|\s+rolls|\s+roll)|\s(?:gets|rolls|roll|must)\s(\w+)/i);
-            let aiSuggestedName = null;
-            if (nameMatch) {
-                aiSuggestedName = nameMatch[1] || nameMatch[2];
-            }
-            
-            if (aiSuggestedName) {
-                let closestName = aiSuggestedName;
-                let minDistance = -1;
+        logger.info("Raw Oracle judgement text (should be JSON):", {judgementText});
 
-                ledgerNames.forEach((actualName) => {
-                    const distance = levenshteinDistance(aiSuggestedName.toLowerCase(), actualName.toLowerCase());
-                    if (minDistance === -1 || distance < minDistance) {
-                        minDistance = distance;
-                        closestName = actualName;
-                    }
-                });
-
-                const isNotTooDifferent = minDistance < 3;
-                const isNotInnocentJudgement = !judgement.toLowerCase().includes('innocent');
-
-                if (isNotTooDifferent && isNotInnocentJudgement) {
-                    const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi"); // Define nameRegex for scope.
-                    judgement = judgement.replace(nameRegex, closestName);
-                }
-            }
+        let parsedJudgement;
+        try {
+            parsedJudgement = JSON.parse(judgementText);
+        } catch (e) {
+            logger.error("Failed to parse AI response as JSON:", e);
+            throw new HttpsError(
+                "internal",
+                "Oracle's response was garbled. Please try again. (Invalid JSON from AI)",
+                judgementText, // Include the raw AI response for debugging
+            );
         }
 
-        logger.info("Oracle judgement rendered:", {judgement});
+        // Apply fuzzy matching to the name in the parsed JSON judgement
+        if (ledgerNames && ledgerNames.length > 0 && parsedJudgement.person && parsedJudgement.person.toLowerCase() !== 'someone') {
+            const aiSuggestedName = parsedJudgement.person;
+            let closestName = aiSuggestedName;
+            let minDistance = -1;
 
-        return {judgement}; // Return object with 'judgement' string
+            ledgerNames.forEach((actualName) => {
+                const distance = levenshteinDistance(aiSuggestedName.toLowerCase(), actualName.toLowerCase());
+                if (minDistance === -1 || distance < minDistance) {
+                    minDistance = distance;
+                    closestName = actualName;
+                }
+            });
+
+            const isNotTooDifferent = minDistance < 3; // Threshold for fuzzy matching
+            if (isNotTooDifferent) {
+                parsedJudgement.person = closestName;
+            }
+        }
+        
+        logger.info("Parsed Oracle judgement:", {parsedJudgement});
+
+        return {judgement: parsedJudgement}; // Return object with parsed JSON judgement
       } catch (error) {
         logger.error("Error in getOracleJudgement:", error);
         if (error instanceof HttpsError) {
