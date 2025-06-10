@@ -19,7 +19,7 @@ function shuffleArray(array) {
     return array;
 }
 
-function renderListOutput(names, isShuffled = true) {
+function renderListOutput(names, isShuffled = true) { // Corrected isShuffed to isShuffled
     if (names.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names available from the ledger.</span>';
         listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
@@ -27,7 +27,7 @@ function renderListOutput(names, isShuffled = true) {
     }
 
     let outputHTML = '';
-    if (isShuffed) {
+    if (isShuffled) { // Corrected isShuffed to isShuffled
         outputHTML = '<h3>Shuffled Names:</h3><ol class="list-output-ol">';
         names.forEach(name => {
             outputHTML += `<li>${name}</li>`;
@@ -109,6 +109,9 @@ export function initDiceRandomizer() {
         return;
     }
 
+    // Clear previous results when initialized (modal opened)
+    diceResultsContainer.innerHTML = '';
+
     diceSpinBtn.onclick = handleDiceSpin;
 
     // Update slider value display
@@ -120,14 +123,13 @@ export function initDiceRandomizer() {
 
 // New exported function to roll a specific dice value
 export function rollSpecificDice(maxValue) {
+    // Always call init to ensure elements are found and event listeners set up
+    initDiceRandomizer();
+
+    // Now, check if elements were successfully found by initDiceRandomizer
     if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan) {
-        console.error("Dice randomizer elements not found for programmatic roll!");
-        // Attempt to initialize if not already, though initDiceRandomizer is called on modal open
-        initDiceRandomizer();
-        if (!diceMaxValueSlider || !diceResultsContainer || !diceSliderValueSpan) {
-            console.error("Failed to initialize dice randomizer elements.");
-            return;
-        }
+        console.error("Dice randomizer elements are still not found after initialization. Cannot perform programmatic roll.");
+        return;
     }
 
     // Set slider value and update display
