@@ -144,7 +144,7 @@ exports.getOracleJudgement = onCall(
             "count": 3,
             "diceValue": 6,
             "rulesBroken": ["Rule 2", "Rule 3"],
-            "displayMessage": "Noud gets 3 stripes and rolls a 6-sided die [R2,3]."
+            "displayMessage": "Noud gets 3 stripes & rolls 6-sided die [R2,3]."
           }
           If no rules are broken:
           {
@@ -212,7 +212,6 @@ exports.getOracleJudgement = onCall(
           if (isNotTooDifferent && isNotInnocentJudgement) {
             // Replace the original name with the fuzzy-matched name in the
             // display message and update the name in the structured object itself
-            const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi");
             structuredJudgement.displayMessage = 
                 structuredJudgement.displayMessage.replace(nameRegex, closestName);
             structuredJudgement.name = closestName; // Update name in structured object
