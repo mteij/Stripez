@@ -57,13 +57,18 @@ function renderLedger(viewData, term) {
             const stripesToDisplay = normalStripesCount; 
 
             for (let i = 0; i < stripesToDisplay; i++) {
-                if (i < drunkStripesCount) { // This stripe is drunk 
-                    stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk"></div>`;
+                const isCurrentStripeDrunk = i < drunkStripesCount;
+                const isFifthInSequence = (i + 1) % 5 === 0;
+                const isLastStripeOverall = (i + 1) === normalStripesCount;
+
+                if (isCurrentStripeDrunk) {
+                    if (isFifthInSequence && !isLastStripeOverall) {
+                        stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk punishment-stripe-drunk-fifth"></div>`;
+                    } else {
+                        stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk"></div>`;
+                    }
                 } else { // This stripe is normal (un-drunk)
-                    const isFifthStripe = (i + 1) % 5 === 0;
-                    
-                    // Apply black stripe if it's a 5th undrunken stripe
-                    if (isFifthStripe) {
+                    if (isFifthInSequence && !isLastStripeOverall) {
                         stripesContentHtml += `<div class="punishment-stripe punishment-stripe-black"></div>`;
                     } else {
                         stripesContentHtml += `<div class="punishment-stripe"></div>`;

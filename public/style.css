@@ -140,6 +140,13 @@ body {
     transform: skew(-15deg);
 }
 
+/* New styling for 5th drunken punishment stripes */
+.punishment-stripe-drunk-fifth {
+    background-color: #a0522d; /* A darker, earthy orange/brown */
+    border-left: 1px solid #6b3e21; /* Darker border */
+}
+
+
 /* Set a readable text color for the dropdown options */
 #sort-select option {
     color: black;
