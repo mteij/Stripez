@@ -7,7 +7,8 @@ import {
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore,
-    addDrunkStripeToPerson // Renamed: Import addDrunkStripeToPerson
+    addDrunkStripeToPerson, // Renamed: Import addDrunkStripeToPerson
+    removeLastDrunkStripeFromPerson // New: Import removeLastDrunkStripeFromPerson
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice } from '../randomizer/randomizer.js';
@@ -457,6 +458,10 @@ punishmentListDiv.addEventListener('click', (e) => {
             drunkStripesModal.classList.remove('hidden'); 
             break;
         case 'remove-stripe': handleRemoveStripe(id); break;
+        case 'remove-drunk-stripe': // New case for removing drunk stripe
+            const personToRemoveDrunkStripe = ledgerDataCache.find(p => p.id === id);
+            if (personToRemoveDrunkStripe) removeLastDrunkStripeFromPerson(personToRemoveDrunkStripe);
+            break;
         case 'rename': handleRename(id); break;
         case 'delete': handleDeletePerson(id); break;
         case 'show-stats':

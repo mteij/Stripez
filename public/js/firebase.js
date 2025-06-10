@@ -3,7 +3,7 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; // Removed getDoc as it's no longer needed here
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
 
 // Firebase configuration. These placeholders will be replaced by GitHub Actions
 // during the build/deploy process using a string replacement utility.
@@ -41,7 +41,7 @@ const setupRealtimeListener = (collectionName, callback) => {
 };
 
 const addNameToLedger = async (name, userId) => {
-    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkenStripes: [], addedBy: userId }); // Updated variable name to drunkStripes
+    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkenStripes: [], addedBy: userId }); 
 };
 
 const addStripeToPerson = async (docId) => {
@@ -101,18 +101,32 @@ const updateRuleTextInFirestore = async (docId, newText) => {
  * @param {string} docId - The document ID of the person.
  * @param {number} count - The number of drunk stripes to add.
  */
-const addDrunkStripeToPerson = async (docId, count) => { // Renamed function
+const addDrunkStripeToPerson = async (docId, count) => { 
     const docRef = doc(db, 'punishments', docId);
-    const batch = writeBatch(db); // Use a batch for multiple updates
+    const batch = writeBatch(db); 
 
     for (let i = 0; i < count; i++) {
         // Create a distinct timestamp for each stripe.
         // Adding 'i' milliseconds ensures uniqueness even if calls are very fast.
         const distinctTimestamp = new Date(Date.now() + i); 
-        batch.update(docRef, { drunkenStripes: arrayUnion(distinctTimestamp) }); // Updated property name to drunkStripes
+        batch.update(docRef, { drunkenStripes: arrayUnion(distinctTimestamp) }); 
     }
     
     await batch.commit();
+};
+
+/**
+ * Removes the last added drunk stripe from a person's document.
+ * @param {object} person - The person object from the ledger.
+ */
+const removeLastDrunkStripeFromPerson = async (person) => {
+    if (person && Array.isArray(person.drunkenStripes) && person.drunkenStripes.length > 0) {
+        const docRef = doc(db, 'punishments', person.id);
+        // Sort by timestamp (most recent first) to remove the last one added
+        const sortedDrunkStripes = [...person.drunkenStripes].sort((a, b) => b.toMillis() - a.toMillis());
+        const lastDrunkStripe = sortedDrunkStripes[0];
+        await updateDoc(docRef, { drunkenStripes: arrayRemove(lastDrunkStripe) });
+    }
 };
 
 
@@ -131,5 +145,6 @@ export {
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
     updateRuleTextInFirestore,
-    addDrunkStripeToPerson // Renamed export
+    addDrunkStripeToPerson, 
+    removeLastDrunkStripeFromPerson // New: Export the new function
 };
