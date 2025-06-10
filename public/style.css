@@ -106,6 +106,12 @@ body {
     transition: transform 0.3s ease;
 }
 
+/* Rotate the arrow when decrees are expanded */
+#show-decrees-btn[data-state="expanded"] .decree-arrow {
+    transform: rotate(180deg);
+}
+
+
 /* New: Main section divider style */
 .section-divider {
     margin-top: 3rem; /* Same as my-12 */

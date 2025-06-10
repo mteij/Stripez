@@ -36,7 +36,6 @@ const editRulesBtn = document.getElementById('edit-rules-btn');
 const addDecreeBtn = document.getElementById('add-decree-btn');
 const showDecreesContainer = document.getElementById('show-decrees-container');
 const decreesContent = document.getElementById('decrees-content');
-const hideDecreesBtn = document.getElementById('hide-decrees-btn');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
 const ruleSearchInput = document.getElementById('rule-search-input');
 const appInfoFooter = document.getElementById('app-info-footer');
@@ -269,20 +268,23 @@ sortSelect.addEventListener('change', (e) => {
     handleRender();
 });
 showDecreesBtn?.addEventListener('click', () => {
-    showDecreesContainer.classList.add('hidden');
-    decreesContent.classList.remove('hidden');
-    handleRenderRules();
-});
-hideDecreesBtn?.addEventListener('click', () => {
-    decreesContent.classList.add('hidden');
-    showDecreesContainer.classList.remove('hidden');
-    if (rulesListOl.classList.contains('rules-list-editing')) {
-        rulesListOl.classList.remove('rules-list-editing');
-        editRulesBtn.textContent = 'Finish Editing';
+    const isHidden = decreesContent.classList.contains('hidden');
+    if (isHidden) {
+        decreesContent.classList.remove('hidden');
+        showDecreesBtn.setAttribute('data-state', 'expanded');
+        showDecreesBtn.querySelector('span:first-child').textContent = "Hide Decrees";
+    } else {
+        decreesContent.classList.add('hidden');
+        showDecreesBtn.setAttribute('data-state', 'collapsed');
+        showDecreesBtn.querySelector('span:first-child').textContent = "Schikko's Decrees";
+        if (rulesListOl.classList.contains('rules-list-editing')) {
+            rulesListOl.classList.remove('rules-list-editing');
+            editRulesBtn.textContent = 'Edit Decrees';
+        }
+        ruleSearchInput.value = '';
+        currentRuleSearchTerm = '';
+        handleRenderRules();
     }
-    ruleSearchInput.value = '';
-    currentRuleSearchTerm = '';
-    handleRenderRules();
 });
 punishmentListDiv.addEventListener('click', (e) => {
     const target = e.target.closest('[data-action]');
