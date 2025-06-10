@@ -656,9 +656,13 @@ document.addEventListener('click', (e) => {
     }
     // Close dice randomizer modal if click outside and it's open (and not a dice-spin button)
     if (!diceRandomizerModal.classList.contains('hidden') && !e.target.closest('#dice-randomizer-modal') && !e.target.closest('#open-dice-randomizer-from-hub-btn')) {
+        // Reset inline styles when closing via outside click
         diceRandomizerModal.classList.add('hidden');
+        diceRandomizerModal.style.display = 'none';
+        diceRandomizerModal.style.zIndex = '';
     }
 });
+
 openRandomizerHubBtn?.addEventListener('click', () => randomizerHubModal.classList.remove('hidden'));
 closeRandomizerHubModalBtn?.addEventListener('click', () => randomizerHubModal.classList.add('hidden'));
 openListRandomizerFromHubBtn?.addEventListener('click', () => {
@@ -672,8 +676,16 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
     // Ensure initDiceRandomizer receives ledgerDataCache and addStripeToPerson for manual rolls
     initDiceRandomizer(ledgerDataCache, addStripeToPerson); 
 });
+
+// FIX: Corrected close button for Dice Randomizer Modal
+closeDiceRandomizerModalBtn?.addEventListener('click', () => {
+    diceRandomizerModal.classList.add('hidden');
+    // Also reset inline styles when closing with the cross button
+    diceRandomizerModal.style.display = 'none';
+    diceRandomizerModal.style.zIndex = '';
+});
+
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
-closeDiceRandomizerModalBtn?.addEventListener('click', () => diceRandomizerModal.classList.add('hidden'));
 openGeminiFromHubBtn?.addEventListener('click', () => { 
     randomizerHubModal.classList.add('hidden'); 
     geminiModal.classList.remove('hidden');
