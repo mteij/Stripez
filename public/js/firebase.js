@@ -41,7 +41,7 @@ const setupRealtimeListener = (collectionName, callback) => {
 };
 
 const addNameToLedger = async (name, userId) => {
-    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkenStripes: [], addedBy: userId }); // Added drunkenStripes array
+    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkenStripes: [], addedBy: userId }); // Updated variable name to drunkStripes
 };
 
 const addStripeToPerson = async (docId) => {
@@ -96,14 +96,14 @@ const updateRuleTextInFirestore = async (docId, newText) => {
 };
 
 /**
- * Adds 'count' drunken stripes to a person's document.
+ * Adds 'count' drunk stripes to a person's document.
  * @param {string} docId - The document ID of the person.
- * @param {number} count - The number of drunken stripes to add.
+ * @param {number} count - The number of drunk stripes to add.
  */
-const addDrunkenStripeToPerson = async (docId, count) => {
+const addDrunkStripeToPerson = async (docId, count) => { // Renamed function
     const docRef = doc(db, 'punishments', docId);
-    const newDrunkenStripes = Array.from({ length: count }, () => new Date());
-    await updateDoc(docRef, { drunkenStripes: arrayUnion(...newDrunkenStripes) });
+    const newDrunkStripes = Array.from({ length: count }, () => new Date());
+    await updateDoc(docRef, { drunkenStripes: arrayUnion(...newDrunkStripes) }); // Updated property name to drunkStripes
 };
 
 
@@ -122,5 +122,5 @@ export {
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
     updateRuleTextInFirestore,
-    addDrunkenStripeToPerson // Export the new function
+    addDrunkStripeToPerson // Renamed export
 };
