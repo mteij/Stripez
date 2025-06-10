@@ -110,7 +110,6 @@ function handleDiceSpin() {
 
     // Show punishment assignment section for manual rolls
     dicePunishmentAssignContainer.classList.remove('hidden');
-    // actualRolledValueSpan.textContent = finalDiceResult; // Removed as per user request
 
     // Populate the select dropdown with ledger names for manual rolls
     assignPersonSelect.innerHTML = '';
@@ -138,8 +137,6 @@ function handleDiceSpin() {
                 dicePunishmentAssignContainer.classList.add('hidden'); // Hide for next time
                 diceResultsContainer.innerHTML = ''; // Clear dice result
                 document.getElementById('dice-randomizer-modal').classList.add('hidden'); // Close the dice modal after assignment
-                // REMOVED: document.getElementById('dice-randomizer-modal').style.display = 'none'; // Rely on Tailwind's 'hidden' class
-                // REMOVED: document.getElementById('dice-randomizer-modal').style.zIndex = ''; // Rely on Tailwind's 'z-50' class
             } else {
                 console.error("addStripeToPerson function not available for manual assignment.");
                 alert("Error: Cannot assign stripes. Function not found.");
@@ -161,8 +158,6 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null) 
     // New elements for assignment section
     dicePunishmentAssignContainer = document.getElementById('dice-punishment-assign-container');
     assignPersonSelect = document.getElementById('assign-person-select');
-    // rolledStripesDisplay = document.getElementById('rolled-stripes-display'); // Removed from HTML
-    // actualRolledValueSpan = document.getElementById('actual-rolled-value'); // Removed from HTML
     assignStripesBtn = document.getElementById('assign-stripes-btn');
 
     _ledgerData = ledgerData; // Store ledger data
@@ -176,7 +171,6 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null) 
     if (!dicePunishmentAssignContainer) { console.error("Dice randomizer: 'dice-punishment-assign-container' not found!"); return; }
     if (!assignPersonSelect) { console.error("Dice randomizer: 'assign-person-select' not found!"); return; }
     if (!assignStripesBtn) { console.error("Dice randomizer: 'assign-stripes-btn' not found!"); return; }
-    // No longer checking for rolledStripesDisplay and actualRolledValueSpan as they are removed from HTML
 
     // Clear previous results when initialized (modal opened)
     diceResultsContainer.innerHTML = '';
@@ -230,7 +224,6 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
 
     // Show the assignment section
     dicePunishmentAssignContainer.classList.remove('hidden');
-    // actualRolledValueSpan.textContent = finalDiceResult; // Removed as per user request
 
     // Populate the select dropdown with ledger names
     assignPersonSelect.innerHTML = '';
@@ -262,8 +255,6 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
                 diceResultsContainer.innerHTML = ''; // Clear dice result
                 
                 diceRandomizerModal.classList.add('hidden');
-                // REMOVED: diceRandomizerModal.style.display = 'none'; // Rely on Tailwind's 'hidden' class
-                // REMOVED: diceRandomizerModal.style.zIndex = ''; // Rely on Tailwind's 'z-50' class
                 
             } else {
                 console.error("addStripeToPerson function not available for assignment.");
@@ -280,9 +271,7 @@ export function rollDiceAndAssign(maxValue, targetPerson, addStripeFn, ledgerDat
     console.log("Before unhiding - diceRandomizerModal style.display:", diceRandomizerModal.style.display);
     console.log("Before unhiding - diceRandomizerModal style.zIndex:", diceRandomizerModal.style.zIndex);
 
-    diceRandomizerModal.classList.remove('hidden');
-    // REMOVED: diceRandomizerModal.style.display = 'block'; // Rely on Tailwind's 'flex' for centering
-    // REMOVED: diceRandomizerModal.style.zIndex = '1000';   // Rely on Tailwind's 'z-50' class
+    diceRandomizerModal.classList.remove('hidden'); // This should make it visible and centered due to flexbox
 
     console.log("After unhiding - diceRandomizerModal classList:", diceRandomizerModal.classList.value);
     console.log("After unhiding - diceRandomizerModal style.display:", diceRandomizerModal.style.display);
@@ -304,9 +293,7 @@ export function rollSpecificDice(maxValue) {
     }
     diceMaxValueSlider.value = maxValue;
     diceSliderValueSpan.textContent = maxValue;
-    diceRandomizerModal.classList.remove('hidden');
-    // REMOVED: diceRandomizerModal.style.display = 'block'; // Rely on Tailwind's 'flex' for centering
-    // REMOVED: diceRandomizerModal.style.zIndex = '1000';   // Rely on Tailwind's 'z-50' class
+    diceRandomizerModal.classList.remove('hidden'); // This should make it visible and centered due to flexbox
 
 
     // Trigger the manual dice spin logic, which will then show the assignment section

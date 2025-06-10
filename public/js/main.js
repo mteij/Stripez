@@ -25,7 +25,6 @@ let currentRuleSearchTerm = ''; // New: For rules search
 let isSchikkoConfirmed = false; // Track confirmation status for the session
 let lastPunishmentInfo = { // New state for last punishment awarded
     name: null,
-    personId: null, // Added personId
     amount: null,
     type: null, // 'stripes' or 'drunkStripes'
     timestamp: null
@@ -70,7 +69,7 @@ const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomiz
 // Gemini Oracle elements
 const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn'); // Moved from modal
 const geminiModal = document.getElementById('gemini-modal');
-const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
+const closeGeminiModalBtn = document = document.getElementById('close-gemini-modal');
 const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
 const geminiInput = document.getElementById('gemini-input');
 const geminiOutput = document.getElementById('gemini-output');
@@ -215,34 +214,12 @@ function updateAppFooter() {
             }) : 'Unknown Date';
     
     let lastPunishmentText = '';
-    if (lastPunishmentInfo.name && lastPunishmentInfo.personId && lastPunishmentInfo.timestamp) { // Check for personId
-        const person = ledgerDataCache.find(p => p.id === lastPunishmentInfo.personId); // Find the person by ID
-        if (person) {
-            const THIRTY_MINUTES_MS = 30 * 60 * 1000;
-            const periodStart = lastPunishmentInfo.timestamp.getTime() - THIRTY_MINUTES_MS;
-
-            const stripesInPeriod = (person.stripes || []).filter(ts => {
-                const millis = ts.toMillis ? ts.toMillis() : ts.getTime(); // Handle Firestore Timestamps vs Date objects
-                return millis >= periodStart && millis <= lastPunishmentInfo.timestamp.getTime();
-            }).length;
-
-            const drunkStripesInPeriod = (person.drunkStripes || []).filter(ts => {
-                const millis = ts.toMillis ? ts.toMillis() : ts.getTime(); // Handle Firestore Timestamps vs Date objects
-                return millis >= periodStart && millis <= lastPunishmentInfo.timestamp.getTime();
-            }).length;
-
-            const timeAgo = lastPunishmentInfo.timestamp.toLocaleTimeString(undefined, {
-                hour: '2-digit', minute: '2-digit', hour12: false
-            });
-
-            lastPunishmentText = `<br><span class="font-cinzel-decorative text-[#c0392b]">The Oracle last decreed for ${lastPunishmentInfo.name} at the hour of ${timeAgo}.</span>`;
-            if (stripesInPeriod > 0) {
-                lastPunishmentText += `<br><span class="font-cinzel-decorative text-[#5c3d2e]">Total stripes in period: ${stripesInPeriod}</span>`;
-            }
-            if (drunkStripesInPeriod > 0) {
-                lastPunishmentText += `<br><span class="font-cinzel-decorative text-[#f39c12]">Draughts consumed in period: ${drunkStripesInPeriod}</span>`;
-            }
-        }
+    if (lastPunishmentInfo.name && lastPunishmentInfo.amount !== null && lastPunishmentInfo.timestamp) {
+        const punishmentType = lastPunishmentInfo.type === 'stripes' ? 'stripes' : 'draughts of golden liquid';
+        const timeAgo = lastPunishmentInfo.timestamp.toLocaleTimeString(undefined, {
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        lastPunishmentText = `<br><span class="font-cinzel-decorative text-[#c0392b]">The Oracle last decreed ${lastPunishmentInfo.amount} ${punishmentType} to ${lastPunishmentInfo.name} at the hour of ${timeAgo}.</span>`;
     }
 
     appInfoFooter.innerHTML = `
@@ -331,7 +308,6 @@ function createActionButtons(parsedJudgement) {
             // Update last punishment info
             lastPunishmentInfo = {
                 name: person.name,
-                personId: person.id, // Store person ID
                 amount: totalStripes,
                 type: 'stripes',
                 timestamp: new Date()
@@ -361,7 +337,6 @@ function createActionButtons(parsedJudgement) {
                 }
                 lastPunishmentInfo = {
                     name: person.name,
-                    personId: person.id, // Store person ID
                     amount: totalStripes,
                     type: 'stripes',
                     timestamp: new Date()
@@ -618,7 +593,6 @@ punishmentListDiv.addEventListener('click', (e) => {
             addStripeToPerson(id); 
             lastPunishmentInfo = {
                 name: ledgerDataCache.find(p => p.id === id)?.name,
-                personId: id, // Store person ID
                 amount: 1, // Single stripe added
                 type: 'stripes',
                 timestamp: new Date()
@@ -785,7 +759,6 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
             await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count); 
             lastPunishmentInfo = {
                 name: person.name,
-                personId: currentPersonIdForDrunkStripes, // Store person ID
                 amount: count,
                 type: 'drunkStripes',
                 timestamp: new Date()
