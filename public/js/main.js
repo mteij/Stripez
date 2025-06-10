@@ -1,4 +1,4 @@
-// public/js/main.js
+// In public/js/main.js
 
 // --- MODULE IMPORTS ---
 import {
@@ -8,8 +8,9 @@ import {
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
-// Import both randomizer initialization functions
 import { initListRandomizer, initDiceRandomizer } from '../randomizer/randomizer.js';
+// New: Import functions from the Firebase SDK to call our backend
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 
 // --- STATE VARIABLES ---
@@ -37,11 +38,11 @@ const showDecreesContainer = document.getElementById('show-decrees-container');
 const decreesContent = document.getElementById('decrees-content');
 const hideDecreesBtn = document.getElementById('hide-decrees-btn');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
-const ruleSearchInput = document.getElementById('rule-search-input'); // New DOM element
-const appInfoFooter = document.getElementById('app-info-footer'); // New: Reference to the footer info div
+const ruleSearchInput = document.getElementById('rule-search-input');
+const appInfoFooter = document.getElementById('app-info-footer');
 
 
-// Dice randomizer modal and buttons (re-added)
+// Dice randomizer modal and buttons
 const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
 const closeDiceRandomizerModalBtn = document.getElementById('close-dice-randomizer-modal');
 
@@ -49,14 +50,14 @@ const closeDiceRandomizerModalBtn = document.getElementById('close-dice-randomiz
 const listRandomizerModal = document.getElementById('list-randomizer-modal');
 const closeListRandomizerModalBtn = document.getElementById('close-list-randomizer-modal');
 
-// New Randomizer Hub elements
+// Randomizer Hub elements
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
 const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
-// New Gemini Oracle elements
+// Gemini Oracle elements
 const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn');
 const geminiModal = document.getElementById('gemini-modal');
 const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
@@ -69,18 +70,15 @@ const geminiOutput = document.getElementById('gemini-output');
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUserId = user.uid;
-        // Listener for the punishment ledger
         setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
-            handleRender(); // Render ledger on data change
+            handleRender();
         });
-        // Listener for the dynamic rules list
         setupRealtimeListener('rules', (data) => {
-            // Sort by order initially, as `updatedAt` is for footer only.
             rulesDataCache = data.sort((a, b) => a.order - b.order);
-            handleRenderRules(); // Render rules on data change
-            updateAppFooter(); // Update footer when rules data changes
+            handleRenderRules();
+            updateAppFooter();
         });
     } else {
         signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
@@ -91,11 +89,9 @@ onAuthStateChanged(auth, (user) => {
 function handleRender() {
     let viewData = [...ledgerDataCache];
     const term = currentSearchTerm.toLowerCase();
-
     if (term) {
         viewData = viewData.filter(person => person.name.toLowerCase().includes(term));
     }
-
     viewData.sort((a, b) => {
         const nameA = a.name.toLowerCase();
         const nameB = b.name.toLowerCase();
@@ -112,58 +108,40 @@ function handleRender() {
             case 'asc': default: return nameA.localeCompare(nameB);
         }
     });
-
     renderLedger(viewData, term);
 }
 
-// New: Renders rules based on current search term
 function handleRenderRules() {
     let filteredRules = [...rulesDataCache];
     const term = currentRuleSearchTerm.toLowerCase();
-
     if (term) {
         filteredRules = filteredRules.filter(rule => rule.text.toLowerCase().includes(term));
     }
     renderRules(filteredRules);
 }
 
-/**
- * Updates the application footer with creation info and last rule modification date.
- */
 function updateAppFooter() {
     if (!appInfoFooter) return;
-
     let latestUpdateTimestamp = null;
-
     if (rulesDataCache.length > 0) {
         latestUpdateTimestamp = rulesDataCache.reduce((latestTs, rule) => {
-            const ruleTs = rule.updatedAt || rule.createdAt; // Prefer updatedAt, fall back to createdAt
-            if (!ruleTs) return latestTs; // Skip if no timestamp
-
-            const currentMillis = ruleTs.toMillis ? ruleTs.toMillis() : 0; // Handle if it's not a Timestamp object yet
+            const ruleTs = rule.updatedAt || rule.createdAt;
+            if (!ruleTs) return latestTs;
+            const currentMillis = ruleTs.toMillis ? ruleTs.toMillis() : 0;
             const latestMillis = latestTs ? (latestTs.toMillis ? latestTs.toMillis() : 0) : 0;
-
             return currentMillis > latestMillis ? ruleTs : latestTs;
-        }, null); // Initialize with null
-
+        }, null);
         if (latestUpdateTimestamp && typeof latestUpdateTimestamp.toDate === 'function') {
-            latestUpdateTimestamp = latestUpdateTimestamp.toDate(); // Convert Firestore Timestamp to JS Date
+            latestUpdateTimestamp = latestUpdateTimestamp.toDate();
         } else {
-             latestUpdateTimestamp = null; // Ensure it's null if conversion fails or isn't a Timestamp
+             latestUpdateTimestamp = null;
         }
     }
-
     const dateString = latestUpdateTimestamp ?
         latestUpdateTimestamp.toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false // Force 24-hour format
-        }) :
-        'Unknown Date';
-
+            year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        }) : 'Unknown Date';
     appInfoFooter.innerHTML = `
         <span class="font-cinzel-decorative">Crafted by the hand of Michiel, with the wisdom of the Oracles (ChatGPT).</span><br>
         <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
@@ -171,49 +149,53 @@ function updateAppFooter() {
 }
 
 /**
- * Placeholder function to handle the Gemini Oracle submission.
- * In a real application, this would make a secure call to a backend service.
+ * Handles the Gemini Oracle submission by calling the backend function.
  */
-function handleGeminiSubmit() {
-    const inputText = geminiInput.value.toLowerCase().trim();
-    let judgement = '';
-
-    // --- AI Logic Simulation ---
-    // This is a simplified placeholder. A real AI would analyze the text
-    // against the rules stored in `rulesDataCache`.
-    if (inputText.includes('noud')) {
-        if (inputText.includes('spoke ill') || inputText.includes('defied')) {
-            judgement = 'The Oracle has spoken:\nNoud gets 3 stripes.';
-        } else if (inputText.includes('forgot')) {
-            judgement = 'The Oracle\'s decree is clear:\nNoud must roll a die with 2 dotts. ⚁';
-        } else {
-            judgement = 'The Oracle finds no fault in Noud for this.';
-        }
-    } else if (inputText === '') {
-        judgement = 'The Oracle cannot judge the unspoken. Inscribe the transgression.';
-    } 
-    else {
-        judgement = 'The Oracle ponders... and decrees a standard penance:\nRoll a die with 6 dotts. ⚅';
+async function handleGeminiSubmit() {
+    const inputText = geminiInput.value.trim();
+    if (inputText === '') {
+        geminiOutput.textContent = 'The Oracle cannot judge the unspoken. Inscribe the transgression.';
+        geminiOutput.classList.remove('hidden');
+        return;
     }
-    // --- End Simulation ---
 
-    geminiOutput.textContent = judgement;
-    geminiOutput.classList.remove('hidden');
+    // Disable button and show loading state
+    geminiSubmitBtn.disabled = true;
+    geminiSubmitBtn.textContent = 'Consulting...';
+    geminiOutput.classList.add('hidden');
+
+    try {
+        // Get a reference to the Firebase Functions service
+        const functions = getFunctions();
+        // Get a reference to the 'getOracleJudgement' callable function
+        const getOracleJudgement = httpsCallable(functions, 'getOracleJudgement');
+
+        // Call the function with the required payload
+        const result = await getOracleJudgement({
+            promptText: inputText,
+            rules: rulesDataCache
+        });
+
+        // Display the judgement from the AI
+        geminiOutput.textContent = result.data.judgement;
+
+    } catch (error) {
+        console.error("Error calling Oracle function:", error);
+        geminiOutput.textContent = `The Oracle is silent. An error occurred: ${error.message}`;
+    } finally {
+        // Re-enable button and show output
+        geminiSubmitBtn.disabled = false;
+        geminiSubmitBtn.textContent = 'Consult the Oracle';
+        geminiOutput.classList.remove('hidden');
+    }
 }
-
 
 // --- CONFIRMATION ---
 function confirmSchikko() {
-    // If already confirmed in this session, skip the prompt
-    if (isSchikkoConfirmed) {
-        return true;
-    }
+    if (isSchikkoConfirmed) return true;
     const answer = prompt("Art thou the Schikko? If it be so, inscribe 'Schikko'.");
     const isConfirmed = answer && answer.toLowerCase() === 'schikko';
-    if (isConfirmed) {
-        // Remember confirmation for this session
-        isSchikkoConfirmed = true;
-    }
+    if (isConfirmed) isSchikkoConfirmed = true;
     return isConfirmed;
 }
 
@@ -221,8 +203,7 @@ function confirmSchikko() {
 async function handleAddName() {
     const name = mainInput.value.trim();
     if (!name) return;
-    const exists = ledgerDataCache.some(p => p.name.toLowerCase() === name.toLowerCase());
-    if (exists) {
+    if (ledgerDataCache.some(p => p.name.toLowerCase() === name.toLowerCase())) {
         alert(`"${name}" is already on the ledger.`);
         return;
     }
@@ -254,89 +235,63 @@ async function handleRemoveStripe(docId) {
 }
 
 async function handleAddRule() {
-    // First, confirm identity if not already done this session
     if (!confirmSchikko()) return;
-
-    // Get text from the rule search input field
     const text = ruleSearchInput.value.trim();
-    // Exit if user cancelled or entered empty text
     if (!text) {
         alert("Please enter a decree in the search field to add.");
         return;
     }
-
     const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
     await addRuleToFirestore(text, maxOrder + 1);
-    
-    // Clear the search input after adding
     ruleSearchInput.value = '';
     currentRuleSearchTerm = '';
-    handleRenderRules(); // Re-render rules to clear search filter and show new rule
+    handleRenderRules();
 }
 
 async function handleEditRule(docId) {
     const rule = rulesDataCache.find(r => r.id === docId);
     if (!rule) return;
-
     const newText = prompt("Enter the new text for the decree:", rule.text);
     if (newText && newText.trim() !== "") {
         await updateRuleTextInFirestore(docId, newText);
     }
 }
 
-
 // --- EVENT LISTENERS ---
-mainInput.addEventListener('input', () => {
-    currentSearchTerm = mainInput.value;
-    handleRender();
-});
-
-// New: Rule search input listener
-ruleSearchInput?.addEventListener('input', () => {
-    currentRuleSearchTerm = ruleSearchInput.value;
-    handleRenderRules();
-});
-
-
+mainInput.addEventListener('input', () => { currentSearchTerm = mainInput.value; handleRender(); });
+ruleSearchInput?.addEventListener('input', () => { currentRuleSearchTerm = ruleSearchInput.value; handleRenderRules(); });
 mainInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddName(); } });
 addBtn.addEventListener('click', handleAddName);
 addDecreeBtn?.addEventListener('click', handleAddRule);
 closeStatsModalBtn.addEventListener('click', () => statsModal.classList.add('hidden'));
-
 sortSelect.addEventListener('change', (e) => {
     currentSortOrder = e.target.value;
-    const selectedOptionText = e.target.options[e.target.selectedIndex].text;
-    sortButtonText.textContent = `Sort: ${selectedOptionText}`;
+    sortButtonText.textContent = `Sort: ${e.target.options[e.target.selectedIndex].text}`;
     handleRender();
 });
-
 showDecreesBtn?.addEventListener('click', () => {
     showDecreesContainer.classList.add('hidden');
     decreesContent.classList.remove('hidden');
-    handleRenderRules(); // Render rules when shown, in case search term changed while hidden
+    handleRenderRules();
 });
-
 hideDecreesBtn?.addEventListener('click', () => {
     decreesContent.classList.add('hidden');
     showDecreesContainer.classList.remove('hidden');
-    // Also exit edit mode for a clean state
     if (rulesListOl.classList.contains('rules-list-editing')) {
         rulesListOl.classList.remove('rules-list-editing');
         editRulesBtn.textContent = 'Finish Editing';
     }
-    // Clear rule search when hiding decrees
     ruleSearchInput.value = '';
     currentRuleSearchTerm = '';
-    handleRenderRules(); // Re-render rules list to clear search filter
+    handleRenderRules();
 });
-
 punishmentListDiv.addEventListener('click', (e) => {
     const target = e.target.closest('[data-action]');
     if (!target) return;
     e.preventDefault();
     const action = target.dataset.action;
     const id = target.dataset.id;
-    if (action !== 'toggle-menu') { closeMenus(); }
+    if (action !== 'toggle-menu') closeMenus();
     switch (action) {
         case 'toggle-menu': document.getElementById(`menu-${id}`)?.classList.toggle('hidden'); break;
         case 'add-stripe': addStripeToPerson(id); break;
@@ -349,103 +304,48 @@ punishmentListDiv.addEventListener('click', (e) => {
             break;
     }
 });
-
 editRulesBtn?.addEventListener('click', () => {
-    // Only ask for confirmation when entering edit mode
     if (!rulesListOl.classList.contains('rules-list-editing')) {
-        if (!confirmSchikko()) {
-            return; // If confirmation fails, do not enter edit mode
-        }
+        if (!confirmSchikko()) return;
     }
-    
     rulesListOl.classList.toggle('rules-list-editing');
-    const isEditing = rulesListOl.classList.contains('rules-list-editing');
-    editRulesBtn.textContent = isEditing ? 'Finish Editing' : 'Edit Decrees';
-    handleRenderRules(); // Re-render rules to show/hide edit buttons
+    editRulesBtn.textContent = rulesListOl.classList.contains('rules-list-editing') ? 'Finish Editing' : 'Edit Decrees';
+    handleRenderRules();
 });
-
 rulesListOl?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-rule-action]');
-    if (!target) return;
-
-    // The only protection needed is to check if we are in edit mode.
-    // The confirmation was handled by the "Edit Decrees" button.
-    if (!rulesListOl.classList.contains('rules-list-editing')) return;
-
+    if (!target || !rulesListOl.classList.contains('rules-list-editing')) return;
     const action = target.dataset.ruleAction;
     const id = target.dataset.id;
     const ruleIndex = rulesDataCache.findIndex(r => r.id === id);
-    
     if (ruleIndex === -1) return;
-    
-    // NO confirmation prompt here anymore.
-
     switch (action) {
-        case 'delete':
-            await deleteRuleFromFirestore(id);
-            break;
-        case 'move-up':
-            if (ruleIndex > 0) {
-                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex - 1]);
-            }
-            break;
-        case 'move-down':
-            if (ruleIndex < rulesDataCache.length - 1) {
-                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]);
-            }
-            break;
-        case 'edit': // New edit action
-            await handleEditRule(id);
-            break;
+        case 'delete': await deleteRuleFromFirestore(id); break;
+        case 'move-up': if (ruleIndex > 0) await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex - 1]); break;
+        case 'move-down': if (ruleIndex < rulesDataCache.length - 1) await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]); break;
+        case 'edit': await handleEditRule(id); break;
     }
 });
-
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
-        closeMenus();
-    }
-});
-
-// Randomizer Hub Listeners
-openRandomizerHubBtn?.addEventListener('click', () => {
-    randomizerHubModal.classList.remove('hidden');
-});
-
-closeRandomizerHubModalBtn?.addEventListener('click', () => {
-    randomizerHubModal.classList.add('hidden');
-});
-
+document.addEventListener('click', (e) => { if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) closeMenus(); });
+openRandomizerHubBtn?.addEventListener('click', () => randomizerHubModal.classList.remove('hidden'));
+closeRandomizerHubModalBtn?.addEventListener('click', () => randomizerHubModal.classList.add('hidden'));
 openListRandomizerFromHubBtn?.addEventListener('click', () => {
-    randomizerHubModal.classList.add('hidden'); // Close hub
-    listRandomizerModal.classList.remove('hidden'); // Open list randomizer
-    initListRandomizer(ledgerDataCache); // Initialize the list randomizer with ledger data
+    randomizerHubModal.classList.add('hidden');
+    listRandomizerModal.classList.remove('hidden');
+    initListRandomizer(ledgerDataCache);
 });
-
 openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
-    randomizerHubModal.classList.add('hidden'); // Close hub
-    diceRandomizerModal.classList.remove('hidden'); // Open dice randomizer
-    initDiceRandomizer(); // Initialize the dice randomizer
+    randomizerHubModal.classList.add('hidden');
+    diceRandomizerModal.classList.remove('hidden');
+    initDiceRandomizer();
 });
-
-// Close listeners for specific randomizer modals
-closeListRandomizerModalBtn?.addEventListener('click', () => {
-    listRandomizerModal.classList.add('hidden');
-});
-
-closeDiceRandomizerModalBtn?.addEventListener('click', () => {
-    diceRandomizerModal.classList.add('hidden');
-});
-
-// Gemini Oracle Listeners
+closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
+closeDiceRandomizerModalBtn?.addEventListener('click', () => diceRandomizerModal.classList.add('hidden'));
 openGeminiFromHubBtn?.addEventListener('click', () => {
-    randomizerHubModal.classList.add('hidden'); // Close hub
-    geminiModal.classList.remove('hidden'); // Open gemini modal
-    geminiOutput.classList.add('hidden'); // Hide previous output
-    geminiInput.value = ''; // Clear previous input
+    randomizerHubModal.classList.add('hidden');
+    geminiModal.classList.remove('hidden');
+    geminiOutput.classList.add('hidden');
+    geminiInput.value = '';
 });
-
-closeGeminiModalBtn?.addEventListener('click', () => {
-    geminiModal.classList.add('hidden');
-});
-
+closeGeminiModalBtn?.addEventListener('click', () => geminiModal.classList.add('hidden'));
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
