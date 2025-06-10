@@ -175,7 +175,7 @@ function showStatsModal(person) {
                 dataPoints.push({ x: timestamps[timestamps.length - 1], y: cumulativeCount });
             }
 
-        } else if (filterType === 'remaining') {
+        } else if (filterType === 'remaining') { // This block is now effectively removed as an option
             const currentRemainingCount = normalStripeTimestamps.length - drunkenStripeTimestamps.length;
             // This case is primarily for display, not a time series chart
             stripeChart = new Chart(stripeChartCanvas, {

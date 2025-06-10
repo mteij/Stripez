@@ -1,6 +1,3 @@
-// public/js/main.js
-// public/js/main.js
-
 // --- MODULE IMPORTS ---
 import {
     auth, onAuthStateChanged, signInAnonymously, setupRealtimeListener,
@@ -412,7 +409,7 @@ showDecreesBtn?.addEventListener('click', () => {
         showDecreesBtn.querySelector('span:first-child').textContent = "Schikko's Decrees";
         if (rulesListOl.classList.contains('rules-list-editing')) {
             rulesListOl.classList.remove('rules-list-editing');
-            editRulesBtn.textContent = 'Edit Decrees';
+            editRulesBtn.textContent = 'Finish Editing';
         }
         ruleSearchInput.value = '';
         currentRuleSearchTerm = '';
@@ -432,9 +429,9 @@ punishmentListDiv.addEventListener('click', (e) => {
         case 'add-drunken-stripe': // New action to open drunken stripes modal
             currentPersonIdForDrunkenStripes = id;
             const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkenStripes);
-            const normalStripes = (person?.stripes?.length || 0) - (person?.drunkenStripes?.length || 0); // Calculate truly available stripes
+            const normalStripes = person?.stripes?.length || 0; // Available stripes are simply the count of normal stripes
             
-            howManyBeersInput.value = 1; // Reset input
+            howManyBeersInput.value = Math.min(1, normalStripes); // Default to 1, or 0 if no normal stripes
             howManyBeersInput.max = normalStripes; // Set max value
             availableStripesDisplay.textContent = `Available Penalties: ${normalStripes}`; // Update display
             
@@ -543,7 +540,7 @@ confirmDrunkenStripesBtn.addEventListener('click', async () => {
     if (currentPersonIdForDrunkenStripes) {
         const count = parseInt(howManyBeersInput.value);
         const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkenStripes);
-        const normalStripes = (person?.stripes?.length || 0) - (person?.drunkenStripes?.length || 0);
+        const normalStripes = person?.stripes?.length || 0; // Available penalties are the count of normal stripes
 
         if (count > normalStripes) {
             alert(`Cannot consume more stripes than available! You have ${normalStripes} penalties remaining.`);

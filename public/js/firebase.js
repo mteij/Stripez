@@ -3,7 +3,7 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; // Added getDoc
 
 // Firebase configuration. These placeholders will be replaced by GitHub Actions
 // during the build/deploy process using a string replacement utility.
@@ -96,14 +96,43 @@ const updateRuleTextInFirestore = async (docId, newText) => {
 };
 
 /**
- * Adds 'count' drunken stripes to a person's document.
+ * Adds 'count' drunken stripes to a person's document and fulfills normal stripes.
  * @param {string} docId - The document ID of the person.
- * @param {number} count - The number of drunken stripes to add.
+ * @param {number} count - The number of drunken stripes to add/fulfill.
  */
 const addDrunkenStripeToPerson = async (docId, count) => {
     const docRef = doc(db, 'punishments', docId);
-    const newDrunkenStripes = Array.from({ length: count }, () => new Date());
-    await updateDoc(docRef, { drunkenStripes: arrayUnion(...newDrunkenStripes) });
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+        console.error("Document does not exist for ID:", docId);
+        return;
+    }
+    const person = docSnap.data();
+
+    let currentStripes = [...(person.stripes || [])];
+    let currentDrunkenStripes = [...(person.drunkenStripes || [])];
+
+    const stripesToFulfill = Math.min(count, currentStripes.length); // Fulfill up to the available normal stripes
+
+    if (stripesToFulfill === 0) {
+        console.warn("No normal stripes to fulfill.");
+        return;
+    }
+
+    // Sort existing stripes by timestamp to remove the oldest ones first
+    currentStripes.sort((a, b) => a.toMillis() - b.toMillis());
+    currentStripes.splice(0, stripesToFulfill); // Remove the oldest 'stripesToFulfill' normal stripes
+    
+    // Add new timestamps to drunkenStripes for the fulfilled amount
+    const newDrunkenTimestamps = Array.from({ length: stripesToFulfill }, () => new Date());
+    currentDrunkenStripes = currentDrunkenStripes.concat(newDrunkenTimestamps);
+
+    const batch = writeBatch(db);
+    batch.update(docRef, {
+        stripes: currentStripes,
+        drunkenStripes: currentDrunkenStripes
+    });
+    await batch.commit();
 };
 
 
