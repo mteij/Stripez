@@ -97,13 +97,22 @@ const updateRuleTextInFirestore = async (docId, newText) => {
 
 /**
  * Adds 'count' drunk stripes to a person's document.
+ * Ensures each timestamp is distinct to prevent deduplication by Firestore.
  * @param {string} docId - The document ID of the person.
  * @param {number} count - The number of drunk stripes to add.
  */
 const addDrunkStripeToPerson = async (docId, count) => { // Renamed function
     const docRef = doc(db, 'punishments', docId);
-    const newDrunkStripes = Array.from({ length: count }, () => new Date());
-    await updateDoc(docRef, { drunkenStripes: arrayUnion(...newDrunkStripes) }); // Updated property name to drunkStripes
+    const batch = writeBatch(db); // Use a batch for multiple updates
+
+    for (let i = 0; i < count; i++) {
+        // Create a distinct timestamp for each stripe.
+        // Adding 'i' milliseconds ensures uniqueness even if calls are very fast.
+        const distinctTimestamp = new Date(Date.now() + i); 
+        batch.update(docRef, { drunkenStripes: arrayUnion(distinctTimestamp) }); // Updated property name to drunkStripes
+    }
+    
+    await batch.commit();
 };
 
 
@@ -122,5 +131,5 @@ export {
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
     updateRuleTextInFirestore,
-    addDrunkStripeToPerson
+    addDrunkStripeToPerson // Renamed export
 };
