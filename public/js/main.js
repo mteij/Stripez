@@ -65,6 +65,9 @@ const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
 const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
 const geminiInput = document.getElementById('gemini-input');
 const geminiOutput = document.getElementById('gemini-output');
+const geminiActionButtonsContainer = document.createElement('div'); // New container for action buttons
+geminiActionButtonsContainer.className = 'flex flex-wrap justify-center gap-4 mt-4'; // Styling for buttons
+
 
 // Drunk Stripes Modal Elements
 const drunkStripesModal = document.getElementById('drunk-stripes-modal');
@@ -161,80 +164,84 @@ function updateAppFooter() {
 }
 
 /**
- * Creates a dynamic action button based on the parsed judgment.
+ * Creates and appends action buttons based on the parsed judgment.
  * @param {object} parsedJudgement - The JSON object returned by the Oracle Cloud Function.
- * @returns {HTMLButtonElement} The action button.
  */
-function createActionButton(parsedJudgement) {
-    const actionButton = document.createElement('button');
-    actionButton.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4';
+function createActionButtons(parsedJudgement) {
+    // Clear previous buttons
+    geminiActionButtonsContainer.innerHTML = ''; 
     
-    // Default values
-    let buttonText = 'Acknowledge Judgement';
-    let actionHandler = () => { geminiModal.classList.add('hidden'); actionButton.remove(); };
+    // Append the container to the DOM if it's not already there
+    if (!geminiActionButtonsContainer.parentNode) {
+        geminiOutput.parentNode.insertBefore(geminiActionButtonsContainer, geminiOutput.nextSibling);
+    }
 
     if (parsedJudgement.innocent) {
-        buttonText = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent.`;
-    } else {
-        let totalStripes = 0;
-        const diceRolls = [];
-        const ruleNumbers = parsedJudgement.rulesBroken || [];
-        
-        // Aggregate penalties
-        parsedJudgement.penalties.forEach(penalty => {
-            if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
-                totalStripes += penalty.amount;
-            } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
-                diceRolls.push(penalty.value);
-            }
-        });
-
-        // Build button text
-        let penaltyDescription = [];
-        if (totalStripes > 0) {
-            penaltyDescription.push(`${totalStripes} Stripes`);
-        }
-        if (diceRolls.length > 0) {
-            const uniqueDiceRolls = [...new Set(diceRolls)].sort((a,b) => a-b); // Get unique sorted dice values
-            penaltyDescription.push(`Roll ${uniqueDiceRolls.map(val => `🎲${val}`).join(', ')}`);
-        }
-        
-        let rulesText = '';
-        if (ruleNumbers.length > 0) {
-            rulesText = ` [Rule${ruleNumbers.length > 1 ? 's' : ''} ${ruleNumbers.join(', ')}]`;
-        }
-
-        if (penaltyDescription.length > 0) {
-            buttonText = `${parsedJudgement.person || 'Someone'} gets ${penaltyDescription.join(' and ')}${rulesText}`;
-            actionButton.onclick = async () => {
-                const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.person.toLowerCase());
-                if (person) {
-                    // Add stripes
-                    for (let i = 0; i < totalStripes; i++) {
-                        await addStripeToPerson(person.id);
-                    }
-                    // Roll dice
-                    diceRolls.forEach(diceValue => {
-                        rollSpecificDice(diceValue);
-                    });
-                    geminiModal.classList.add('hidden');
-                    actionButton.remove();
-                } else {
-                    alert(`Person "${parsedJudgement.person}" not found on ledger.`);
-                    geminiModal.classList.add('hidden');
-                    actionButton.remove();
-                }
-            };
-        } else {
-            // Case where no specific penalties, but not innocent (e.g., just a warning)
-            buttonText = `Judgement for ${parsedJudgement.person || 'Someone'}${rulesText}`;
-            actionButton.onclick = actionHandler; // Use default handler to just close modal
-        }
+        const acknowledgeBtn = document.createElement('button');
+        acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        acknowledgeBtn.textContent = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent.`;
+        acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
+        geminiActionButtonsContainer.appendChild(acknowledgeBtn);
+        return;
     }
+
+    const targetPersonName = parsedJudgement.person || 'Someone';
+    const person = ledgerDataCache.find(p => p.name.toLowerCase() === targetPersonName.toLowerCase());
+
+    if (!person) {
+        const acknowledgeBtn = document.createElement('button');
+        acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        acknowledgeBtn.textContent = `Person "${targetPersonName}" not found on ledger. Acknowledge Judgement.`;
+        acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
+        geminiActionButtonsContainer.appendChild(acknowledgeBtn);
+        return;
+    }
+
+    let totalStripes = 0;
+    const uniqueDiceValues = new Set(); // To handle multiple dice rolls
     
-    actionButton.textContent = buttonText;
-    actionButton.onclick = actionHandler; // Assign the determined handler
-    return actionButton;
+    parsedJudgement.penalties.forEach(penalty => {
+        if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
+            totalStripes += penalty.amount;
+        } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
+            uniqueDiceValues.add(penalty.value);
+        }
+    });
+
+    // Create Stripes Button (if applicable)
+    if (totalStripes > 0) {
+        const stripesBtn = document.createElement('button');
+        stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
+        stripesBtn.onclick = async () => {
+            for (let i = 0; i < totalStripes; i++) {
+                await addStripeToPerson(person.id);
+            }
+            geminiModal.classList.add('hidden');
+        };
+        geminiActionButtonsContainer.appendChild(stripesBtn);
+    }
+
+    // Create Dice Roll Buttons (one for each unique die value)
+    uniqueDiceValues.forEach(diceValue => {
+        const diceBtn = document.createElement('button');
+        diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
+        diceBtn.onclick = () => {
+            rollSpecificDice(diceValue);
+            geminiModal.classList.add('hidden');
+        };
+        geminiActionButtonsContainer.appendChild(diceBtn);
+    });
+
+    // If no specific penalties, add a generic acknowledge button
+    if (totalStripes === 0 && uniqueDiceValues.size === 0) {
+        const acknowledgeBtn = document.createElement('button');
+        acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        acknowledgeBtn.textContent = `Acknowledge Judgement for ${person.name}`;
+        acknowledgeBtn.onclick = () => geminiModal.classList.add('hidden');
+        geminiActionButtonsContainer.appendChild(acknowledgeBtn);
+    }
 }
 
 
@@ -249,13 +256,9 @@ async function handleGeminiSubmit() {
         return;
     }
 
-    // Clear previous output and any existing action button
+    // Clear previous output and any existing action buttons
     geminiOutput.innerHTML = '';
-    const existingActionButton = geminiOutput.nextElementSibling;
-    if (existingActionButton && existingActionButton.classList.contains('btn-punishment')) {
-        existingActionButton.remove();
-    }
-
+    geminiActionButtonsContainer.innerHTML = ''; // Clear buttons
 
     // Disable button and show loading state
     geminiSubmitBtn.disabled = true;
@@ -274,21 +277,22 @@ async function handleGeminiSubmit() {
             ledgerNames: ledgerDataCache.map(person => person.name) // Pass names from ledger
         });
 
-        // The result.data is now the structured JSON object directly
+        // The result.data.judgement is now the parsed JSON object
         const parsedJudgement = result.data.judgement; 
         
-        // Construct a human-readable summary for display if needed, or primarily use the action button
+        // Construct a human-readable summary for display
         let displayMessage = '';
         if (parsedJudgement.innocent) {
             displayMessage = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent. No rules broken.`;
         } else {
             let totalStripes = 0;
-            const diceRolls = [];
+            const diceRollsSummary = [];
+            
             parsedJudgement.penalties.forEach(penalty => {
                 if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
                     totalStripes += penalty.amount;
                 } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
-                    diceRolls.push(penalty.value);
+                    diceRollsSummary.push(`d${penalty.value}`);
                 }
             });
 
@@ -296,9 +300,8 @@ async function handleGeminiSubmit() {
             if (totalStripes > 0) {
                 penaltyParts.push(`${totalStripes} stripes`);
             }
-            if (diceRolls.length > 0) {
-                const uniqueDiceRolls = [...new Set(diceRolls)].sort((a,b) => a-b);
-                penaltyParts.push(`rolls: ${uniqueDiceRolls.map(val => `d${val}`).join(', ')}`);
+            if (diceRollsSummary.length > 0) {
+                penaltyParts.push(`rolls: ${[...new Set(diceRollsSummary)].join(', ')}`); // Unique dice rolls for display
             }
             
             const ruleNumbers = parsedJudgement.rulesBroken || [];
@@ -317,9 +320,8 @@ async function handleGeminiSubmit() {
         geminiOutput.textContent = displayMessage; 
         geminiOutput.classList.remove('hidden');
 
-        // Create action button based on the detailed judgment
-        const actionButton = createActionButton(parsedJudgement);
-        geminiOutput.parentNode.insertBefore(actionButton, geminiOutput.nextSibling);
+        // Create action buttons based on the detailed judgment
+        createActionButtons(parsedJudgement);
 
 
     } catch (error) {
@@ -343,7 +345,7 @@ async function handleGeminiSubmit() {
         geminiOutput.textContent = errorMessage;
         geminiOutput.classList.remove('hidden');
     } finally {
-        // Re-enable button and show output
+        // Re-enable button
         geminiSubmitBtn.disabled = false;
         geminiSubmitBtn.textContent = 'Consult the Oracle';
     }
@@ -457,25 +459,22 @@ punishmentListDiv.addEventListener('click', (e) => {
     switch (action) {
         case 'toggle-menu': document.getElementById(`menu-${id}`)?.classList.toggle('hidden'); break;
         case 'add-stripe': addStripeToPerson(id); break;
-        case 'add-drunk-stripe': // Changed to 'drunk'
+        case 'add-drunk-stripe': 
             currentPersonIdForDrunkStripes = id; 
             const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
-            // Calculate available penalties that can still be fulfilled (normal minus already drunk)
-            const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); // Changed to 'drunk'
+            const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
             
-            howManyBeersInput.value = Math.min(1, availablePenaltiesToFulfill); // Default to 1, or 0 if no unfulfilled penalties
-            howManyBeersInput.max = availablePenaltiesToFulfill; // Set max value
-            availableStripesDisplay.textContent = `Available Penalties: ${availablePenaltiesToFulfill}`; // Update display
+            howManyBeersInput.value = Math.min(1, availablePenaltiesToFulfill); 
+            howManyBeersInput.max = availablePenaltiesToFulfill; 
+            availableStripesDisplay.textContent = `Available Penalties: ${availablePenaltiesToFulfill}`;
             
             if (availablePenaltiesToFulfill <= 0) {
-                // Disable buttons and input if no penalties available
                 howManyBeersInput.disabled = true;
                 incrementBeersBtn.disabled = true;
                 decrementBeersBtn.disabled = true;
                 confirmDrunkStripesBtn.disabled = true; 
                 availableStripesDisplay.textContent = 'No penalties available to fulfill!';
             } else {
-                // Enable if penalties are available
                 howManyBeersInput.disabled = false;
                 incrementBeersBtn.disabled = false;
                 decrementBeersBtn.disabled = false;
@@ -524,7 +523,7 @@ document.addEventListener('click', (e) => {
         closeMenus(); 
     }
     // Close drunk stripes modal if click outside and it's open
-    if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) { // Changed to 'drunk'
+    if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) { 
         drunkStripesModal.classList.add('hidden'); 
     }
 });
@@ -542,28 +541,20 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', () => {
 });
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
 closeDiceRandomizerModalBtn?.addEventListener('click', () => diceRandomizerModal.classList.add('hidden'));
-openGeminiFromHubBtn?.addEventListener('click', () => { // This is the button moved to main page
-    randomizerHubModal.classList.add('hidden'); // Ensure hub is closed if clicked from there
+openGeminiFromHubBtn?.addEventListener('click', () => { 
+    randomizerHubModal.classList.add('hidden'); 
     geminiModal.classList.remove('hidden');
     geminiOutput.classList.add('hidden');
-    geminiOutput.innerHTML = ''; // Clear previous judgment
+    geminiOutput.innerHTML = ''; 
     geminiInput.value = '';
-    // Remove the action button if it exists
-    const existingActionButton = geminiOutput.nextElementSibling;
-    if (existingActionButton && existingActionButton.classList.contains('btn-punishment')) {
-        existingActionButton.remove();
-    }
+    geminiActionButtonsContainer.innerHTML = ''; // Clear buttons when opening
 });
 closeGeminiModalBtn?.addEventListener('click', () => {
     geminiModal.classList.add('hidden');
-    geminiOutput.classList.add('hidden'); // Ensure output is hidden when closing
-    geminiOutput.innerHTML = ''; // Clear previous judgment
-    geminiInput.value = ''; // Clear input
-    // Remove the action button if it exists
-    const existingActionButton = geminiOutput.nextElementSibling;
-    if (existingActionButton && existingActionButton.classList.contains('btn-punishment')) {
-        existingActionButton.remove();
-    }
+    geminiOutput.classList.add('hidden'); 
+    geminiOutput.innerHTML = ''; 
+    geminiInput.value = ''; 
+    geminiActionButtonsContainer.innerHTML = ''; // Clear buttons when closing
 });
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
 
@@ -582,7 +573,7 @@ incrementBeersBtn.addEventListener('click', () => {
 
 decrementBeersBtn.addEventListener('click', () => {
     const currentValue = parseInt(howManyBeersInput.value);
-    if (currentValue > 1) { // Ensure it doesn't go below 1
+    if (currentValue > 1) { 
         howManyBeersInput.value = currentValue - 1;
     }
 });
@@ -591,8 +582,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
     if (currentPersonIdForDrunkStripes) { 
         const count = parseInt(howManyBeersInput.value);
         const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes); 
-        // Calculate available penalties that can still be fulfilled (normal minus already drunk)
-        const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); // Changed to 'drunk'
+        const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); 
         
         if (count > availablePenaltiesToFulfill) {
             alert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} penalties remaining.`);
