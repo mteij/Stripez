@@ -169,7 +169,8 @@ exports.getOracleJudgement = onCall(
         try {
             structuredJudgement = JSON.parse(rawResponseText);
         } catch (jsonError) {
-            logger.error("AI output was not valid JSON:", rawResponseText, jsonError);
+            logger.error("AI output was not valid JSON:", rawResponseText,
+                jsonError);
             throw new HttpsError(
                 "internal",
                 "Oracle spoke in riddles, its judgment could not be understood.",
@@ -206,8 +207,10 @@ exports.getOracleJudgement = onCall(
 
           const isNotTooDifferent = minDistance < 3;
           // Ensure we don't accidentally replace a name if the AI said "innocent"
-          // The AI should handle 'innocent' type itself, but this is a safeguard.
           const isNotInnocentJudgement = structuredJudgement.type !== "innocent";
+
+          // Define nameRegex here, outside the inner if, for scope
+          const nameRegex = new RegExp(`\\b${aiSuggestedName}\\b`, "gi");
 
           if (isNotTooDifferent && isNotInnocentJudgement) {
             // Replace the original name with the fuzzy-matched name in the
