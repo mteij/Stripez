@@ -57,7 +57,7 @@ function levenshteinDistance(a, b) {
  * @param {object} request.data The request data sent by the client.
  * @param {string} request.data.promptText The user's transgression description.
  * @param {Array<object>} request.data.rules The list of existing rules.
- * @param {Array<string>} request.data.ledgerNames List of names from the ledger.
+ * @param {Array<string>} request.data.ledgerNames List of names.
  * @return {object} An object containing the generated judgement string.
  * @throws {HttpsError} If promptText is missing or Gemini API call fails.
  */
