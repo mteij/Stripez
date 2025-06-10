@@ -14,6 +14,7 @@ exports.getOracleJudgement = onCall(
     {
       region: "europe-west4",
       cors: [/nicat\.mteij\.nl$/, /web\.app$/, /firebaseapp\.com$/],
+      secrets: ["GEMINI_KEY"], // Add this line
     },
     async (request) => {
       // NEW DEBUGGING LINE: Let's see what the function thinks the API key is.
