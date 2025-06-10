@@ -12,13 +12,12 @@ const genAI = new GoogleGenerativeAI(geminiApiKey);
 
 exports.getOracleJudgement = onCall(
     {
-      // We are adding a 'cors' property here
       region: "europe-west4",
       cors: [/nicat\.mteij\.nl$/, /web\.app$/, /firebaseapp\.com$/],
     },
     async (request) => {
-      // Log the incoming request data for debugging
-      logger.info("Oracle request received", {data: request.data});
+      // ADD THIS LINE FOR DEBUGGING:
+      logger.info("Full request data received from client:", request.data);
 
       // Get the prompt text and rules from the client
       const {promptText, rules} = request.data;
