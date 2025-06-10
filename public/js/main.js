@@ -1,5 +1,4 @@
 // public/js/main.js
-// public/js/main.js
 
 // --- MODULE IMPORTS ---
 import {
@@ -55,7 +54,7 @@ const closeListRandomizerModalBtn = document.getElementById('close-list-randomiz
 const openRandomizerHubBtn = document.getElementById('open-randomizer-hub-btn');
 const randomizerHubModal = document.getElementById('randomizer-hub-modal');
 const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
-const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
+const openListRandomizerFromHubBtn = document = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
 // Gemini Oracle elements
@@ -539,4 +538,21 @@ decrementBeersBtn.addEventListener('click', () => {
     }
 });
 
-confirmDrunken
+confirmDrunkenStripesBtn.addEventListener('click', async () => {
+    if (currentPersonIdForDrunkenStripes) {
+        const count = parseInt(howManyBeersInput.value);
+        const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkenStripes);
+        const normalStripes = (person?.stripes?.length || 0) - (person?.drunkenStripes?.length || 0);
+
+        if (count > normalStripes) {
+            alert(`Cannot consume more stripes than available! You have ${normalStripes} penalties remaining.`);
+            return;
+        }
+
+        if (count > 0) {
+            await addDrunkenStripeToPerson(currentPersonIdForDrunkenStripes, count);
+        }
+        drunkenStripesModal.classList.add('hidden');
+        currentPersonIdForDrunkenStripes = null; // Clear the stored ID
+    }
+});

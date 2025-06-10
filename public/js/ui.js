@@ -1,5 +1,4 @@
 // public/js/ui.js
-// public/js/ui.js
 
 let stripeChart = null;
 
