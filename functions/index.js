@@ -60,9 +60,9 @@ exports.getOracleJudgement = onCall(
           ---
 
           Based on the rules, determine a fitting consequence. Your response
-          must be short and in the format: "[Main Judgement] [Broken Rule(s)].
-          For example: 'Noud gets 3 stripes [Rule 2]', 'Noud must roll a die with 3 dotts [Rule 1, Rule 3]'
-          or 'Noud gets 3 stripes and rolls a 6-sided die [Rule 2, Rule 3]'.
+          must be short and in the format: "[Main Judgement] [Broken Rule(s)]".
+          Examples: 'Noud gets 3 stripes [Rule 2]'; 'Noud rolls a 3-sided die [Rule 1, 3]';
+          or 'Noud gets 3 stripes & rolls 6-sided die [Rule 2, 3]'.
           If the described action does not break any rules, you may declare
           the person innocent and explicitly state 'No rules broken'.
           Always try to assign a punishment if a rule is clearly broken.
