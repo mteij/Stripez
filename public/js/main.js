@@ -21,7 +21,7 @@ let ledgerDataCache = [];
 let rulesDataCache = []; // Full, unfiltered rules data
 let currentSortOrder = 'stripes_desc';
 let currentSearchTerm = ''; // For ledger search
-let currentRuleSearchTerm = ''; // New: For rules search
+let currentRuleSearchTerm = ''; // New: For rules inconsistencies search
 let isSchikkoConfirmed = false; // Track confirmation status for the session
 let lastPunishmentInfo = { // New state for last punishment awarded
     name: null,
@@ -69,7 +69,8 @@ const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomiz
 // Gemini Oracle elements
 const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn'); // Moved from modal
 const geminiModal = document.getElementById('gemini-modal');
-const closeGeminiModalBtn = document = document.getElementById('close-gemini-modal');
+// FIX: Corrected typo - assignment should be to 'closeGeminiModalBtn' not 'document'
+const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
 const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
 const geminiInput = document.getElementById('gemini-input');
 const geminiOutput = document.getElementById('gemini-output');
@@ -194,12 +195,9 @@ function updateAppFooter() {
     if (!appInfoFooter) return;
     let latestUpdateTimestamp = null;
     if (rulesDataCache.length > 0) {
-        latestUpdateTimestamp = rulesDataCache.reduce((latestTs, rule) => {
+        latestUpdateTimestamp = rulesDataCache.reduce((max, rule) => {
             const ruleTs = rule.updatedAt || rule.createdAt;
-            if (!ruleTs) return latestTs;
-            const currentMillis = ruleTs.toMillis ? ruleTs.toMillis() : 0;
-            const latestMillis = latestTs ? (latestTs.toMillis ? latestTs.toMillis() : 0) : 0;
-            return currentMillis > latestMillis ? ruleTs : latestTs;
+            return (ruleTs && (!max || ruleTs.toMillis() > max.toMillis())) ? ruleTs : max;
         }, null);
         if (latestUpdateTimestamp && typeof latestUpdateTimestamp.toDate === 'function') {
             latestUpdateTimestamp = latestUpdateTimestamp.toDate();
