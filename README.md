@@ -138,4 +138,3 @@ If you wish to clone this repository and set it up with your own Firebase projec
 7.  **Deploy:**
     * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`.
     * Alternatively, the GitHub Actions will now automatically deploy whenever changes are pushed to `main` or a pull request is created/updated, with your Firebase credentials securely injected.
-    
