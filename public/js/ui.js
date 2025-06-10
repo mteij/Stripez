@@ -158,9 +158,14 @@ function showStatsModal(person) {
                     ...drunkStripeTimestamps.map(ts => ({ type: 'drunk', timestamp: ts }))
                 ].sort((a, b) => a.timestamp - b.timestamp);
 
+                // Add a starting point at the first event time, with 0 count, for visual clarity, only if there are events
+                if (allEvents.length > 0) {
+                    dataPoints.push({ x: new Date(Math.min(...allEvents.map(e => e.timestamp.getTime())) - 1000), y: 0 }); // A bit before the first event
+                }
+
                 let currentNormal = 0;
                 let currentDrunk = 0;
-                dataPoints.push({ x: allEvents.length > 0 ? allEvents[0].timestamp : new Date(), y: 0 }); // Start at 0 for "left"
+                
 
                 allEvents.forEach(event => {
                     if (event.type === 'normal') {
@@ -212,7 +217,7 @@ function showStatsModal(person) {
                 let cumulativeCount = 0;
                 // Add a starting point at the first event time, with 0 count, for visual clarity
                 if (timestamps.length > 0) {
-                    dataPoints.push({ x: timestamps[0], y: 0 });
+                    dataPoints.push({ x: new Date(timestamps[0].getTime() - 1000), y: 0 }); // Start a bit before the first event
                 }
 
                 timestamps.forEach(timestamp => {
@@ -261,15 +266,16 @@ function showStatsModal(person) {
                             }
                         }
                     },
-                    title: { // Add title to the chart itself
-                        display: true,
-                        text: `Cumulative ${selectedOptionText} Over Time`,
-                        font: {
-                            size: 18,
-                            family: 'Cinzel Decorative'
-                        },
-                        color: '#5c3d2e'
-                    }
+                    // Removed the main chart title when data exists
+                    // title: {
+                    //     display: true,
+                    //     text: `Cumulative ${selectedOptionText} Over Time`,
+                    //     font: {
+                    //         size: 18,
+                    //         family: 'Cinzel Decorative'
+                    //     },
+                    //     color: '#5c3d2e'
+                    // }
                 },
                 scales: {
                     x: {

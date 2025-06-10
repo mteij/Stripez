@@ -214,7 +214,7 @@ function parseOracleJudgment(judgementText) {
  */
 function createActionButton(parsedJudgement) {
     const actionButton = document.createElement('button');
-    actionButton.className = 'btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4';
+    actionButton.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4';
 
     if (parsedJudgement.type === 'addStripes') {
         actionButton.textContent = `Add ${parsedJudgement.count} 🟥 to ${parsedJudgement.name}`;
@@ -279,7 +279,7 @@ async function handleGeminiSubmit() {
     // Clear previous output and any existing action button
     geminiOutput.innerHTML = '';
     const existingActionButton = geminiOutput.nextElementSibling;
-    if (existingActionButton && existingActionButton.classList.contains('btn-ancient')) {
+    if (existingActionButton && existingActionButton.classList.contains('btn-punishment')) {
         existingActionButton.remove();
     }
 
@@ -481,7 +481,7 @@ editRulesBtn?.addEventListener('click', () => {
 rulesListOl?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-rule-action]');
     if (!target || !rulesListOl.classList.contains('rules-list-editing')) return;
-    const action = target.dataset.action;
+    const action = target.dataset.ruleAction;
     const id = target.dataset.id;
     const ruleIndex = rulesDataCache.findIndex(r => r.id === id);
     if (ruleIndex === -1) return;

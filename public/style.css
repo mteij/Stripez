@@ -94,6 +94,23 @@ body {
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
+/* New button style for punishment suggestions */
+.btn-punishment {
+    background-color: #c0392b; /* A prominent red */
+    color: #fdf8e9; /* Light text */
+    border: 2px solid #7f2219; /* Darker red border */
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* Stronger shadow */
+    display: block; /* Make it a block element to use margin-left/right auto */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-punishment:hover {
+    background-color: #e74c3c; /* Lighter red on hover */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+}
+
 
 /* Styling for the punishment stripes */
 .punishment-stripe {
