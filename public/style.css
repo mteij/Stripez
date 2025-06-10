@@ -140,10 +140,10 @@ body {
     transform: skew(-15deg);
 }
 
-/* New styling for 5th drunken punishment stripes */
+/* New styling for 5th drunken punishment stripes - now gold */
 .punishment-stripe-drunk-fifth {
-    background-color: #a0522d; /* A darker, earthy orange/brown */
-    border-left: 1px solid #6b3e21; /* Darker border */
+    background-color: #FFD700; /* Gold */
+    border-left: 1px solid #DAA520; /* Goldenrod for border */
 }
 
 

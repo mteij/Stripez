@@ -162,80 +162,132 @@ function updateAppFooter() {
 }
 
 /**
- * Parses the Oracle's judgment object to extract action and parameters.
- * Now receives a structured object directly from the backend.
- * @param {object} structuredJudgement - The structured judgment object.
- * @returns {object} An object containing action type and parameters.
+ * Parses the Oracle's judgment text to extract action and parameters.
+ * @param {string} judgementText - The raw judgment string from the Oracle.
+ * @returns {object|null} An object containing action type and parameters, or null if unparseable.
 */
-function parseOracleJudgment(structuredJudgement) {
-    // This function now just returns the structured object as is,
-    // as the backend handles the complex parsing and name correction.
-    return structuredJudgement;
+function parseOracleJudgment(judgementText) {
+    const lowerJudgement = judgementText.toLowerCase();
+
+    // Remove the rule citation part for cleaner parsing of actions
+    const textWithoutRules = judgementText.replace(/ \[Rule(?:s)?\s*[\d,\s]+\]/i, '').trim();
+
+    // 1. Extract potential name: The first word of the sentence
+    // Or a word preceded by a known action verb
+    let name = null;
+    const initialNameMatch = textWithoutRules.match(/^(\w+)/);
+    if (initialNameMatch && !['roll', 'rolls', 'test', 'person', 'someone', 'oracle'].includes(initialNameMatch[1].toLowerCase())) {
+        name = initialNameMatch[1];
+    } else {
+        // Try to find name after common phrases like "gets", "must roll", "is assigned"
+        const nameAfterVerbMatch = textWithoutRules.match(/(?:gets|is assigned|receives|has|must roll|should roll|is to roll)\s+(\w+)/i);
+        if (nameAfterVerbMatch) {
+            name = nameAfterVerbMatch[1];
+        }
+    }
+    // If no name found yet, but we found a number, let's assume 'Someone'
+    if (!name && (textWithoutRules.match(/\d+/) || lowerJudgement.includes('dice') || lowerJudgement.includes('stripe'))) {
+        name = 'Someone'; // Default name if no explicit one is found for actions
+    }
+
+
+    // 2. Look for dice roll pattern
+    // Examples: "rolls a 3-sided die", "roll dice 3", "must roll 10"
+    const diceMatch = textWithoutRules.match(/(?:roll|rolls|roll a|must roll|should roll|is to roll)\s+(?:a\s+)?(?:dice|die)?\s*(\d+)(?:-sided)?/i);
+    const diceValue = (diceMatch && !isNaN(parseInt(diceMatch[1]))) ? parseInt(diceMatch[1]) : null;
+
+    // 3. Look for stripes pattern
+    // Examples: "gets 2 stripes", "has 5 stripes", "2 stripes"
+    const stripesMatch = textWithoutRules.match(/(\d+)\s+stripes?/i);
+    const stripesCount = (stripesMatch && !isNaN(parseInt(stripesMatch[1]))) ? parseInt(stripesMatch[1]) : null;
+
+    // Determine type based on what was found
+    if (name && stripesCount !== null && diceValue !== null) {
+        // Combined action: [Name] ... [stripes] ... [dice]
+        return {
+            type: 'addStripesAndRollDice',
+            name: name,
+            count: stripesCount,
+            diceValue: diceValue
+        };
+    } else if (name && stripesCount !== null) {
+        // Add stripes only
+        return {
+            type: 'addStripes',
+            name: name,
+            count: stripesCount
+        };
+    } else if (name && diceValue !== null) {
+        // Roll dice only
+        return {
+            type: 'rollDice',
+            name: name,
+            value: diceValue
+        };
+    } else if (lowerJudgement.includes('innocent')) {
+        // Innocent
+        return { type: 'innocent' };
+    } else {
+        // Acknowledge (fallback)
+        return { type: 'acknowledge' };
+    }
 }
 
 /**
  * Creates a dynamic action button based on the parsed judgment.
- * @param {object} parsedJudgement - The object returned by parseOracleJudgment (now structured).
+ * @param {object} parsedJudgement - The object returned by parseOracleJudgment.
  * @returns {HTMLButtonElement} The action button.
  */
 function createActionButton(parsedJudgement) {
     const actionButton = document.createElement('button');
     actionButton.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg mt-4';
 
-    // Use the type and other properties directly from the structured object
-    switch (parsedJudgement.type) {
-        case 'addStripes':
-            actionButton.textContent = `Add ${parsedJudgement.count} Stripes to ${parsedJudgement.name}`;
-            actionButton.onclick = async () => {
-                const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
-                if (person) {
-                    for (let i = 0; i < parsedJudgement.count; i++) {
-                        await addStripeToPerson(person.id);
-                    }
-                    geminiModal.classList.add('hidden');
-                    actionButton.remove();
-                } else {
-                    alert(`Person "${parsedJudgement.name}" not found on ledger.`);
-                    geminiModal.classList.add('hidden');
-                    actionButton.remove();
+    if (parsedJudgement.type === 'addStripes') {
+        actionButton.textContent = `Add ${parsedJudgement.count} Stripes to ${parsedJudgement.name}`;
+        actionButton.onclick = async () => {
+            const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
+            if (person) {
+                for (let i = 0; i < parsedJudgement.count; i++) {
+                    await addStripeToPerson(person.id);
                 }
-            };
-            break;
-        case 'rollDice':
-            actionButton.textContent = `Roll 🎲 ${parsedJudgement.diceValue}`; // Use diceValue
-            actionButton.onclick = () => {
-                rollSpecificDice(parsedJudgement.diceValue); // Use diceValue
                 geminiModal.classList.add('hidden');
                 actionButton.remove();
-            };
-            break;
-        case 'addStripesAndRollDice':
-            actionButton.textContent = `Add ${parsedJudgement.count} Stripes & Roll 🎲 ${parsedJudgement.diceValue} to ${parsedJudgement.name}`;
-            actionButton.onclick = async () => {
-                const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
-                if (person) {
-                    for (let i = 0; i < parsedJudgement.count; i++) {
-                        await addStripeToPerson(person.id);
-                    }
-                    rollSpecificDice(parsedJudgement.diceValue);
-                    geminiModal.classList.add('hidden');
-                    actionButton.remove();
-                } else {
-                    alert(`Person "${parsedJudgement.name}" not found on ledger.`);
-                    geminiModal.classList.add('hidden');
-                    actionButton.remove();
-                }
-            };
-            break;
-        case 'innocent':
-        case 'acknowledge':
-        default:
-            actionButton.textContent = 'Acknowledge Judgement';
-            actionButton.onclick = () => {
+            } else {
+                alert(`Person "${parsedJudgement.name}" not found on ledger.`);
                 geminiModal.classList.add('hidden');
                 actionButton.remove();
-            };
-            break;
+            }
+        };
+    } else if (parsedJudgement.type === 'rollDice') {
+        actionButton.textContent = `Roll 🎲 ${parsedJudgement.value}`;
+        actionButton.onclick = () => {
+            rollSpecificDice(parsedJudgement.value);
+            geminiModal.classList.add('hidden');
+            actionButton.remove();
+        };
+    } else if (parsedJudgement.type === 'addStripesAndRollDice') {
+        actionButton.textContent = `Add ${parsedJudgement.count} Stripes & Roll 🎲 ${parsedJudgement.diceValue} to ${parsedJudgement.name}`;
+        actionButton.onclick = async () => {
+            const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
+            if (person) {
+                for (let i = 0; i < parsedJudgement.count; i++) {
+                    await addStripeToPerson(person.id);
+                }
+                rollSpecificDice(parsedJudgement.diceValue);
+                geminiModal.classList.add('hidden');
+                actionButton.remove();
+            } else {
+                alert(`Person "${parsedJudgement.name}" not found on ledger.`);
+                geminiModal.classList.add('hidden');
+                actionButton.remove();
+            }
+        };
+    } else { // Innocent or unhandled judgment, just acknowledge
+        actionButton.textContent = 'Acknowledge Judgement';
+        actionButton.onclick = () => {
+            geminiModal.classList.add('hidden');
+            actionButton.remove();
+        };
     }
     return actionButton;
 }
@@ -278,12 +330,12 @@ async function handleGeminiSubmit() {
         });
 
         // The result.data is now the structured JSON object directly
-        const structuredResult = result.data; 
-        geminiOutput.textContent = structuredResult.displayMessage; // Display the human-readable message
+        const judgement = result.data.judgement; 
+        geminiOutput.textContent = judgement; // Display the human-readable message
         geminiOutput.classList.remove('hidden');
 
         // Parse judgment and create action button (parseOracleJudgment just returns the structured object)
-        const parsedJudgement = parseOracleJudgment(structuredResult);
+        const parsedJudgement = parseOracleJudgment(judgement);
         const actionButton = createActionButton(parsedJudgement);
         geminiOutput.parentNode.insertBefore(actionButton, geminiOutput.nextSibling);
 
@@ -543,7 +595,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes); 
         // Calculate available penalties that can still be fulfilled (normal minus already drunk)
         const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); // Changed to 'drunk'
-
+        
         if (count > availablePenaltiesToFulfill) {
             alert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} penalties remaining.`);
             return;
