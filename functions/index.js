@@ -1,3 +1,4 @@
+// functions/index.js
 // In functions/index.js
 
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
@@ -57,7 +58,8 @@ exports.getOracleJudgement = onCall(
 
           Based on the rules, determine a fitting consequence. Your response
           must be short and in the format: "[Main Judgement]. For example:
-          'Noud gets 3 stripes' or 'Noud must roll a die with 3 dotts.'"
+          'Noud gets 3 stripes', 'Noud must roll a die with 3 dotts.' or
+          'Noud gets 3 stripes and rolls a 6-sided die.'"
           If the described action does not break any rules, you may declare
           the person innocent.
         `;

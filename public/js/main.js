@@ -1,4 +1,5 @@
 // public/js/main.js
+// public/js/main.js
 
 // --- MODULE IMPORTS ---
 import {
@@ -152,6 +153,17 @@ function updateAppFooter() {
  * @returns {object|null} An object containing action type and parameters, or null if unparseable.
  */
 function parseOracleJudgment(judgementText) {
+    // Example: "Noud gets 3 stripes and rolls a 6-sided die."
+    const combinedMatch = judgementText.match(/(\w+) gets (\d+) stripe(?:s)? and (?:rolls|roll) a (\d+)-sided die/i);
+    if (combinedMatch) {
+        return {
+            type: 'addStripesAndRollDice',
+            name: combinedMatch[1],
+            count: parseInt(combinedMatch[2]),
+            diceValue: parseInt(combinedMatch[3])
+        };
+    }
+
     // Example: "Noud gets 3 stripes"
     const stripesMatch = judgementText.match(/(\w+) gets (\d+) stripe/i);
     if (stripesMatch) {
@@ -211,6 +223,22 @@ function createActionButton(parsedJudgement) {
             rollSpecificDice(parsedJudgement.value);
             geminiModal.classList.add('hidden');
             actionButton.remove();
+        };
+    } else if (parsedJudgement.type === 'addStripesAndRollDice') {
+        actionButton.textContent = `Add ${parsedJudgement.count} Stripe(s) to ${parsedJudgement.name} and Roll a ${parsedJudgement.diceValue}-sided die`;
+        actionButton.onclick = async () => {
+            const person = ledgerDataCache.find(p => p.name.toLowerCase() === parsedJudgement.name.toLowerCase());
+            if (person) {
+                for (let i = 0; i < parsedJudgement.count; i++) {
+                    await addStripeToPerson(person.id);
+                }
+                rollSpecificDice(parsedJudgement.diceValue);
+                geminiModal.classList.add('hidden');
+                actionButton.remove();
+            } else {
+                geminiModal.classList.add('hidden'); // Close modal even if person not found
+                actionButton.remove(); // Remove button
+            }
         };
     } else { // Innocent or unhandled judgment, just acknowledge
         actionButton.textContent = 'Acknowledge Judgement';
