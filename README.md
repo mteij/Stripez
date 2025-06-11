@@ -136,7 +136,7 @@ If you wish to clone this repository and set it up with your own Firebase projec
         firebase functions:config:set gemini.key="YOUR_API_KEY_HERE"
         ```
     * **Configure IAM for Deployments:** For CI/CD, create a service account and download its JSON key. In the Google Cloud IAM console, grant this service account the following roles:
-        * `Cloud Functions Developer`
+        * `Cloud Functions Admin` (This is the required change)
         * `Firebase Hosting Admin`
         * `Service Account User`
         * `Firebase Extensions Viewer`
