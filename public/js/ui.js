@@ -207,7 +207,7 @@ function renderLedger(viewData, term) {
         // Decide whether to show individual stripes or a number
         if (normalStripesCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
             // Display total count as a number if it exceeds the threshold
-            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drunk: ${drunkStripesCount})</p>`; 
+            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drank: ${drunkStripesCount})</p>`; 
             stripeContainerDynamicClasses += 'justify-start'; // Left-align the number
         } else {
             // Display individual stripes, allowing horizontal scroll if needed

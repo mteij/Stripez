@@ -485,7 +485,7 @@ async function handleGeminiSubmit() {
             if (penaltyParts.length > 0) {
                 displayMessage = `Judgement for ${parsedJudgement.person || 'Someone'}: ${penaltyParts.join(' and ')}${rulesText}.`;
             } else {
-                displayMessage = `The Oracle has spoken for ${parsedJudgement.person || 'Someone'}${rulesText}. No explicit penalties were calculated.`;
+                displayMessage = `The Oracle has spoken for ${parsedJudgement.person || 'Someone'}${rulesText}. No explicit punishments were calculated.`;
             }
         }
 
@@ -642,13 +642,13 @@ punishmentListDiv.addEventListener('click', (e) => {
             
             howManyBeersInput.value = Math.min(1, availablePenaltiesToFulfill); 
             howManyBeersInput.max = availablePenaltiesToFulfill; 
-            availableStripesDisplay.textContent = `Available Penalties: ${availablePenaltiesToFulfill}`;
+            availableStripesDisplay.textContent = ` Available Stripes: ${availablePenaltiesToFulfill}`;
             
             howManyBeersInput.disabled = availablePenaltiesToFulfill <= 0;
             incrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
             decrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
             confirmDrunkStripesBtn.disabled = availablePenaltiesToFulfill <= 0; 
-            if (availablePenaltiesToFulfill <= 0) availableStripesDisplay.textContent = 'No penalties available to fulfill!';
+            if (availablePenaltiesToFulfill <= 0) availableStripesDisplay.textContent = 'No Stripes available to fulfill!';
 
             drunkStripesModal.classList.remove('hidden'); 
             break;
@@ -779,7 +779,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); 
         
         if (count > availablePenaltiesToFulfill) {
-            await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} penalties remaining.`, "Too Many Draughts");
+            await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
             return;
         }
 
