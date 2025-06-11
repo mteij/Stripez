@@ -1,0 +1,21 @@
+{
+  "name": "Schikko Rules",
+  "short_name": "Schikko",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#fdf8e9",
+  "theme_color": "#8c6b52",
+  "description": "The official ledger for the Rules of Schikko.",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
