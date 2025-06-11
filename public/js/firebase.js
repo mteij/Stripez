@@ -3,7 +3,7 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
 
 // Firebase configuration. These placeholders will be replaced by GitHub Actions
 // during the build/deploy process using a string replacement utility.
@@ -24,6 +24,7 @@ const auth = getAuth(app);
 // --- COLLECTION REFERENCES ---
 const ledgerCollectionRef = collection(db, 'punishments');
 const rulesCollectionRef = collection(db, 'rules');
+const configCollectionRef = collection(db, 'config');
 
 // --- DATABASE AND AUTH FUNCTIONS ---
 
@@ -38,6 +39,21 @@ const setupRealtimeListener = (collectionName, callback) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(data);
     }, (error) => console.error("Error fetching ledger:", error));
+};
+
+const getCalendarConfig = async () => {
+    const docRef = doc(db, 'config', 'calendar');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data();
+    } else {
+        return { url: null };
+    }
+};
+
+const saveCalendarUrl = async (url) => {
+    const docRef = doc(db, 'config', 'calendar');
+    await setDoc(docRef, { url: url }, { merge: true });
 };
 
 const addNameToLedger = async (name, userId) => {
@@ -181,5 +197,7 @@ export {
     updateRuleOrderInFirestore,
     updateRuleTextInFirestore,
     addDrunkStripeToPerson, 
-    removeLastDrunkStripeFromPerson 
+    removeLastDrunkStripeFromPerson,
+    getCalendarConfig,
+    saveCalendarUrl
 };

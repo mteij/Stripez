@@ -10,6 +10,10 @@ All data is stored and synced live using Google's Firebase, and the project is s
 
 * **Ancient Tome Aesthetic:** Uses custom fonts and CSS to create an immersive, old-world feel.
 * **Real-time Database:** Built with Firebase Firestore, allowing multiple users to see updates instantly without refreshing the page.
+* **Google Calendar Integration:**
+    * Displays the next upcoming event from a public Google Calendar.
+    * A "Full Agenda" button opens a popup with all upcoming events.
+    * An "Edit Calendar Link" button allows easy updating of the calendar's public iCal URL, which is stored in Firestore.
 * **Enhanced Ledger Functionality:**
     * Full CRUD (Create, Read, Update, Delete) functionality for names on the ledger.
     * **Improved Punishment Tracking:** Add or remove punishment stripes for each person.
@@ -39,6 +43,7 @@ All data is stored and synced live using Google's Firebase, and the project is s
 ## Tech Stack
 
 * **Frontend:** HTML5, CSS3, JavaScript (ES Modules)
+* **Calendar Parsing:** [ical.js](https://github.com/mozilla-comm/ical.js)
 * **Styling:** [Tailwind CSS](https://tailwindcss.com/) for utility-first styling.
 * **Charting:** [Chart.js](https://www.chartjs.org/) for data visualization.
 * **Backend & Database:** [Google Firebase](https://firebase.google.com/)
@@ -108,16 +113,24 @@ If you wish to clone this repository and set it up with your own Firebase projec
         match /rules/{docId} {
           allow read, write: if request.auth != null;
         }
+        match /config/{docId} {
+            allow read, write: if request.auth != null;
+        }
       }
     }
     ```
 
-4.  **Set up Backend Functions:**
+4.  **Set up Google Calendar:**
+    * Create a Google Calendar that you want to use for the agenda.
+    * Make the calendar public and get the "Secret address in iCal format".
+    * Once the application is running, click the "Edit Calendar Link" button and paste this URL.
+
+5.  **Set up Backend Functions:**
     * **Initialize Functions:** In your local project root, run `firebase init functions` and select JavaScript.
     * **Install Dependencies:** Navigate to the new `functions` directory (`cd functions`) and run `npm install @google/generative-ai`.
     * **Get Gemini API Key:** Go to [Google AI Studio](https://aistudio.google.com/) to create and copy your API key.
 
-5.  **Configure Secrets and IAM Permissions:**
+6.  **Configure Secrets and IAM Permissions:**
     * **Set API Key Secret:** In your project root, run the following command, pasting your Gemini API key:
         ```bash
         firebase functions:config:set gemini.key="YOUR_API_KEY_HERE"
@@ -130,12 +143,11 @@ If you wish to clone this repository and set it up with your own Firebase projec
         * `API Keys Viewer`
         * `Service Usage Consumer`
 
-6.  **Configure GitHub Secrets for CI/CD:**
+7.  **Configure GitHub Secrets for CI/CD:**
     * In your GitHub repository, go to **Settings > Secrets and variables > Actions**.
     * Add a repository secret named `FIREBASE_SERVICE_ACCOUNT_SCHIKKO_RULES` and paste the entire content of your service account's JSON key file.
     * Add secrets for your Firebase config values (`FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`, etc.) to be used by the workflows.
 
-7.  **Deploy:**
+8.  **Deploy:**
     * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`.
     * Alternatively, the GitHub Actions will now automatically deploy whenever changes are pushed to `main` or a pull request is created/updated, with your Firebase credentials securely injected.
-    

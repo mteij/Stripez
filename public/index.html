@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js"></script>
     <link rel="stylesheet" href="style.css?v=1.0">
     <link rel="stylesheet" href="randomizer/randomizer.css">
     <style>
@@ -87,6 +88,14 @@
                 <li>He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the NICAT until penance is made.</li>
             </ol>
             
+            <div id="calendar-section" class="text-center my-8">
+                <div id="upcoming-event" class="text-lg text-[#5c3d2e] mb-4">Loading upcoming activities...</div>
+                <div class="flex justify-center items-center gap-4">
+                    <button id="edit-calendar-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base">Edit Calendar Link</button>
+                    <button id="full-agenda-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base">View Full Agenda</button>
+                </div>
+            </div>
+
             <div id="show-decrees-container" class="flex justify-center items-center gap-4 mt-8">
                 <button id="show-decrees-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base cursor-pointer focus:outline-none flex items-center justify-center space-x-2" data-state="collapsed">
                     <span>Schikko's Decrees</span>
@@ -123,7 +132,7 @@
 
             <div class="flex flex-col sm:flex-row gap-4 mb-8">
                 <button id="open-randomizer-hub-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Randomizers">
-                    🎲📝
+                    👑
                 </button>
                 <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]" list="ledger-names">
                 <datalist id="ledger-names"></datalist>
@@ -158,6 +167,14 @@
                 </a>
             </div>
         </footer>
+    </div>
+
+    <div id="agenda-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-3xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-agenda-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Full Agenda</h2>
+            <div id="agenda-content" class="space-y-4 max-h-[60vh] overflow-y-auto"></div>
+        </div>
     </div>
 
     <div id="stats-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">

@@ -7,9 +7,11 @@ import {
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore,
     addDrunkStripeToPerson,
-    removeLastDrunkStripeFromPerson
+    removeLastDrunkStripeFromPerson,
+    getCalendarConfig,
+    saveCalendarUrl
 } from './firebase.js';
-import { renderLedger, showStatsModal, closeMenus, renderRules } from './ui.js';
+import { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice, rollDiceAndAssign } from '../randomizer/randomizer.js';
 // New: Import functions from the Firebase SDK to call our backend
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -19,6 +21,7 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 let currentUserId = null;
 let ledgerDataCache = [];
 let rulesDataCache = []; // Full, unfiltered rules data
+let calendarEventsCache = [];
 let currentSortOrder = 'stripes_desc';
 let currentSearchTerm = ''; // For ledger search
 let currentRuleSearchTerm = ''; // New: For rules inconsistencies search
@@ -48,6 +51,11 @@ const showDecreesBtn = document.getElementById('show-decrees-btn');
 const ruleSearchInput = document.getElementById('rule-search-input');
 const appInfoFooter = document.getElementById('app-info-footer');
 const ledgerNamesDatalist = document.getElementById('ledger-names');
+const upcomingEventDiv = document.getElementById('upcoming-event');
+const editCalendarBtn = document.getElementById('edit-calendar-btn');
+const fullAgendaBtn = document.getElementById('full-agenda-btn');
+const agendaModal = document.getElementById('agenda-modal');
+const closeAgendaModalBtn = document.getElementById('close-agenda-modal');
 
 
 // Dice randomizer modal and buttons
@@ -95,6 +103,7 @@ let currentPersonIdForDrunkStripes = null;
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUserId = user.uid;
+        loadCalendarData();
         setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
@@ -112,6 +121,58 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // --- HELPER FUNCTIONS ---
+
+async function loadCalendarData() {
+    const config = await getCalendarConfig();
+    if (config && config.url) {
+        try {
+            const response = await fetch(config.url);
+            const icalData = await response.text();
+            const jcalData = ICAL.parse(icalData);
+            const vcalendar = new ICAL.Component(jcalData);
+            const vevents = vcalendar.getAllSubcomponents('vevent');
+            const now = new Date();
+
+            calendarEventsCache = vevents.map(vevent => {
+                const event = new ICAL.Event(vevent);
+                const isRecurring = event.isRecurring();
+                
+                if (isRecurring) {
+                    const iterator = event.iterator();
+                    let next;
+                    const occurrences = [];
+                    while ((next = iterator.next()) && occurrences.length < 100) { // Limit to 100 occurrences
+                        occurrences.push({
+                            summary: event.summary,
+                            startDate: next.toDate(),
+                            endDate: new ICAL.Time.fromJSDate(next.toDate()).add(event.duration).toJSDate(),
+                            location: event.location,
+                            description: event.description,
+                        });
+                    }
+                    return occurrences;
+                } else {
+                    return {
+                        summary: event.summary,
+                        startDate: event.startDate.toJSDate(),
+                        endDate: event.endDate.toJSDate(),
+                        location: event.location,
+                        description: event.description,
+                    };
+                }
+            }).flat().filter(event => event.endDate > now).sort((a, b) => a.startDate - b.startDate);
+
+            renderUpcomingEvent(calendarEventsCache[0]);
+        } catch (error) {
+            console.error('Error fetching or parsing calendar data:', error);
+            upcomingEventDiv.innerHTML = 'Could not load calendar data.';
+        }
+    } else {
+        upcomingEventDiv.innerHTML = 'No calendar URL set.';
+    }
+}
+
+
 /**
  * Updates the datalist for the main input field with current ledger names.
  */
@@ -766,4 +827,22 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         drunkStripesModal.classList.add('hidden'); 
         currentPersonIdForDrunkStripes = null; 
     }
+});
+
+editCalendarBtn.addEventListener('click', async () => {
+    const config = await getCalendarConfig();
+    const newUrl = prompt('Enter the public iCal URL for the calendar:', config.url);
+    if (newUrl) {
+        await saveCalendarUrl(newUrl);
+        loadCalendarData();
+    }
+});
+
+fullAgendaBtn.addEventListener('click', () => {
+    renderFullAgenda(calendarEventsCache);
+    showAgendaModal(true);
+});
+
+closeAgendaModalBtn.addEventListener('click', () => {
+    showAgendaModal(false);
 });

@@ -2,6 +2,59 @@
 
 let stripeChart = null;
 
+function renderUpcomingEvent(event) {
+    const upcomingEventDiv = document.getElementById('upcoming-event');
+    if (event) {
+        const eventDate = new Date(event.startDate);
+        const dateString = eventDate.toLocaleDateString(undefined, {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        const timeString = eventDate.toLocaleTimeString(undefined, {
+            hour: '2-digit', minute: '2-digit'
+        });
+        upcomingEventDiv.innerHTML = `<strong>Next Activity:</strong> ${event.summary} on ${dateString} at ${timeString}`;
+    } else {
+        upcomingEventDiv.innerHTML = 'No upcoming activities found.';
+    }
+}
+
+function renderFullAgenda(events) {
+    const agendaContentDiv = document.getElementById('agenda-content');
+    agendaContentDiv.innerHTML = '';
+
+    if (!events || events.length === 0) {
+        agendaContentDiv.innerHTML = '<p>No upcoming events in the agenda.</p>';
+        return;
+    }
+
+    events.forEach(event => {
+        const eventDiv = document.createElement('div');
+        eventDiv.className = 'p-3 bg-[#e9e2d7] rounded-md border border-[#b9987e]';
+        const startDate = new Date(event.startDate);
+        const endDate = new Date(event.endDate);
+        const dateString = startDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeString = `${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+
+        eventDiv.innerHTML = `
+            <h3 class="text-xl font-bold text-[#5c3d2e]">${event.summary}</h3>
+            <p class="text-md text-[#6f4e37]">${dateString} at ${timeString}</p>
+            ${event.location ? `<p class="text-sm text-[#6f4e37]">Location: ${event.location}</p>` : ''}
+            ${event.description ? `<p class="text-sm mt-2">${event.description}</p>` : ''}
+        `;
+        agendaContentDiv.appendChild(eventDiv);
+    });
+}
+
+function showAgendaModal(show) {
+    const agendaModal = document.getElementById('agenda-modal');
+    if (show) {
+        agendaModal.classList.remove('hidden');
+    } else {
+        agendaModal.classList.add('hidden');
+    }
+}
+
+
 /**
  * Renders the entire list of transgressors into the DOM.
  * @param {Array} viewData - The sorted and filtered array of person objects to display.
@@ -368,4 +421,4 @@ function renderRules(rulesData) {
     });
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal };
