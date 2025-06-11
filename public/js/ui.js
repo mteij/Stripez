@@ -2,6 +2,110 @@
 
 let stripeChart = null;
 
+// --- GENERIC MODAL UI FUNCTIONS ---
+
+/**
+ * Shows a themed alert modal.
+ * @param {string} message - The message to display.
+ * @param {string} [title='A Declaration!'] - The title for the modal.
+ */
+function showAlert(message, title = 'A Declaration!') {
+    const modal = document.getElementById('generic-alert-modal');
+    const titleEl = document.getElementById('alert-title');
+    const messageEl = document.getElementById('alert-message');
+    const okBtn = document.getElementById('alert-ok-btn');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+
+    modal.classList.remove('hidden');
+
+    // Return a promise that resolves when the user clicks "OK"
+    return new Promise(resolve => {
+        okBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve();
+        };
+    });
+}
+
+
+/**
+ * Shows a themed confirmation modal.
+ * @param {string} message - The confirmation question.
+ * @param {string} [title='A Query!'] - The title for the modal.
+ * @returns {Promise<boolean>} A promise that resolves to true if confirmed, false otherwise.
+ */
+function showConfirm(message, title = 'A Query!') {
+    const modal = document.getElementById('generic-confirm-modal');
+    const titleEl = document.getElementById('confirm-title');
+    const messageEl = document.getElementById('confirm-message');
+    const yesBtn = document.getElementById('confirm-yes-btn');
+    const noBtn = document.getElementById('confirm-no-btn');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+
+    modal.classList.remove('hidden');
+
+    return new Promise(resolve => {
+        yesBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(true);
+        };
+        noBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(false);
+        };
+    });
+}
+
+/**
+ * Shows a themed prompt modal.
+ * @param {string} message - The message to display in the prompt.
+ * @param {string} [defaultValue=''] - The default value for the input field.
+ * @param {string} [title='An Inquiry!'] - The title for the modal.
+ * @returns {Promise<string|null>} A promise that resolves with the input value, or null if canceled.
+ */
+function showPrompt(message, defaultValue = '', title = 'An Inquiry!') {
+    const modal = document.getElementById('generic-prompt-modal');
+    const titleEl = document.getElementById('prompt-title');
+    const messageEl = document.getElementById('prompt-message');
+    const inputEl = document.getElementById('prompt-input');
+    const okBtn = document.getElementById('prompt-ok-btn');
+    const cancelBtn = document.getElementById('prompt-cancel-btn');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    inputEl.value = defaultValue;
+
+    modal.classList.remove('hidden');
+    inputEl.focus();
+    inputEl.select();
+
+
+    return new Promise(resolve => {
+        const handleOk = () => {
+            modal.classList.add('hidden');
+            resolve(inputEl.value);
+        };
+        
+        okBtn.onclick = handleOk;
+        inputEl.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleOk();
+            }
+        };
+
+        cancelBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(null);
+        };
+    });
+}
+
+
 function renderUpcomingEvent(event) {
     const upcomingEventDiv = document.getElementById('upcoming-event');
     if (event) {
@@ -421,4 +525,4 @@ function renderRules(rulesData) {
     });
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt };
