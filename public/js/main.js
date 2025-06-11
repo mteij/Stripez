@@ -126,8 +126,14 @@ async function loadCalendarData() {
     const config = await getCalendarConfig();
     if (config && config.url) {
         try {
-            const response = await fetch(config.url);
-            const icalData = await response.text();
+            // Get a reference to the Firebase Functions service
+            const functions = getFunctions(undefined, "europe-west4");
+            const getCalendarDataProxy = httpsCallable(functions, 'getCalendarDataProxy');
+
+            // Call the proxy function with the URL
+            const result = await getCalendarDataProxy({ url: config.url });
+            const icalData = result.data.icalData;
+
             const jcalData = ICAL.parse(icalData);
             const vcalendar = new ICAL.Component(jcalData);
             const vevents = vcalendar.getAllSubcomponents('vevent');

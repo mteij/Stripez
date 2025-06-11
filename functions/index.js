@@ -4,12 +4,53 @@
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
+const {request} = require("gaxios"); // <-- Import gaxios
 
 // Access the API key you stored securely in the environment configuration
 const geminiApiKey = process.env.GEMINI_KEY;
 
 // Initialize the Generative AI client with the API key
 const genAI = new GoogleGenerativeAI(geminiApiKey);
+
+/**
+ * NEW: Cloud Function to act as a proxy for fetching iCal data.
+ * This bypasses the browser's CORS restrictions.
+ */
+exports.getCalendarDataProxy = onCall(
+    {
+      region: "europe-west4",
+      cors: [
+        "https://nicat.mteij.nl",
+        "https://schikko-rules.web.app",
+        "https://schikko-rules.firebaseapp.com",
+      ],
+    },
+    async (request) => {
+      const {url} = request.data;
+      if (!url) {
+        throw new HttpsError(
+            "invalid-argument",
+            "The function must be called with a 'url' argument.",
+        );
+      }
+
+      try {
+        const response = await request({
+          url: url,
+          method: "GET",
+        });
+        return {icalData: response.data};
+      } catch (error) {
+        logger.error("Error fetching iCal data from proxy:", error);
+        throw new HttpsError(
+            "internal",
+            "Could not fetch calendar data.",
+            error.message,
+        );
+      }
+    },
+);
+
 
 /**
  * Calculates the Levenshtein distance between two strings.
