@@ -4,7 +4,7 @@
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
-const {request} = require("gaxios"); // <-- Import gaxios
+const {request: gaxiosRequest} = require("gaxios"); // Renamed import to avoid conflict
 
 // Access the API key you stored securely in the environment configuration
 const geminiApiKey = process.env.GEMINI_KEY;
@@ -35,7 +35,7 @@ exports.getCalendarDataProxy = onCall(
       }
 
       try {
-        const response = await request({
+        const response = await gaxiosRequest({ // Use the renamed import
           url: url,
           method: "GET",
         });
