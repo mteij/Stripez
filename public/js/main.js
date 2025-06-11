@@ -13,7 +13,6 @@ import {
 } from './firebase.js';
 import { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice, rollDiceAndAssign } from '../randomizer/randomizer.js';
-// New: Import functions from the Firebase SDK to call our backend
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 
@@ -75,15 +74,17 @@ const openListRandomizerFromHubBtn = document.getElementById('open-list-randomiz
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
 
 // Gemini Oracle elements
-const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn'); // Moved from modal
+const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn');
 const geminiModal = document.getElementById('gemini-modal');
-// FIX: Corrected typo - assignment should be to 'closeGeminiModalBtn' not 'document'
 const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
 const geminiSubmitBtn = document.getElementById('gemini-submit-btn');
 const geminiInput = document.getElementById('gemini-input');
 const geminiOutput = document.getElementById('gemini-output');
-const geminiActionButtonsContainer = document.createElement('div'); // New container for action buttons
-geminiActionButtonsContainer.className = 'flex flex-wrap justify-center gap-4 mt-4'; // Styling for buttons
+const geminiActionButtonsContainer = document.createElement('div');
+geminiActionButtonsContainer.className = 'flex flex-wrap justify-center gap-4 mt-4';
+
+// New Animation Element
+const oracleAnimationOverlay = document.getElementById('oracle-animation-overlay');
 
 
 // Drunk Stripes Modal Elements
@@ -108,7 +109,7 @@ onAuthStateChanged(auth, (user) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
             handleRender();
-            updateDatalist(); // Update datalist whenever ledger data changes
+            updateDatalist();
         });
         setupRealtimeListener('rules', (data) => {
             rulesDataCache = data.sort((a, b) => a.order - b.order);
@@ -126,11 +127,8 @@ async function loadCalendarData() {
     const config = await getCalendarConfig();
     if (config && config.url) {
         try {
-            // Get a reference to the Firebase Functions service
             const functions = getFunctions(undefined, "europe-west4");
             const getCalendarDataProxy = httpsCallable(functions, 'getCalendarDataProxy');
-
-            // Call the proxy function with the URL
             const result = await getCalendarDataProxy({ url: config.url });
             const icalData = result.data.icalData;
 
@@ -141,13 +139,11 @@ async function loadCalendarData() {
 
             calendarEventsCache = vevents.map(vevent => {
                 const event = new ICAL.Event(vevent);
-                const isRecurring = event.isRecurring();
-                
-                if (isRecurring) {
+                if (event.isRecurring()) {
                     const iterator = event.iterator();
                     let next;
                     const occurrences = [];
-                    while ((next = iterator.next()) && occurrences.length < 100) { // Limit to 100 occurrences
+                    while ((next = iterator.next()) && occurrences.length < 100) {
                         occurrences.push({
                             summary: event.summary,
                             startDate: next.toDate(),
@@ -184,7 +180,7 @@ async function loadCalendarData() {
  */
 function updateDatalist() {
     if (ledgerNamesDatalist) {
-        ledgerNamesDatalist.innerHTML = ''; // Clear existing options
+        ledgerNamesDatalist.innerHTML = '';
         ledgerDataCache.forEach(person => {
             const option = document.createElement('option');
             option.value = person.name;
@@ -195,10 +191,6 @@ function updateDatalist() {
 
 /**
  * Calculates the Levenshtein distance between two strings.
- * Used for fuzzy string matching.
- * @param {string} a The first string.
- * @param {string} b The second string.
- * @return {number} The Levenshtein distance between the two strings.
  */
 function levenshteinDistance(a, b) {
     const matrix = [];
@@ -297,13 +289,9 @@ function updateAppFooter() {
 
 /**
  * Creates and appends action buttons based on the parsed judgment.
- * @param {object} parsedJudgement - The JSON object returned by the Oracle Cloud Function.
  */
 function createActionButtons(parsedJudgement) {
-    // Clear previous buttons
     geminiActionButtonsContainer.innerHTML = ''; 
-    
-    // Append the container to the DOM if it's not already there
     if (!geminiActionButtonsContainer.parentNode) {
         geminiOutput.parentNode.insertBefore(geminiActionButtonsContainer, geminiOutput.nextSibling);
     }
@@ -312,8 +300,8 @@ function createActionButtons(parsedJudgement) {
         const acknowledgeBtn = document.createElement('button');
         acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
         acknowledgeBtn.textContent = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent.`;
-        acknowledgeBtn.onclick = (e) => { // Added event parameter
-            e.stopPropagation(); // Stop propagation
+        acknowledgeBtn.onclick = (e) => {
+            e.stopPropagation();
             geminiModal.classList.add('hidden');
         };
         geminiActionButtonsContainer.appendChild(acknowledgeBtn);
@@ -327,8 +315,8 @@ function createActionButtons(parsedJudgement) {
         const acknowledgeBtn = document.createElement('button');
         acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
         acknowledgeBtn.textContent = `Person "${targetPersonName}" not found on ledger. Acknowledge Judgement.`;
-        acknowledgeBtn.onclick = (e) => { // Added event parameter
-            e.stopPropagation(); // Stop propagation
+        acknowledgeBtn.onclick = (e) => {
+            e.stopPropagation();
             geminiModal.classList.add('hidden');
         };
         geminiActionButtonsContainer.appendChild(acknowledgeBtn);
@@ -349,7 +337,6 @@ function createActionButtons(parsedJudgement) {
     const hasStripes = totalStripes > 0;
     const hasDice = uniqueDiceValues.size > 0;
 
-    // --- Combined Button for Stripes and Dice ---
     if (hasStripes && hasDice) {
         const combinedBtn = document.createElement('button');
         combinedBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
@@ -364,39 +351,33 @@ function createActionButtons(parsedJudgement) {
 
         combinedBtn.textContent = `Add ${totalStripes} Stripes & ${diceText} for ${person.name}`;
         
-        combinedBtn.onclick = async (e) => { // Added event parameter
-            e.stopPropagation(); // Stop propagation
-            // Apply stripes
+        combinedBtn.onclick = async (e) => {
+            e.stopPropagation();
             for (let i = 0; i < totalStripes; i++) {
                 await addStripeToPerson(person.id);
             }
-            // Update last punishment info
             lastPunishmentInfo = {
                 name: person.name,
                 amount: totalStripes,
                 type: 'stripes',
                 timestamp: new Date()
             };
-            updateAppFooter(); // Update footer immediately
+            updateAppFooter();
 
-            // Open dice roller for each unique die value
             sortedDice.forEach(diceValue => {
-                // Pass ledgerDataCache and addStripeToPerson to the new function
                 rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache); 
             });
-            geminiModal.classList.add('hidden'); // Close Gemini modal
+            geminiModal.classList.add('hidden');
         };
         geminiActionButtonsContainer.appendChild(combinedBtn);
     } 
-    // --- Separate Buttons if only Stripes or only Dice ---
     else {
-        // Stripes Button (if applicable)
         if (hasStripes) {
             const stripesBtn = document.createElement('button');
             stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
-            stripesBtn.onclick = async (e) => { // Added event parameter
-                e.stopPropagation(); // Stop propagation
+            stripesBtn.onclick = async (e) => {
+                e.stopPropagation();
                 for (let i = 0; i < totalStripes; i++) {
                     await addStripeToPerson(person.id);
                 }
@@ -412,27 +393,24 @@ function createActionButtons(parsedJudgement) {
             geminiActionButtonsContainer.appendChild(stripesBtn);
         }
 
-        // Dice Roll Buttons (one for each unique die value)
         uniqueDiceValues.forEach(diceValue => {
             const diceBtn = document.createElement('button');
             diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
-            diceBtn.onclick = (e) => { // Added event parameter
-                e.stopPropagation(); // Stop propagation
-                // Pass ledgerDataCache and addStripeToPerson to the new function
+            diceBtn.onclick = (e) => {
+                e.stopPropagation();
                 rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache); 
                 geminiModal.classList.add('hidden');
             };
             geminiActionButtonsContainer.appendChild(diceBtn);
         });
 
-        // If no specific penalties, add a generic acknowledge button
         if (!hasStripes && !hasDice) {
             const acknowledgeBtn = document.createElement('button');
             acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             acknowledgeBtn.textContent = `Acknowledge Judgement for ${person.name}`;
-            acknowledgeBtn.onclick = (e) => { // Added event parameter
-                e.stopPropagation(); // Stop propagation
+            acknowledgeBtn.onclick = (e) => {
+                e.stopPropagation();
                 geminiModal.classList.add('hidden');
             };
             geminiActionButtonsContainer.appendChild(acknowledgeBtn);
@@ -452,31 +430,25 @@ async function handleGeminiSubmit() {
         return;
     }
 
-    // Clear previous output and any existing action buttons
     geminiOutput.innerHTML = '';
-    geminiActionButtonsContainer.innerHTML = ''; // Clear buttons
+    geminiActionButtonsContainer.innerHTML = '';
 
-    // Disable button and show loading state
     geminiSubmitBtn.disabled = true;
     geminiSubmitBtn.textContent = 'Consulting...';
     geminiOutput.classList.add('hidden');
 
     try {
-        // Get a reference to the Firebase Functions service in the correct region
         const functions = getFunctions(undefined, "europe-west4");
         const getOracleJudgement = httpsCallable(functions, 'getOracleJudgement');
 
-        // Call the function with the required payload
         const result = await getOracleJudgement({
             promptText: inputText,
             rules: rulesDataCache,
-            ledgerNames: ledgerDataCache.map(person => person.name) // Pass names from ledger
+            ledgerNames: ledgerDataCache.map(person => person.name)
         });
 
-        // The result.data.judgement is now the parsed JSON object
         const parsedJudgement = result.data.judgement; 
         
-        // Construct a human-readable summary for display
         let displayMessage = '';
         if (parsedJudgement.innocent) {
             displayMessage = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent. No rules broken.`;
@@ -497,7 +469,7 @@ async function handleGeminiSubmit() {
                 penaltyParts.push(`${totalStripes} stripes`);
             }
             if (diceRollsSummary.length > 0) {
-                penaltyParts.push(`rolls: ${[...new Set(diceRollsSummary)].join(', ')}`); // Unique dice rolls for display
+                penaltyParts.push(`rolls: ${[...new Set(diceRollsSummary)].join(', ')}`);
             }
             
             const ruleNumbers = parsedJudgement.rulesBroken || [];
@@ -516,32 +488,25 @@ async function handleGeminiSubmit() {
         geminiOutput.textContent = displayMessage; 
         geminiOutput.classList.remove('hidden');
 
-        // Create action buttons based on the detailed judgment
         createActionButtons(parsedJudgement);
-
 
     } catch (error) {
         console.error("Error calling Oracle function:", error);
-        // Display a user-friendly error message, extracting details from HttpsError if available
         let errorMessage = `The Oracle is silent. An error occurred: ${error.message}`;
         if (error.code && error.details) {
             errorMessage = `Oracle error (${error.code}): ${error.message}`;
             if (typeof error.details === 'string' && error.details.startsWith('{')) {
-                 // Try to parse if details is a stringified JSON
                 try {
                     const detailObj = JSON.parse(error.details);
                     if (detailObj.judgement) {
                          errorMessage += ` Raw AI response: ${detailObj.judgement}`;
                     }
-                } catch (parseError) {
-                    // Ignore parsing errors, stick to original message
-                }
+                } catch (parseError) {}
             }
         }
         geminiOutput.textContent = errorMessage;
         geminiOutput.classList.remove('hidden');
     } finally {
-        // Re-enable button
         geminiSubmitBtn.disabled = false;
         geminiSubmitBtn.textContent = 'Consult the Oracle';
     }
@@ -656,12 +621,7 @@ punishmentListDiv.addEventListener('click', (e) => {
         case 'toggle-menu': document.getElementById(`menu-${id}`)?.classList.toggle('hidden'); break;
         case 'add-stripe': 
             addStripeToPerson(id); 
-            lastPunishmentInfo = {
-                name: ledgerDataCache.find(p => p.id === id)?.name,
-                amount: 1, // Single stripe added
-                type: 'stripes',
-                timestamp: new Date()
-            };
+            lastPunishmentInfo = { name: ledgerDataCache.find(p => p.id === id)?.name, amount: 1, type: 'stripes', timestamp: new Date() };
             updateAppFooter();
             break;
         case 'add-drunk-stripe': 
@@ -673,18 +633,11 @@ punishmentListDiv.addEventListener('click', (e) => {
             howManyBeersInput.max = availablePenaltiesToFulfill; 
             availableStripesDisplay.textContent = `Available Penalties: ${availablePenaltiesToFulfill}`;
             
-            if (availablePenaltiesToFulfill <= 0) {
-                howManyBeersInput.disabled = true;
-                incrementBeersBtn.disabled = true;
-                decrementBeersBtn.disabled = true;
-                confirmDrunkStripesBtn.disabled = true; 
-                availableStripesDisplay.textContent = 'No penalties available to fulfill!';
-            } else {
-                howManyBeersInput.disabled = false;
-                incrementBeersBtn.disabled = false;
-                decrementBeersBtn.disabled = false;
-                confirmDrunkStripesBtn.disabled = false; 
-            }
+            howManyBeersInput.disabled = availablePenaltiesToFulfill <= 0;
+            incrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
+            decrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
+            confirmDrunkStripesBtn.disabled = availablePenaltiesToFulfill <= 0; 
+            if (availablePenaltiesToFulfill <= 0) availableStripesDisplay.textContent = 'No penalties available to fulfill!';
 
             drunkStripesModal.classList.remove('hidden'); 
             break;
@@ -702,9 +655,7 @@ punishmentListDiv.addEventListener('click', (e) => {
     }
 });
 editRulesBtn?.addEventListener('click', () => {
-    if (!rulesListOl.classList.contains('rules-list-editing')) {
-        if (!confirmSchikko()) return;
-    }
+    if (!rulesListOl.classList.contains('rules-list-editing') && !confirmSchikko()) return;
     rulesListOl.classList.toggle('rules-list-editing');
     editRulesBtn.textContent = rulesListOl.classList.contains('rules-list-editing') ? 'Finish Editing' : 'Edit Decrees';
     handleRenderRules();
@@ -724,24 +675,19 @@ rulesListOl?.addEventListener('click', async (e) => {
     }
 });
 document.addEventListener('click', (e) => { 
-    // Do not close menus if the click target is within a toggle menu or the toggle menu button itself
     if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
         closeMenus(); 
     }
-    // Close drunk stripes modal if click outside and it's open
     if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) { 
         drunkStripesModal.classList.add('hidden'); 
     }
-    // Close dice randomizer modal if click outside and it's open (and not a dice-spin button)
-    // IMPORTANT: Make sure this doesn't interfere with the AI-triggered open event.
-    // The e.stopPropagation() on the AI buttons should prevent this listener from firing for their clicks.
     if (!diceRandomizerModal.classList.contains('hidden') && !e.target.closest('#dice-randomizer-modal') && !e.target.closest('#open-dice-randomizer-from-hub-btn')) {
         diceRandomizerModal.classList.add('hidden');
     }
 });
 
-openRandomizerHubBtn?.addEventListener('click', (e) => { // Added event parameter
-    e.stopPropagation(); // Stop propagation
+openRandomizerHubBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
     randomizerHubModal.classList.remove('hidden');
 });
 
@@ -753,30 +699,42 @@ openListRandomizerFromHubBtn?.addEventListener('click', () => {
     initListRandomizer(ledgerDataCache);
 });
 
-openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => { // Added event parameter
-    e.stopPropagation(); // Stop propagation
+openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
     randomizerHubModal.classList.add('hidden');
-    diceRandomizerModal.classList.remove('hidden'); // This makes the modal visible
-    // Ensure initDiceRandomizer receives ledgerDataCache and addStripeToPerson for manual rolls
+    diceRandomizerModal.classList.remove('hidden');
     initDiceRandomizer(ledgerDataCache, addStripeToPerson); 
 });
 
-// FIX: Corrected close button for Dice Randomizer Modal
-closeDiceRandomizerModalBtn?.addEventListener('click', (e) => { // Added event parameter
-    e.stopPropagation(); // Stop propagation to prevent immediate re-opening by global listener
+closeDiceRandomizerModalBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
     diceRandomizerModal.classList.add('hidden');
 });
 
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
 
-openGeminiFromHubBtn?.addEventListener('click', (e) => { // Added event parameter
-    e.stopPropagation(); // Stop propagation
-    randomizerHubModal.classList.add('hidden'); 
-    geminiModal.classList.remove('hidden');
-    geminiOutput.classList.add('hidden');
-    geminiOutput.innerHTML = ''; 
-    geminiInput.value = '';
-    geminiActionButtonsContainer.innerHTML = ''; // Clear buttons when opening
+// --- MODIFIED Event Listener for Oracle Button ---
+openGeminiFromHubBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+
+    // Show the animation overlay and add the animating class
+    oracleAnimationOverlay.classList.remove('hidden');
+    oracleAnimationOverlay.classList.add('is-animating');
+
+    // Wait for the animation to finish (5.5 seconds)
+    setTimeout(() => {
+        // Hide and reset the animation overlay
+        oracleAnimationOverlay.classList.add('hidden');
+        oracleAnimationOverlay.classList.remove('is-animating');
+
+        // Now, show the actual Gemini modal and prepare it
+        randomizerHubModal.classList.add('hidden'); 
+        geminiModal.classList.remove('hidden');
+        geminiOutput.classList.add('hidden');
+        geminiOutput.innerHTML = ''; 
+        geminiInput.value = '';
+        geminiActionButtonsContainer.innerHTML = '';
+    }, 5500); // 5500ms = 5s for animation + 0.5s for fade out buffer
 });
 
 closeGeminiModalBtn?.addEventListener('click', () => {
@@ -784,7 +742,7 @@ closeGeminiModalBtn?.addEventListener('click', () => {
     geminiOutput.classList.add('hidden'); 
     geminiOutput.innerHTML = ''; 
     geminiInput.value = ''; 
-    geminiActionButtonsContainer.innerHTML = ''; // Clear buttons when closing
+    geminiActionButtonsContainer.innerHTML = '';
 });
 
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
@@ -837,7 +795,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
 
 editCalendarBtn.addEventListener('click', async () => {
     const config = await getCalendarConfig();
-    const newUrl = prompt('Enter the public iCal URL for the calendar:', config.url);
+    const newUrl = prompt('Enter the public iCal URL for the calendar:', config.url || '');
     if (newUrl) {
         await saveCalendarUrl(newUrl);
         loadCalendarData();
