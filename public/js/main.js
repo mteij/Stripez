@@ -11,7 +11,11 @@ import {
     getCalendarConfig,
     saveCalendarUrl
 } from './firebase.js';
-import { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal } from './ui.js';
+import { 
+    renderLedger, showStatsModal, closeMenus, renderRules, 
+    renderUpcomingEvent, renderFullAgenda, showAgendaModal,
+    showAlert, showConfirm, showPrompt // Import new modal functions
+} from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollSpecificDice, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -365,7 +369,7 @@ function createActionButtons(parsedJudgement) {
             updateAppFooter();
 
             sortedDice.forEach(diceValue => {
-                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache); 
+                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
             });
             geminiModal.classList.add('hidden');
         };
@@ -399,7 +403,7 @@ function createActionButtons(parsedJudgement) {
             diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
             diceBtn.onclick = (e) => {
                 e.stopPropagation();
-                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache); 
+                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
                 geminiModal.classList.add('hidden');
             };
             geminiActionButtonsContainer.appendChild(diceBtn);
@@ -513,11 +517,15 @@ async function handleGeminiSubmit() {
 }
 
 // --- CONFIRMATION ---
-function confirmSchikko() {
+async function confirmSchikko() {
     if (isSchikkoConfirmed) return true;
-    const answer = prompt("Art thou the Schikko? If it be so, inscribe 'Schikko'.");
+    const answer = await showPrompt("Art thou the Schikko? If it be so, inscribe 'Schikko'.", '', "Confirm Identity");
     const isConfirmed = answer && answer.toLowerCase() === 'schikko';
-    if (isConfirmed) isSchikkoConfirmed = true;
+    if (isConfirmed) {
+        isSchikkoConfirmed = true;
+    } else if (answer !== null) { // User entered something other than 'Schikko'
+        await showAlert("Thou art not the Schikko.", "Identity Not Confirmed");
+    }
     return isConfirmed;
 }
 
@@ -526,7 +534,7 @@ async function handleAddName() {
     const name = mainInput.value.trim();
     if (!name) return;
     if (ledgerDataCache.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-        alert(`"${name}" is already on the ledger.`);
+        await showAlert(`"${name}" is already on the ledger.`, 'Duplicate Name');
         return;
     }
     await addNameToLedger(name, currentUserId);
@@ -537,7 +545,7 @@ async function handleAddName() {
 async function handleRename(docId) {
     const person = ledgerDataCache.find(p => p.id === docId);
     if (!person) return;
-    const newName = prompt("Enter the new name for " + person.name, person.name);
+    const newName = await showPrompt("Enter the new name for " + person.name, person.name, "Rename Transgressor");
     if (newName && newName.trim() !== "") {
         await renamePersonOnLedger(docId, newName);
     }
@@ -546,7 +554,8 @@ async function handleRename(docId) {
 async function handleDeletePerson(docId) {
     const person = ledgerDataCache.find(p => p.id === docId);
     if (!person) return;
-    if (confirm(`Are you sure you want to remove "${person.name}" from the ledger? This action cannot be undone.`)) {
+    const confirmed = await showConfirm(`Are you sure you want to remove "${person.name}" from the ledger? This action cannot be undone.`, "Confirm Deletion");
+    if (confirmed) {
         await deletePersonFromLedger(docId);
     }
 }
@@ -557,10 +566,12 @@ async function handleRemoveStripe(docId) {
 }
 
 async function handleAddRule() {
-    if (!confirmSchikko()) return;
+    const isConfirmed = await confirmSchikko();
+    if (!isConfirmed) return;
+
     const text = ruleSearchInput.value.trim();
     if (!text) {
-        alert("Please enter a decree in the search field to add.");
+        await showAlert("Please enter a decree in the search field to add.", "Empty Decree");
         return;
     }
     const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
@@ -573,7 +584,7 @@ async function handleAddRule() {
 async function handleEditRule(docId) {
     const rule = rulesDataCache.find(r => r.id === docId);
     if (!rule) return;
-    const newText = prompt("Enter the new text for the decree:", rule.text);
+    const newText = await showPrompt("Enter the new text for the decree:", rule.text, "Edit Decree");
     if (newText && newText.trim() !== "") {
         await updateRuleTextInFirestore(docId, newText);
     }
@@ -654,8 +665,11 @@ punishmentListDiv.addEventListener('click', (e) => {
             break;
     }
 });
-editRulesBtn?.addEventListener('click', () => {
-    if (!rulesListOl.classList.contains('rules-list-editing') && !confirmSchikko()) return;
+editRulesBtn?.addEventListener('click', async () => {
+    if (!rulesListOl.classList.contains('rules-list-editing')) {
+        const isConfirmed = await confirmSchikko();
+        if (!isConfirmed) return;
+    }
     rulesListOl.classList.toggle('rules-list-editing');
     editRulesBtn.textContent = rulesListOl.classList.contains('rules-list-editing') ? 'Finish Editing' : 'Edit Decrees';
     handleRenderRules();
@@ -703,7 +717,7 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
-    initDiceRandomizer(ledgerDataCache, addStripeToPerson); 
+    initDiceRandomizer(ledgerDataCache, addStripeToPerson, showAlert); 
 });
 
 closeDiceRandomizerModalBtn?.addEventListener('click', (e) => {
@@ -765,7 +779,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); 
         
         if (count > availablePenaltiesToFulfill) {
-            alert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} penalties remaining.`);
+            await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} penalties remaining.`, "Too Many Draughts");
             return;
         }
 
@@ -786,8 +800,8 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
 
 editCalendarBtn.addEventListener('click', async () => {
     const config = await getCalendarConfig();
-    const newUrl = prompt('Enter the public iCal URL for the calendar:', config.url || '');
-    if (newUrl) {
+    const newUrl = await showPrompt('Enter the public iCal URL for the calendar:', config.url || '', 'Update Calendar');
+    if (newUrl) { // Note: showPrompt resolves to null on cancel, so this check works
         await saveCalendarUrl(newUrl);
         loadCalendarData();
     }
