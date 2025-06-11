@@ -309,15 +309,86 @@ body {
     100% { transform: translateX(0); }
 }
 
-/* --- Class to trigger animations --- */
+/* --- Class to trigger animations (Updated with shorter duration) --- */
 .is-animating .eye-container {
-    animation: open-and-close 5s ease-in-out forwards;
+    animation: open-and-close 3s ease-in-out forwards; /* <-- Changed from 5s */
 }
 
 .is-animating .eye-iris {
-    animation: iris-glow 2.5s infinite ease-in-out, look-around 4s 1s infinite ease-in-out;
+    animation: iris-glow 2.5s infinite ease-in-out, look-around 4s 0.5s infinite ease-in-out;
 }
 
 .is-animating .eye-pupil {
     animation: pupil-dilate 3s infinite ease-in-out;
+}
+
+/* --- New Themed Oracle Styles --- */
+
+/* Style for the button on the homepage that opens the Oracle */
+.btn-oracle-invoke {
+    background-color: #2c3e50; /* Dark slate */
+    color: #fdf8e9; /* Light text */
+    border: 2px solid #1a242f; /* Darker border */
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 0 10px rgba(0,0,0,0.2);
+}
+
+.btn-oracle-invoke:hover {
+    background-color: #34495e;
+    color: #fff;
+    border-color: #c0392b; /* A flash of red on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4), 0 0 15px rgba(192, 57, 43, 0.5); /* Glow effect */
+}
+
+/* Overriding the default modal styles for the Gemini modal */
+#gemini-modal .bg-\[\#fdf8e9\] {
+    background: radial-gradient(ellipse at center, #34495e 0%, #1a242f 100%); /* Dark gradient */
+    border-color: #5c3d2e;
+}
+
+/* Styling the title inside the Oracle modal */
+#gemini-modal h2 {
+    color: #f39c12; /* Golden/Amber color */
+    text-shadow: 0 0 8px rgba(243, 156, 18, 0.7);
+}
+
+/* Styling the instructional paragraph inside the modal */
+#gemini-modal p {
+    color: #bdc3c7; /* Lighter grey text */
+}
+
+/* Styling the textarea for a more thematic look */
+#gemini-modal #gemini-input {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: #5c3d2e;
+    color: #fdf8e9;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.4);
+}
+
+#gemini-modal #gemini-input::placeholder {
+    color: #7f8c8d;
+}
+
+/* Styling the "Consult" button inside the modal */
+#gemini-modal #gemini-submit-btn {
+    background-color: #c0392b; /* Prominent Red */
+    color: #fdf8e9;
+    border: 2px solid #7f2219;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+#gemini-modal #gemini-submit-btn:hover {
+    background-color: #e74c3c;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4), 0 0 20px rgba(231, 76, 60, 0.6);
+}
+
+/* Styling the Oracle's response text */
+#gemini-modal #gemini-output {
+    font-family: 'Cinzel Decorative', serif;
+    color: #f1c40f; /* Gold */
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px dashed #f1c40f;
+    border-radius: 8px;
+    text-shadow: 0 0 5px rgba(241, 196, 15, 0.5);
 }
