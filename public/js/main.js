@@ -734,7 +734,7 @@ openGeminiFromHubBtn?.addEventListener('click', (e) => {
         geminiOutput.innerHTML = ''; 
         geminiInput.value = '';
         geminiActionButtonsContainer.innerHTML = '';
-    }, 3500); // 5500ms = 5s for animation + 0.5s for fade out buffer
+    }, 2500); // 5500ms = 5s for animation + 0.5s for fade out buffer
 });
 
 closeGeminiModalBtn?.addEventListener('click', () => {
