@@ -1,10 +1,10 @@
 // functions/index.js
-// In functions/index.js
 
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
-const {request: gaxiosRequest} = require("gaxios"); // Renamed import to avoid conflict
+const {request: gaxiosRequest} = require("gaxios");
+const cors = require("cors")({origin: true}); // Import and configure cors
 
 // Access the API key you stored securely in the environment configuration
 const geminiApiKey = process.env.GEMINI_KEY;
@@ -13,41 +13,47 @@ const geminiApiKey = process.env.GEMINI_KEY;
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
 /**
- * NEW: Cloud Function to act as a proxy for fetching iCal data.
- * This bypasses the browser's CORS restrictions.
+ * REWRITTEN: Cloud Function to act as a proxy for fetching iCal data.
+ * This now uses onRequest with the cors middleware for robust CORS handling.
  */
-exports.getCalendarDataProxy = onCall(
-    {
-      region: "europe-west4",
-      cors: [
-        "https://nicat.mteij.nl",
-        "https://schikko-rules.web.app",
-        "https://schikko-rules.firebaseapp.com",
-      ],
-    },
-    async (request) => {
-      const {url} = request.data;
-      if (!url) {
-        throw new HttpsError(
-            "invalid-argument",
-            "The function must be called with a 'url' argument.",
-        );
-      }
+exports.getCalendarDataProxy = onRequest(
+    {region: "europe-west4"},
+    (req, res) => {
+      // Wrap the function in the cors middleware
+      cors(req, res, async () => {
+        if (req.method !== "POST") {
+          res.status(405).send("Method Not Allowed");
+          return;
+        }
 
-      try {
-        const response = await gaxiosRequest({ // Use the renamed import
-          url: url,
-          method: "GET",
-        });
-        return {icalData: response.data};
-      } catch (error) {
-        logger.error("Error fetching iCal data from proxy:", error);
-        throw new HttpsError(
-            "internal",
-            "Could not fetch calendar data.",
-            error.message,
-        );
-      }
+        const url = req.body.data.url;
+        if (!url) {
+          res.status(400).json({
+            error: {
+              status: "INVALID_ARGUMENT",
+              message: "The function must be called with a 'url' argument.",
+            },
+          });
+          return;
+        }
+
+        try {
+          const response = await gaxiosRequest({
+            url: url,
+            method: "GET",
+          });
+          // For onRequest, we send a JSON response back
+          res.json({data: {icalData: response.data}});
+        } catch (error) {
+          logger.error("Error fetching iCal data from proxy:", error);
+          res.status(500).json({
+            error: {
+              status: "INTERNAL",
+              message: "Could not fetch calendar data.",
+            },
+          });
+        }
+      });
     },
 );
 
@@ -105,7 +111,6 @@ function levenshteinDistance(a, b) {
 exports.getOracleJudgement = onCall(
     {
       region: "europe-west4",
-      // ADD YOUR EXACT ORIGINS HERE
       cors: [
         "https://nicat.mteij.nl",
         "https://schikko-rules.web.app",
