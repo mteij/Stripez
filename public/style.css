@@ -219,6 +219,7 @@ body {
 }
 
 /* --- Oracle Animation Styles --- */
+/* --- Oracle Animation Styles (Enhanced Version) --- */
 .oracle-overlay {
     position: fixed;
     top: 0;
@@ -232,6 +233,7 @@ body {
     justify-content: center;
     opacity: 0;
     transition: opacity 0.5s ease;
+    overflow: hidden; /* Hide anything that shakes outside the viewport */
 }
 
 .oracle-overlay:not(.hidden) {
@@ -274,30 +276,28 @@ body {
     transform: scale(1);
 }
 
-/* --- Keyframe Animations --- */
+/* --- Keyframe Animations (Enhanced) --- */
 
 /* Animation for the eyelid opening and closing */
 @keyframes open-and-close {
     0% { transform: scaleY(0.05); }
-    15% { transform: scaleY(1); } /* Opens */
-    85% { transform: scaleY(1); } /* Stays open */
-    100% { transform: scaleY(0.05); } /* Closes */
+    15% { transform: scaleY(1); }
+    85% { transform: scaleY(1); }
+    100% { transform: scaleY(0.05); }
 }
 
-/* Animation for the iris glow pulsing */
+/* NEW: Fiery, more intense iris glow */
 @keyframes iris-glow {
-    0% { box-shadow: 0 0 35px 15px rgba(255, 50, 50, 0.4); }
-    50% { box-shadow: 0 0 50px 25px rgba(255, 100, 100, 0.6); }
-    100% { box-shadow: 0 0 35px 15px rgba(255, 50, 50, 0.4); }
+    0% { box-shadow: 0 0 35px 15px rgba(255, 50, 50, 0.4); background-position: 0% 50%;}
+    50% { box-shadow: 0 0 55px 25px rgba(255, 150, 50, 0.7); background-position: 100% 50%;} /* Fiery orange glow */
+    100% { box-shadow: 0 0 35px 15px rgba(255, 50, 50, 0.4); background-position: 0% 50%;}
 }
 
-/* Animation for the pupil dilating */
-@keyframes pupil-dilate {
-    0%, 100% { transform: scale(1); }
-    20% { transform: scale(1.4); }
-    40% { transform: scale(0.8); }
-    60% { transform: scale(1.2); }
-    80% { transform: scale(0.9); }
+/* NEW: Pupil morphs into a vertical slit */
+@keyframes pupil-slit {
+    0%, 20%, 80%, 100% { transform: scaleY(1) scaleX(1); border-radius: 50%; }
+    40% { transform: scaleY(1.8) scaleX(0.1); border-radius: 20px / 60px; } /* Slit shape */
+    60% { transform: scaleY(1.8) scaleX(0.1); border-radius: 20px / 60px; } /* Hold slit shape */
 }
 
 /* Animation for the eye looking around */
@@ -309,17 +309,31 @@ body {
     100% { transform: translateX(0); }
 }
 
-/* --- Class to trigger animations (Updated with shorter duration) --- */
+/* NEW: Screen shake effect for impact */
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-3px, 3px); }
+  20%, 40%, 60%, 80% { transform: translate(3px, -3px); }
+  85% { transform: translate(-3px, -3px); }
+  95% { transform: translate(3px, 3px); }
+}
+
+
+/* --- Class to trigger animations (Enhanced) --- */
 .is-animating .eye-container {
-    animation: open-and-close 3s ease-in-out forwards; /* <-- Changed from 5s */
+    animation: 
+        open-and-close 3s ease-in-out forwards,
+        screen-shake 0.5s 2 ease-in-out; /* Apply shake twice during the open/close */
 }
 
 .is-animating .eye-iris {
-    animation: iris-glow 2.5s infinite ease-in-out, look-around 4s 0.5s infinite ease-in-out;
+    animation: 
+        iris-glow 2s infinite ease-in-out, 
+        look-around 3s 0.5s infinite ease-in-out;
 }
 
 .is-animating .eye-pupil {
-    animation: pupil-dilate 3s infinite ease-in-out;
+    animation: pupil-slit 2.5s 0.5s infinite ease-in-out; /* Use the new slit animation */
 }
 
 /* --- New Themed Oracle Styles --- */
