@@ -79,6 +79,10 @@
         <header class="text-center mb-10 pb-6">
             <h1 class="font-cinzel-decorative text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">The Rules of Schikko</h1>
             <p class="text-lg text-[#6f4e37] mt-2">As Decreed by the Ancients</p>
+            
+            <div id="calendar-section" class="calendar-container">
+                <div id="upcoming-event" class="upcoming-event-text">Loading upcoming activities...</div>
+                <button id="full-agenda-btn" class="btn-calendar-icon" title="View Full Agenda">&#x1F4C5;</button> <button id="edit-calendar-btn" class="btn-calendar-icon" title="Edit Calendar Link">&#x270E;</button> </div>
         </header>
 
         <main>
@@ -88,14 +92,6 @@
                 <li>He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the NICAT until penance is made.</li>
             </ol>
             
-            <div id="calendar-section" class="text-center my-8">
-                <div id="upcoming-event" class="text-lg text-[#5c3d2e] mb-4">Loading upcoming activities...</div>
-                <div class="flex justify-center items-center gap-4">
-                    <button id="edit-calendar-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base">Edit Calendar Link</button>
-                    <button id="full-agenda-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base">View Full Agenda</button>
-                </div>
-            </div>
-
             <div id="show-decrees-container" class="flex justify-center items-center gap-4 mt-8">
                 <button id="show-decrees-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base cursor-pointer focus:outline-none flex items-center justify-center space-x-2" data-state="collapsed">
                     <span>Schikko's Decrees</span>

@@ -176,3 +176,44 @@ body {
     margin-bottom: 3rem; /* Same as my-12 */
     border-top: 4px dotted #b9987e; /* Consistent with main divider */
 }
+
+/* New Calendar Styles */
+.calendar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem; /* 12px */
+    margin-top: 1.5rem; /* 24px */
+    padding: 0.5rem;
+    border-top: 1px dotted #b9987e;
+    border-bottom: 1px dotted #b9987e;
+}
+
+.upcoming-event-text {
+    font-size: 0.95rem; /* Slightly smaller font */
+    color: #6f4e37; /* A more subtle, earthy brown */
+    flex-grow: 1;
+    text-align: center;
+}
+
+.btn-calendar-icon {
+    background-color: transparent;
+    color: #8c6b52; /* Thematic icon color */
+    border: 1px solid transparent;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px; /* Rounded corners */
+    font-size: 1.25rem; /* Larger icon/emoji */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.btn-calendar-icon:hover {
+    background-color: #e9e2d7; /* Lighter paper-like background on hover */
+    color: #5c3d2e;
+    border-color: #b9987e;
+}
