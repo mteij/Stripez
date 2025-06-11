@@ -717,24 +717,15 @@ closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal
 openGeminiFromHubBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
 
-    // Show the animation overlay and add the animating class
-    oracleAnimationOverlay.classList.remove('hidden');
-    oracleAnimationOverlay.classList.add('is-animating');
+    // Hide the hub modal and show the gemini modal directly
+    randomizerHubModal.classList.add('hidden');
+    geminiModal.classList.remove('hidden');
 
-    // Wait for the animation to finish (5.5 seconds)
-    setTimeout(() => {
-        // Hide and reset the animation overlay
-        oracleAnimationOverlay.classList.add('hidden');
-        oracleAnimationOverlay.classList.remove('is-animating');
-
-        // Now, show the actual Gemini modal and prepare it
-        randomizerHubModal.classList.add('hidden'); 
-        geminiModal.classList.remove('hidden');
-        geminiOutput.classList.add('hidden');
-        geminiOutput.innerHTML = ''; 
-        geminiInput.value = '';
-        geminiActionButtonsContainer.innerHTML = '';
-    }, 1500); // 5500ms = 5s for animation + 0.5s for fade out buffer
+    // Prepare the modal for a new consultation
+    geminiOutput.classList.add('hidden');
+    geminiOutput.innerHTML = '';
+    geminiInput.value = '';
+    geminiActionButtonsContainer.innerHTML = '';
 });
 
 closeGeminiModalBtn?.addEventListener('click', () => {
