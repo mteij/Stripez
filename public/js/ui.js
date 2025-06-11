@@ -174,27 +174,27 @@ function renderLedger(viewData, term) {
         return;
     }
 
-    // Determine dynamic stripe count threshold based on screen width
-    let STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY;
-    const screenWidth = window.innerWidth;
-
-    // Approximate pixel width per stripe (5px width + 3px margin-right)
+    // --- DYNAMIC THRESHOLD CALCULATION ---
+    // This is a more robust way to calculate the threshold based on the container's actual width at runtime.
+    const containerWidth = punishmentListDiv.clientWidth;
+    
+    // We estimate a "safe" area for stripes is about 55% of the container width,
+    // leaving ample room for the person's name and the action buttons on the right.
+    const safeStripeAreaPercentage = 0.55; 
+    const safeStripeAreaWidth = containerWidth * safeStripeAreaPercentage;
+    
+    // Each stripe element takes up 5px width + 3px margin-right.
     const effectiveStripeWidthPx = 8; 
 
-    // A more robust way would be to measure the actual available width of the parent container at runtime.
-    // For now, let's use a breakpoint-based logic or a more fixed threshold, and ensure layout handles overflow.
-    // Let's make it a fixed number that allows for some scrolling.
-    
-    STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20; // Default to 20 stripes before showing number
+    // Calculate how many stripes can fit in the designated safe area.
+    const calculatedThreshold = Math.floor(safeStripeAreaWidth / effectiveStripeWidthPx);
 
-    // If screen is very small, we might want to switch earlier.
-    if (screenWidth < 400) { // e.g., on very small phone screens
-        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 15;
-    } else if (screenWidth < 640) { // sm breakpoint
-        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 20;
-    } else { // Larger screens, can show more stripes
-        STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = 30; // Allows for more stripes on wider screens
-    }
+    // We then clamp the threshold to a reasonable minimum and maximum to prevent extreme values on
+    // very narrow or very wide screens. We always want to show at least a few stripes.
+    const MIN_THRESHOLD = 15;
+    const MAX_THRESHOLD = 40;
+    const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.max(MIN_THRESHOLD, Math.min(calculatedThreshold, MAX_THRESHOLD));
+    // --- END OF DYNAMIC CALCULATION ---
 
 
     viewData.forEach(person => {
