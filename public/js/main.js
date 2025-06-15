@@ -14,7 +14,7 @@ import {
 import { 
     renderLedger, showStatsModal, closeMenus, renderRules, 
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
-    showAlert, showConfirm, showPrompt, showSchikkoLoginModal
+    showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -29,6 +29,7 @@ let currentSortOrder = 'asc';
 let currentSearchTerm = ''; // For ledger search
 let currentRuleSearchTerm = ''; // New: For rules inconsistencies search
 let isSchikkoSessionActive = false; // Secure session state for Schikko
+let isSchikkoSetForTheYear = false; // NEW: Tracks if a schikko is set for the year
 let lastPunishmentInfo = { // New state for last punishment awarded
     name: null,
     amount: null,
@@ -139,8 +140,9 @@ function updateGuestUI() {
     if (editRulesBtn) editRulesBtn.style.display = isGuest ? 'none' : 'inline-flex';
     if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'inline-flex';
     if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
-
-    if(openGeminiFromHubBtn) openGeminiFromHubBtn.textContent = isGuest ? "Oracle's Judgement (Read-Only)" : "Oracle's Judgement";
+    
+    // REMOVED: Redundant text change on oracle button.
+    // if(openGeminiFromHubBtn) openGeminiFromHubBtn.textContent = isGuest ? "Oracle's Judgement (Read-Only)" : "Oracle's Judgement";
 
     handleRender();
     handleRenderRules();
@@ -155,6 +157,8 @@ async function checkSchikkoStatus() {
         const getSchikkoStatus = httpsCallable(functions, 'getSchikkoStatus');
         const result = await getSchikkoStatus();
         const isSet = result.data.isSet;
+
+        isSchikkoSetForTheYear = isSet; // Set the state variable
 
         if (isSet) {
             setSchikkoBtn.classList.add('hidden');
@@ -332,7 +336,7 @@ async function updateAppFooter() {
     }
 
     let schikkoInfoText = 'No Schikko has been chosen for this year.';
-    if (isSchikkoSessionActive) {
+    if (isSchikkoSetForTheYear) { // Use the correct state variable
         try {
             const functions = getFunctions(undefined, "europe-west4");
             const getSchikkoInfo = httpsCallable(functions, 'getSchikkoInfo');
