@@ -12,7 +12,6 @@ const nodemailer = require("nodemailer");
 
 // Initialize Firebase Admin SDK
 initializeApp();
-const functions = require('firebase-functions');
 const adminDb = getFirestore();
 
 /**
@@ -76,9 +75,10 @@ exports.getOracleJudgement = onCall(
     {
       region: "europe-west4",
       cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+      secrets: ["GEMINI_KEY"],
     },
     async (request) => {
-      const geminiApiKey = functions.config().gemini.key; 
+      const geminiApiKey = process.env.GEMINI_KEY;
       if (!geminiApiKey) {
         throw new HttpsError("internal", "Gemini API Key is not configured.");
       }
@@ -126,7 +126,6 @@ exports.getOracleJudgement = onCall(
  * Checks if a Schikko has been set for the current year.
  */
 exports.getSchikkoStatus = onCall(
-    // ADDED CORS CONFIGURATION HERE
     {
         region: "europe-west4",
         cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
@@ -143,10 +142,10 @@ exports.getSchikkoStatus = onCall(
  * Sets the Schikko for the current year and emails the password.
  */
 exports.setSchikko = onCall(
-    // UPDATED CORS CONFIGURATION HERE
     {
         region: "europe-west4",
         cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+        secrets: ["MAIL_USER", "MAIL_PASS"],
     },
     async (request) => {
         const {email} = request.data;
@@ -160,8 +159,8 @@ exports.setSchikko = onCall(
         const password = Math.random().toString(36).slice(-8);
         await schikkoRef.set({email, password, createdAt: FieldValue.serverTimestamp()});
 
-        const mailUser = functions.config().mail.user;
-        const mailPass = functions.config().mail.pass;
+        const mailUser = process.env.MAIL_USER;
+        const mailPass = process.env.MAIL_PASS;
         if (!mailUser || !mailPass) {
           throw new HttpsError("internal", "Mail service is not configured on the backend.");
         }
@@ -192,7 +191,6 @@ exports.setSchikko = onCall(
  * Logs in the Schikko using a password.
  */
 exports.loginSchikko = onCall(
-    // ADDED CORS CONFIGURATION HERE
     {
         region: "europe-west4",
         cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
