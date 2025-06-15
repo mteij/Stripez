@@ -1,57 +1,41 @@
 // functions/index.js
 
 const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {logger} = require("firebase-functions");
+const {initializeApp} = require("firebase-admin/app");
+const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const {request: gaxiosRequest} = require("gaxios");
-const cors = require("cors")({origin: true}); // Import and configure cors
+const cors = require("cors")({origin: true});
+const nodemailer = require("nodemailer");
 
-// Access the API key you stored securely in the environment configuration
-const geminiApiKey = process.env.GEMINI_KEY;
-
-// Initialize the Generative AI client with the API key
-const genAI = new GoogleGenerativeAI(geminiApiKey);
+// Initialize Firebase Admin SDK
+initializeApp();
+const adminDb = getFirestore();
 
 /**
  * REWRITTEN: Cloud Function to act as a proxy for fetching iCal data.
- * This now uses onRequest with the cors middleware for robust CORS handling.
  */
 exports.getCalendarDataProxy = onRequest(
     {region: "europe-west4"},
     (req, res) => {
-      // Wrap the function in the cors middleware
       cors(req, res, async () => {
         if (req.method !== "POST") {
           res.status(405).send("Method Not Allowed");
           return;
         }
-
         const url = req.body.data.url;
         if (!url) {
-          res.status(400).json({
-            error: {
-              status: "INVALID_ARGUMENT",
-              message: "The function must be called with a 'url' argument.",
-            },
-          });
+          res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Missing 'url' argument."}});
           return;
         }
-
         try {
-          const response = await gaxiosRequest({
-            url: url,
-            method: "GET",
-          });
-          // For onRequest, we send a JSON response back
+          const response = await gaxiosRequest({url, method: "GET"});
           res.json({data: {icalData: response.data}});
         } catch (error) {
           logger.error("Error fetching iCal data from proxy:", error);
-          res.status(500).json({
-            error: {
-              status: "INTERNAL",
-              message: "Could not fetch calendar data.",
-            },
-          });
+          res.status(500).json({error: {status: "INTERNAL", message: "Could not fetch calendar data."}});
         }
       });
     },
@@ -98,15 +82,6 @@ function levenshteinDistance(a, b) {
 
 /**
  * Cloud Function to get an Oracle's judgement using Google Gemini API.
- * It takes a prompt and existing rules, and returns a generated judgement,
- * with fuzzy matching for names against a provided ledger.
- * @param {object} request The Cloud Function request context.
- * @param {object} request.data The request data sent by the client.
- * @param {string} request.data.promptText The user's transgression description.
- * @param {Array<object>} request.data.rules The list of existing rules.
- * @param {Array<string>} request.data.ledgerNames List of names.
- * @return {object} An object containing the generated judgement string.
- * @throws {HttpsError} If promptText is missing or Gemini API call fails.
  */
 exports.getOracleJudgement = onCall(
     {
@@ -119,10 +94,11 @@ exports.getOracleJudgement = onCall(
       secrets: ["GEMINI_KEY"],
     },
     async (request) => {
-      logger.info("Verifying API Key loaded in environment:", geminiApiKey);
+      const geminiApiKey = process.env.GEMINI_KEY;
+      logger.info("Verifying API Key loaded in environment:", !!geminiApiKey);
       logger.info("Full request data received from client:", request.data);
 
-      const {promptText, rules, ledgerNames} = request.data; // Get ledgerNames
+      const {promptText, rules, ledgerNames} = request.data;
 
       if (!promptText) {
         throw new HttpsError(
@@ -132,6 +108,7 @@ exports.getOracleJudgement = onCall(
       }
 
       try {
+        const genAI = new GoogleGenerativeAI(geminiApiKey);
         const model = genAI.getGenerativeModel({
           model: "gemini-1.5-flash",
         });
@@ -152,19 +129,15 @@ exports.getOracleJudgement = onCall(
             "person": "string" (Name of the person, or "Someone" if unclear),
             "penalties": [
               { "type": "stripes", "amount": number },
-              { "type": "dice", "value": number },
-              // ... more penalties if multiple rules are broken or a rule has multiple penalties
+              { "type": "dice", "value": number }
             ],
-            "rulesBroken": [number, number, ...], // Array of rule numbers (e.g., [1, 5])
-            "innocent": boolean (true if no rules broken, false otherwise)
+            "rulesBroken": [number, number, ...],
+            "innocent": boolean
           }
 
           Important:
-          - For "penalties", list each penalty from each broken rule individually. Do NOT sum stripes or combine dice rolls in the JSON; the client-side will handle that.
-          - If a rule specifies "X stripes", add one object: {"type": "stripes", "amount": X}.
-          - If a rule specifies "a Y-sided die", add one object: {"type": "dice", "value": Y}.
-          - If no rules are broken, set "innocent" to true, and "person", "penalties", "rulesBroken" can be empty or default values.
-          - If you identify a person, use their name directly in the "person" field.
+          - For "penalties", list each penalty from each broken rule individually. Do NOT sum them.
+          - If no rules are broken, set "innocent" to true.
 
           Here are the official "Schikko's Decrees":
           ---
@@ -175,87 +148,18 @@ exports.getOracleJudgement = onCall(
           ---
           "${promptText}"
           ---
-
-          Illustrative Examples of JSON Output (these do not represent the actual penalties for the specific rules above, but show the desired format):
-
-          Example 1: Single rule broken, only stripes.
-          \`\`\`json
-          {
-            "person": "Noud",
-            "penalties": [
-              { "type": "stripes", "amount": 3 }
-            ],
-            "rulesBroken": [2],
-            "innocent": false
-          }
-          \`\`\`
-
-          Example 2: Multiple rules broken, stripes and one die.
-          \`\`\`json
-          {
-            "person": "Emma",
-            "penalties": [
-              { "type": "stripes", "amount": 5 },
-              { "type": "dice", "value": 4 }
-            ],
-            "rulesBroken": [1, 3],
-            "innocent": false
-          }
-          \`\`\`
-
-          Example 3: Multiple rules broken, stripes and multiple different dice.
-          \`\`\`json
-          {
-            "person": "Liam",
-            "penalties": [
-              { "type": "stripes", "amount": 10 },
-              { "type": "dice", "value": 6 },
-              { "type": "dice", "value": 8 }
-            ],
-            "rulesBroken": [5, 7, 9],
-            "innocent": false
-          }
-          \`\`\`
-
-          Example 4: Many rules broken, summing many stripes, and multiple dice.
-          \`\`\`json
-          {
-            "person": "Sophie",
-            "penalties": [
-              { "type": "stripes", "amount": 7 },
-              { "type": "stripes", "amount": 13 },
-              { "type": "dice", "value": 10 },
-              { "type": "dice", "value": 20 }
-            ],
-            "rulesBroken": [4, 6, 8, 10],
-            "innocent": false
-          }
-          \`\`\`
-
-          Example 5: No rules broken.
-          \`\`\`json
-          {
-            "person": "Someone",
-            "penalties": [],
-            "rulesBroken": [],
-            "innocent": true
-          }
-          \`\`\`
           `;
 
         const result = await model.generateContent(fullPrompt);
-        const judgementText = result.response.text().trim(); // Get natural language string, which should contain JSON now
+        const judgementText = result.response.text().trim();
 
-        logger.info("Raw Oracle judgement text (should contain JSON in markdown block):", {judgementText});
+        logger.info("Raw Oracle judgement text:", {judgementText});
 
-        // Extract JSON string from markdown code block
         const jsonMatch = judgementText.match(/```json\n(.*?)```/s);
         let jsonString = '';
         if (jsonMatch && jsonMatch[1]) {
             jsonString = jsonMatch[1].trim();
         } else {
-            // Fallback: If no markdown block, try to parse the whole response as JSON
-            // This handles cases where the AI might accidentally omit the markdown block
             jsonString = judgementText;
         }
 
@@ -264,14 +168,9 @@ exports.getOracleJudgement = onCall(
             parsedJudgement = JSON.parse(jsonString);
         } catch (e) {
             logger.error("Failed to parse AI response as JSON:", e);
-            throw new HttpsError(
-                "internal",
-                "Oracle's response was garbled. Please try again. (Invalid JSON from AI)",
-                jsonString, // Include the extracted string for debugging
-            );
+            throw new HttpsError("internal", "Oracle's response was garbled.", jsonString);
         }
 
-        // Apply fuzzy matching to the name in the parsed JSON judgement
         if (ledgerNames && ledgerNames.length > 0 && parsedJudgement.person && parsedJudgement.person.toLowerCase() !== 'someone') {
             const aiSuggestedName = parsedJudgement.person;
             let closestName = aiSuggestedName;
@@ -285,25 +184,153 @@ exports.getOracleJudgement = onCall(
                 }
             });
 
-            const isNotTooDifferent = minDistance < 3; // Threshold for fuzzy matching
-            if (isNotTooDifferent) {
+            if (minDistance < 3) {
                 parsedJudgement.person = closestName;
             }
         }
         
         logger.info("Parsed Oracle judgement:", {parsedJudgement});
 
-        return {judgement: parsedJudgement}; // Return object with parsed JSON judgement
+        return {judgement: parsedJudgement};
       } catch (error) {
         logger.error("Error in getOracleJudgement:", error);
         if (error instanceof HttpsError) {
             throw error;
         } else {
-            throw new HttpsError(
-                "internal",
-                "Oracle is silent. An unexpected error occurred.",
-            );
+            throw new HttpsError("internal", "Oracle is silent. An unexpected error occurred.");
         }
       }
     },
 );
+
+/**
+ * Checks if a Schikko has been set for the current year.
+ */
+exports.getSchikkoStatus = onCall(
+    {region: "europe-west4", cors: ["https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"]},
+    async (request) => {
+        const year = new Date().getFullYear();
+        const schikkoRef = adminDb.collection('config').doc(`schikko_${year}`);
+        const schikkoDoc = await schikkoRef.get();
+        
+        return {isSet: schikkoDoc.exists};
+    },
+);
+
+/**
+ * Sets the Schikko for the current year, generates a password, and sends it via email.
+ */
+exports.setSchikko = onCall(
+    {
+      region: "europe-west4",
+      secrets: ["MAIL_USER", "MAIL_PASS"], // Make credentials available
+      cors: ["https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+    },
+    async (request) => {
+        const {email} = request.data;
+        if (!email) {
+            throw new HttpsError("invalid-argument", "The function must be called with an 'email' argument.");
+        }
+
+        const year = new Date().getFullYear();
+        const schikkoRef = adminDb.collection('config').doc(`schikko_${year}`);
+        const schikkoDoc = await schikkoRef.get();
+
+        if (schikkoDoc.exists) {
+            throw new HttpsError("already-exists", `A Schikko has already been set for ${year}.`);
+        }
+
+        const password = Math.random().toString(36).slice(-8);
+
+        // WARNING: Storing plain text passwords is NOT secure.
+        await schikkoRef.set({
+            email,
+            password, // In a production app, this should be a HASH of the password.
+            createdAt: FieldValue.serverTimestamp(),
+        });
+        
+        const transporter = nodemailer.createTransport({
+            host: "smtp.purelymail.com",
+            port: 465,
+            secure: true, // Use SSL
+            auth: {
+                user: process.env.MAIL_USER, // Your Purelymail full email address
+                pass: process.env.MAIL_PASS, // Your Purelymail App Password
+            },
+        });
+
+        const mailOptions = {
+            from: `"The Schikko Scribe" <${process.env.MAIL_USER}>`,
+            to: email,
+            subject: `Your Sacred Password as Schikko for ${year}`,
+            html: `
+                <p>Hark, claimant!</p>
+                <p>You have been chosen as the Schikko for the year ${year}.</p>
+                <p>Guard the following password with your life, for it grants the power to shape the Decrees:</p>
+                <p style="font-size: 20px; font-weight: bold; letter-spacing: 2px; background: #f5eeda; padding: 10px; border: 1px solid #b9987e;">
+                    ${password}
+                </p>
+                <p>May your reign be just.</p>
+            `,
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+            logger.info(`Schikko password successfully sent to ${email}.`);
+            return {success: true};
+        } catch (error) {
+            logger.error(`Failed to send Schikko password to ${email}:`, error);
+            throw new HttpsError("internal", "The Schikko has been set, but the raven failed to deliver the password. Please check the function logs.");
+        }
+    },
+);
+
+/**
+ * Logs in the Schikko using a password.
+ */
+exports.loginSchikko = onCall(
+    {region: "europe-west4", cors: ["https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"]},
+    async (request) => {
+        const {password} = request.data;
+        if (!password) {
+            throw new HttpsError("invalid-argument", "The function must be called with a 'password' argument.");
+        }
+
+        const year = new Date().getFullYear();
+        const schikkoRef = adminDb.collection('config').doc(`schikko_${year}`);
+        const schikkoDoc = await schikkoRef.get();
+
+        if (!schikkoDoc.exists) {
+            throw new HttpsError("not-found", `No Schikko has been set for ${year}.`);
+        }
+
+        const schikkoData = schikkoDoc.data();
+        
+        if (schikkoData.password === password) {
+            return {success: true};
+        } else {
+            return {success: false};
+        }
+    },
+);
+
+/**
+ * Scheduled function to reset the Schikko at the end of the year.
+ * Runs on the 1st of January at 00:00 Europe/Amsterdam time.
+ */
+exports.resetAnnualSchikko = onSchedule({schedule: "0 0 1 1 *", timeZone: "Europe/Amsterdam"}, async (event) => {
+    const previousYear = new Date().getFullYear() - 1;
+    const schikkoRef = adminDb.collection('config').doc(`schikko_${previousYear}`);
+    
+    logger.info(`Running annual Schikko reset for year ${previousYear}.`);
+    
+    const schikkoDoc = await schikkoRef.get();
+    if (schikkoDoc.exists) {
+        await schikkoRef.delete();
+        logger.info(`Successfully deleted Schikko for year ${previousYear}.`);
+    } else {
+        logger.info(`No Schikko found for year ${previousYear}, no action taken.`);
+    }
+    
+    return null;
+});

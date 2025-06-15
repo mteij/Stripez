@@ -18,7 +18,8 @@
     "cors": "^2.8.5",
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.0.1",
-    "gaxios": "^6.7.1"
+    "gaxios": "^6.7.1",
+    "nodemailer": "^6.9.14"
   },
   "devDependencies": {
     "eslint": "^8.15.0",

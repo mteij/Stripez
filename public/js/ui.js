@@ -525,4 +525,91 @@ function renderRules(rulesData) {
     });
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt };
+/**
+ * Shows a themed modal for Schikko login.
+ * @returns {Promise<string|null>} A promise that resolves with the password, or null if canceled.
+ */
+function showSchikkoLoginModal() {
+    const modal = document.getElementById('schikko-login-modal');
+    const passwordInput = document.getElementById('schikko-password-input');
+    const okBtn = document.getElementById('schikko-login-submit-btn');
+    const cancelBtn = document.getElementById('schikko-login-cancel-btn');
+
+    passwordInput.value = '';
+    modal.classList.remove('hidden');
+    passwordInput.focus();
+
+    return new Promise(resolve => {
+        const cleanup = () => {
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            passwordInput.onkeydown = null;
+        };
+
+        const handleOk = () => {
+            modal.classList.add('hidden');
+            cleanup();
+            resolve(passwordInput.value);
+        };
+        
+        okBtn.onclick = handleOk;
+        passwordInput.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleOk();
+            }
+        };
+
+        cancelBtn.onclick = () => {
+            modal.classList.add('hidden');
+            cleanup();
+            resolve(null);
+        };
+    });
+}
+
+/**
+ * Shows a themed modal for setting the Schikko.
+ * @returns {Promise<string|null>} A promise that resolves with the email, or null if canceled.
+ */
+function showSetSchikkoModal() {
+    const modal = document.getElementById('set-schikko-modal');
+    const emailInput = document.getElementById('set-schikko-email-input');
+    const okBtn = document.getElementById('set-schikko-submit-btn');
+    const cancelBtn = document.getElementById('set-schikko-cancel-btn');
+
+    emailInput.value = '';
+    modal.classList.remove('hidden');
+    emailInput.focus();
+
+    return new Promise(resolve => {
+         const cleanup = () => {
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            emailInput.onkeydown = null;
+        };
+
+        const handleOk = () => {
+            modal.classList.add('hidden');
+            cleanup();
+            resolve(emailInput.value);
+        };
+        
+        okBtn.onclick = handleOk;
+        emailInput.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleOk();
+            }
+        };
+
+        cancelBtn.onclick = () => {
+            modal.classList.add('hidden');
+            cleanup();
+            resolve(null);
+        };
+    });
+}
+
+
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal };

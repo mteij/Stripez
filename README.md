@@ -10,6 +10,11 @@ All data is stored and synced live using Google's Firebase, and the project is s
 
 * **Ancient Tome Aesthetic:** Uses custom fonts and CSS to create an immersive, old-world feel.
 * **Real-time Database:** Built with Firebase Firestore, allowing multiple users to see updates instantly without refreshing the page.
+* **Secure Schikko Role (Admin):**
+    * A "Set Schikko" button appears once per year, allowing a user to claim the role by providing an email.
+    * A password is generated on the backend and must be retrieved from the Firebase Function logs (for development) or sent via an integrated email service.
+    * A "Schikko Login" button allows the designated Schikko to log in using the password to gain administrative rights for the session.
+    * The Schikko role is automatically reset annually by a scheduled function.
 * **Google Calendar Integration:**
     * Displays the next upcoming event from a public Google Calendar.
     * A "Full Agenda" button opens a popup with all upcoming events.
@@ -25,11 +30,11 @@ All data is stored and synced live using Google's Firebase, and the project is s
 * **Dynamic Rules Management ("Schikko's Decrees"):**
     * Display a collapsible section for lesser decrees.
     * **Rule Search:** A dedicated search field allows filtering rules by text.
-    * **Rule Editing:** Option to edit the text of an existing rule (requires "Schikko" confirmation).
+    * **Rule Editing:** Option to edit the text of an existing rule (requires Schikko password authentication).
     * **Conditional Text Styling:** Any text appearing after a colon (':') in a rule is automatically displayed in red.
     * **Streamlined Rule Addition:** The "Add Decree" button now directly uses the text from the rule search field as input for the new rule.
     * Move rules up and down in the list to reorder them.
-    * Delete rules (requires "Schikko" confirmation).
+    * Delete rules (requires Schikko password authentication).
     * Rule action buttons (Edit, Move Up/Down, Delete) are consistently sized and aligned for better UI.
 * **Randomizers Hub:**
     * A central hub to access different randomization tools.
@@ -47,7 +52,7 @@ All data is stored and synced live using Google's Firebase, and the project is s
 * **Styling:** [Tailwind CSS](https://tailwindcss.com/) for utility-first styling.
 * **Charting:** [Chart.js](https://www.chartjs.org/) for data visualization.
 * **Backend & Database:** [Google Firebase](https://firebase.google.com/)
-    * **Cloud Functions for Firebase:** For server-side logic to securely call external APIs.
+    * **Cloud Functions for Firebase:** For server-side logic, including scheduled functions and secure API calls.
     * **Firestore:** As the NoSQL real-time database.
     * **Firebase Authentication:** For anonymous user sign-in.
     * **Firebase Hosting:** To serve the live web application.
@@ -63,7 +68,7 @@ The project's code is organized to separate the frontend (`public`) from the bac
 .
 ├── functions/
 │   ├── node_modules/
-│   ├── index.js         # Backend logic for the Gemini Oracle
+│   ├── index.js         # Backend logic, including Schikko auth and Oracle
 │   └── package.json
 ├── public/
 │   ├── js/
@@ -97,7 +102,7 @@ If you wish to clone this repository and set it up with your own Firebase projec
 
 2.  **Create a Firebase Project:**
     * Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-    * **Upgrade to the Blaze Plan:** To use Cloud Functions, you must upgrade your project to the "Blaze (Pay-as-you-go)" plan. This is required to enable the necessary APIs.
+    * **Upgrade to the Blaze Plan:** To use Cloud Functions (including scheduled functions), you must upgrade your project to the "Blaze (Pay-as-you-go)" plan. This is required to enable the necessary APIs.
     * Inside your project, go to **Build > Firestore Database** and create a database in **Production mode**.
     * Go to **Build > Authentication**, select the **Sign-in method** tab, and **enable** the **Anonymous** provider.
 
@@ -113,8 +118,10 @@ If you wish to clone this repository and set it up with your own Firebase projec
         match /rules/{docId} {
           allow read, write: if request.auth != null;
         }
+        // Config is now managed by secure backend functions
         match /config/{docId} {
-            allow read, write: if request.auth != null;
+            allow read: if request.auth != null; // Client reads calendar URL
+            allow write: if false; // Disallow direct client writes
         }
       }
     }
@@ -127,7 +134,7 @@ If you wish to clone this repository and set it up with your own Firebase projec
 
 5.  **Set up Backend Functions:**
     * **Initialize Functions:** In your local project root, run `firebase init functions` and select JavaScript.
-    * **Install Dependencies:** Navigate to the new `functions` directory (`cd functions`) and run `npm install @google/generative-ai`.
+    * **Install Dependencies:** Navigate to the new `functions` directory (`cd functions`) and run `npm install`.
     * **Get Gemini API Key:** Go to [Google AI Studio](https://aistudio.google.com/) to create and copy your API key.
 
 6.  **Configure Secrets and IAM Permissions:**
@@ -136,12 +143,14 @@ If you wish to clone this repository and set it up with your own Firebase projec
         firebase functions:config:set gemini.key="YOUR_API_KEY_HERE"
         ```
     * **Configure IAM for Deployments:** For CI/CD, create a service account and download its JSON key. In the Google Cloud IAM console, grant this service account the following roles:
-        * `Cloud Functions Admin` (This is the required change)
+        * `Cloud Functions Admin`
         * `Firebase Hosting Admin`
         * `Service Account User`
         * `Firebase Extensions Viewer`
         * `API Keys Viewer`
         * `Service Usage Consumer`
+        * **`Cloud Scheduler Admin`** (for the annual reset function)
+        * **`Logs Viewer`** (to see the generated Schikko password)
 
 7.  **Configure GitHub Secrets for CI/CD:**
     * In your GitHub repository, go to **Settings > Secrets and variables > Actions**.
@@ -149,5 +158,11 @@ If you wish to clone this repository and set it up with your own Firebase projec
     * Add secrets for your Firebase config values (`FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`, etc.) to be used by the workflows.
 
 8.  **Deploy:**
-    * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`.
-    * Alternatively, the GitHub Actions will now automatically deploy whenever changes are pushed to `main` or a pull request is created/updated, with your Firebase credentials securely injected.
+    * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`. This will deploy hosting and all functions, including the scheduled function.
+    * The GitHub Actions will automatically deploy changes pushed to `main` or a pull request.
+
+9.  **First-Time Schikko Setup (Post-Deploy):**
+    * Open the deployed web application. Click the "Set Schikko" button.
+    * Enter an email address.
+    * Go to your Firebase project -> **Functions -> Logs**. Find the log entry from the `setSchikko` function containing the generated password.
+    * **IMPORTANT**: For a real-world application, you **must** replace the password logging in `functions/index.js` with a service that sends the password to the user's email (e.g., using the "Trigger Email" Firebase Extension). Storing plain-text passwords is not secure.

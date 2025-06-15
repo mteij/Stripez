@@ -14,9 +14,9 @@ import {
 import { 
     renderLedger, showStatsModal, closeMenus, renderRules, 
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
-    showAlert, showConfirm, showPrompt // Import new modal functions
+    showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal
 } from './ui.js';
-import { initListRandomizer, initDiceRandomizer, rollSpecificDice, rollDiceAndAssign } from '../randomizer/randomizer.js';
+import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 
@@ -28,7 +28,7 @@ let calendarEventsCache = [];
 let currentSortOrder = 'asc';
 let currentSearchTerm = ''; // For ledger search
 let currentRuleSearchTerm = ''; // New: For rules inconsistencies search
-let isSchikkoConfirmed = false; // Track confirmation status for the session
+let isSchikkoSessionActive = false; // Secure session state for Schikko
 let lastPunishmentInfo = { // New state for last punishment awarded
     name: null,
     amount: null,
@@ -59,6 +59,9 @@ const editCalendarBtn = document.getElementById('edit-calendar-btn');
 const fullAgendaBtn = document.getElementById('full-agenda-btn');
 const agendaModal = document.getElementById('agenda-modal');
 const closeAgendaModalBtn = document.getElementById('close-agenda-modal');
+const setSchikkoBtn = document.getElementById('set-schikko-btn');
+const schikkoLoginContainer = document.getElementById('schikko-login-container');
+const schikkoLoginBtn = document.getElementById('schikko-login-btn');
 
 
 // Dice randomizer modal and buttons
@@ -87,10 +90,6 @@ const geminiOutput = document.getElementById('gemini-output');
 const geminiActionButtonsContainer = document.createElement('div');
 geminiActionButtonsContainer.className = 'flex flex-wrap justify-center gap-4 mt-4';
 
-// New Animation Element
-const oracleAnimationOverlay = document.getElementById('oracle-animation-overlay');
-
-
 // Drunk Stripes Modal Elements
 const drunkStripesModal = document.getElementById('drunk-stripes-modal');
 const closeDrunkStripesModalBtn = document.getElementById('close-drunk-stripes-modal');
@@ -108,6 +107,7 @@ let currentPersonIdForDrunkStripes = null;
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUserId = user.uid;
+        checkSchikkoStatus();
         loadCalendarData();
         setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
@@ -125,7 +125,64 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER & NEW AUTH FUNCTIONS ---
+
+/**
+ * Checks if a schikko is set for the year and updates UI accordingly.
+ */
+async function checkSchikkoStatus() {
+    try {
+        const functions = getFunctions(undefined, "europe-west4");
+        const getSchikkoStatus = httpsCallable(functions, 'getSchikkoStatus');
+        const result = await getSchikkoStatus();
+        const isSet = result.data.isSet;
+
+        if (isSet) {
+            setSchikkoBtn.classList.add('hidden');
+            schikkoLoginContainer.classList.remove('hidden');
+        } else {
+            setSchikkoBtn.classList.remove('hidden');
+            schikkoLoginContainer.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error("Error checking Schikko status:", error);
+        showAlert("Could not verify the Schikko's status. The archives may be sealed.", "Connection Error");
+    }
+}
+
+/**
+ * Replaces the old schikko confirmation with a secure password login flow.
+ * Caches the login status in the current session to avoid repeated logins.
+ */
+async function confirmSchikko() {
+    if (isSchikkoSessionActive) {
+        return true;
+    }
+
+    const password = await showSchikkoLoginModal();
+    if (!password) {
+        return false; // User cancelled the modal
+    }
+    
+    try {
+        const functions = getFunctions(undefined, "europe-west4");
+        const loginSchikko = httpsCallable(functions, 'loginSchikko');
+        const result = await loginSchikko({ password });
+        
+        if (result.data.success) {
+            isSchikkoSessionActive = true;
+            await showAlert("Password accepted. You are the Schikko.", "Login Successful");
+            return true;
+        } else {
+            await showAlert("The password was incorrect. The archives remain sealed to you.", "Login Failed");
+            return false;
+        }
+    } catch (error) {
+        console.error("Error during Schikko login:", error);
+        await showAlert(`An error occurred: ${error.message}`, "Login Error");
+        return false;
+    }
+}
 
 async function loadCalendarData() {
     const config = await getCalendarConfig();
@@ -178,10 +235,6 @@ async function loadCalendarData() {
     }
 }
 
-
-/**
- * Updates the datalist for the main input field with current ledger names.
- */
 function updateDatalist() {
     if (ledgerNamesDatalist) {
         ledgerNamesDatalist.innerHTML = '';
@@ -192,33 +245,6 @@ function updateDatalist() {
         });
     }
 }
-
-/**
- * Calculates the Levenshtein distance between two strings.
- */
-function levenshteinDistance(a, b) {
-    const matrix = [];
-    for (let i = 0; i <= b.length; i++) {
-        matrix[i] = [i];
-    }
-    for (let j = 0; j <= a.length; j++) {
-        matrix[0][j] = j;
-    }
-    for (let i = 1; i <= b.length; i++) {
-        for (let j = 1; j <= a.length; j++) {
-            if (b.charAt(i - 1) == a.charAt(j - 1)) {
-                matrix[i][j] = matrix[i - 1][j - 1];
-            } else {
-                matrix[i][j] = Math.min(
-                    matrix[i - 1][j - 1] + 1,
-                    Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
-                );
-            }
-        }
-    }
-    return matrix[b.length][a.length];
-}
-
 
 // --- RENDER LOGIC ---
 function handleRender() {
@@ -290,10 +316,6 @@ function updateAppFooter() {
     `;
 }
 
-
-/**
- * Creates and appends action buttons based on the parsed judgment.
- */
 function createActionButtons(parsedJudgement) {
     geminiActionButtonsContainer.innerHTML = ''; 
     if (!geminiActionButtonsContainer.parentNode) {
@@ -422,10 +444,6 @@ function createActionButtons(parsedJudgement) {
     }
 }
 
-
-/**
- * Handles the Gemini Oracle submission by calling the backend function.
- */
 async function handleGeminiSubmit() {
     const inputText = geminiInput.value.trim();
     if (inputText === '') {
@@ -516,18 +534,6 @@ async function handleGeminiSubmit() {
     }
 }
 
-// --- CONFIRMATION ---
-async function confirmSchikko() {
-    if (isSchikkoConfirmed) return true;
-    const answer = await showPrompt("Art thou the Schikko? If it be so, inscribe 'Schikko'.", '', "Confirm Identity");
-    const isConfirmed = answer && answer.toLowerCase() === 'schikko';
-    if (isConfirmed) {
-        isSchikkoConfirmed = true;
-    } else if (answer !== null) { // User entered something other than 'Schikko'
-        await showAlert("Thou art not the Schikko.", "Identity Not Confirmed");
-    }
-    return isConfirmed;
-}
 
 // --- EVENT HANDLERS ---
 async function handleAddName() {
@@ -727,15 +733,10 @@ closeDiceRandomizerModalBtn?.addEventListener('click', (e) => {
 
 closeListRandomizerModalBtn?.addEventListener('click', () => listRandomizerModal.classList.add('hidden'));
 
-// --- MODIFIED Event Listener for Oracle Button ---
 openGeminiFromHubBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-
-    // Hide the hub modal and show the gemini modal directly
     randomizerHubModal.classList.add('hidden');
     geminiModal.classList.remove('hidden');
-
-    // Prepare the modal for a new consultation
     geminiOutput.classList.add('hidden');
     geminiOutput.innerHTML = '';
     geminiInput.value = '';
@@ -744,15 +745,10 @@ openGeminiFromHubBtn?.addEventListener('click', (e) => {
 
 closeGeminiModalBtn?.addEventListener('click', () => {
     geminiModal.classList.add('hidden');
-    geminiOutput.classList.add('hidden'); 
-    geminiOutput.innerHTML = ''; 
-    geminiInput.value = ''; 
-    geminiActionButtonsContainer.innerHTML = '';
 });
 
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
 
-// Drunk Stripes Modal Event Listeners
 closeDrunkStripesModalBtn.addEventListener('click', () => { 
     drunkStripesModal.classList.add('hidden'); 
 });
@@ -801,7 +797,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
 editCalendarBtn.addEventListener('click', async () => {
     const config = await getCalendarConfig();
     const newUrl = await showPrompt('Enter the public iCal URL for the calendar:', config.url || '', 'Update Calendar');
-    if (newUrl) { // Note: showPrompt resolves to null on cancel, so this check works
+    if (newUrl) {
         await saveCalendarUrl(newUrl);
         loadCalendarData();
     }
@@ -814,4 +810,31 @@ fullAgendaBtn.addEventListener('click', () => {
 
 closeAgendaModalBtn.addEventListener('click', () => {
     showAgendaModal(false);
+});
+
+// New listeners for Schikko auth flow
+setSchikkoBtn.addEventListener('click', async () => {
+    const email = await showSetSchikkoModal();
+    if (!email || !email.includes('@')) {
+        if (email !== null) { // if not cancelled by user
+            showAlert("A valid email is required to claim the title.", "Invalid Email");
+        }
+        return;
+    }
+
+    try {
+        const functions = getFunctions(undefined, "europe-west4");
+        const setSchikko = httpsCallable(functions, 'setSchikko');
+        await setSchikko({ email });
+        
+        await showAlert("You have claimed the title! The sacred password has been logged to the Firebase Functions console. Guard it with your life.", "Title Claimed!");
+        checkSchikkoStatus(); // Refresh the UI to show the login button
+    } catch (error) {
+        console.error("Error setting Schikko:", error);
+        await showAlert(`An error occurred: ${error.message}`, "Error Claiming Title");
+    }
+});
+
+schikkoLoginBtn.addEventListener('click', async () => {
+    await confirmSchikko();
 });
