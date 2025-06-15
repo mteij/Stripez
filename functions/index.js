@@ -2,7 +2,7 @@
 
 const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {logger, config} = require("firebase-functions"); // Import config
+const {logger} = require("firebase-functions");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
@@ -16,7 +16,7 @@ const functions = require('firebase-functions');
 const adminDb = getFirestore();
 
 /**
- * REWRITTEN: Cloud Function to act as a proxy for fetching iCal data.
+ * Cloud Function to act as a proxy for fetching iCal data.
  */
 exports.getCalendarDataProxy = onRequest(
     {region: "europe-west4"},
@@ -45,6 +45,9 @@ exports.getCalendarDataProxy = onRequest(
 
 /**
  * Calculates the Levenshtein distance between two strings.
+ * @param {string} a The first string.
+ * @param {string} b The second string.
+ * @return {number} The Levenshtein distance.
  */
 function levenshteinDistance(a, b) {
   const matrix = [];
@@ -75,7 +78,6 @@ exports.getOracleJudgement = onCall(
       cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
     },
     async (request) => {
-      // MODIFIED: Get key from functions.config()
       const geminiApiKey = functions.config().gemini.key; 
       if (!geminiApiKey) {
         throw new HttpsError("internal", "Gemini API Key is not configured.");
@@ -124,7 +126,11 @@ exports.getOracleJudgement = onCall(
  * Checks if a Schikko has been set for the current year.
  */
 exports.getSchikkoStatus = onCall(
-    {region: "europe-west4", cors: ["https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"]},
+    // ADDED CORS CONFIGURATION HERE
+    {
+        region: "europe-west4",
+        cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+    },
     async () => {
         const year = new Date().getFullYear();
         const schikkoRef = adminDb.collection('config').doc(`schikko_${year}`);
@@ -137,7 +143,11 @@ exports.getSchikkoStatus = onCall(
  * Sets the Schikko for the current year and emails the password.
  */
 exports.setSchikko = onCall(
-    {region: "europe-west4", cors: ["https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"]},
+    // UPDATED CORS CONFIGURATION HERE
+    {
+        region: "europe-west4",
+        cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+    },
     async (request) => {
         const {email} = request.data;
         if (!email) throw new HttpsError("invalid-argument", "Missing 'email' argument.");
@@ -150,7 +160,6 @@ exports.setSchikko = onCall(
         const password = Math.random().toString(36).slice(-8);
         await schikkoRef.set({email, password, createdAt: FieldValue.serverTimestamp()});
 
-        // MODIFIED: Get credentials from functions.config()
         const mailUser = functions.config().mail.user;
         const mailPass = functions.config().mail.pass;
         if (!mailUser || !mailPass) {
@@ -183,7 +192,11 @@ exports.setSchikko = onCall(
  * Logs in the Schikko using a password.
  */
 exports.loginSchikko = onCall(
-    {region: "europe-west4", cors: ["https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"]},
+    // ADDED CORS CONFIGURATION HERE
+    {
+        region: "europe-west4",
+        cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+    },
     async (request) => {
         const {password} = request.data;
         if (!password) throw new HttpsError("invalid-argument", "Missing 'password' argument.");
