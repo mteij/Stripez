@@ -14,7 +14,7 @@ import {
 import { 
     renderLedger, showStatsModal, closeMenus, renderRules, 
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
-    showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal
+    showAlert, showConfirm, showPrompt, showSchikkoLoginModal
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -107,7 +107,10 @@ let currentPersonIdForDrunkStripes = null;
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUserId = user.uid;
-        checkSchikkoStatus();
+        checkSchikkoStatus().then(() => {
+            updateGuestUI();
+            updateAppFooter();
+        });
         loadCalendarData();
         setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
@@ -126,6 +129,22 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // --- HELPER & NEW AUTH FUNCTIONS ---
+
+function updateGuestUI() {
+    const isGuest = !isSchikkoSessionActive;
+
+    document.querySelectorAll('[data-action="add-stripe"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
+    document.querySelectorAll('[data-action="toggle-menu"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
+    
+    if (editRulesBtn) editRulesBtn.style.display = isGuest ? 'none' : 'inline-flex';
+    if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'inline-flex';
+    if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
+
+    if(openGeminiFromHubBtn) openGeminiFromHubBtn.textContent = isGuest ? "Oracle's Judgement (Read-Only)" : "Oracle's Judgement";
+
+    handleRender();
+    handleRenderRules();
+}
 
 /**
  * Checks if a schikko is set for the year and updates UI accordingly.
@@ -172,6 +191,8 @@ async function confirmSchikko() {
         if (result.data.success) {
             isSchikkoSessionActive = true;
             await showAlert("Password accepted. You are the Schikko.", "Login Successful");
+            updateGuestUI();
+            updateAppFooter();
             return true;
         } else {
             await showAlert("The password was incorrect. The archives remain sealed to you.", "Login Failed");
@@ -268,7 +289,7 @@ function handleRender() {
             case 'asc': default: return nameA.localeCompare(nameB);
         }
     });
-    renderLedger(viewData, term);
+    renderLedger(viewData, term, isSchikkoSessionActive);
 }
 
 function handleRenderRules() {
@@ -277,11 +298,12 @@ function handleRenderRules() {
     if (term) {
         filteredRules = filteredRules.filter(rule => rule.text.toLowerCase().includes(term));
     }
-    renderRules(filteredRules);
+    renderRules(filteredRules, isSchikkoSessionActive);
 }
 
-function updateAppFooter() {
+async function updateAppFooter() {
     if (!appInfoFooter) return;
+    
     let latestUpdateTimestamp = null;
     if (rulesDataCache.length > 0) {
         latestUpdateTimestamp = rulesDataCache.reduce((max, rule) => {
@@ -309,8 +331,26 @@ function updateAppFooter() {
         lastPunishmentText = `<br><span class="font-cinzel-decorative text-[#c0392b]">The Oracle last decreed ${lastPunishmentInfo.amount} ${punishmentType} to ${lastPunishmentInfo.name} at the hour of ${timeAgo}.</span>`;
     }
 
+    let schikkoInfoText = 'No Schikko has been chosen for this year.';
+    if (isSchikkoSessionActive) {
+        try {
+            const functions = getFunctions(undefined, "europe-west4");
+            const getSchikkoInfo = httpsCallable(functions, 'getSchikkoInfo');
+            const result = await getSchikkoInfo();
+            const info = result.data;
+            if (info.email) {
+                const expiryDate = new Date(info.expires);
+                const expiryString = expiryDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric'});
+                schikkoInfoText = `Current Schikko: ${info.email}. Reign ends on ${expiryString}.`;
+            }
+        } catch (error) {
+            console.error("Could not fetch Schikko info:", error);
+            schikkoInfoText = "Could not retrieve the current Schikko's identity.";
+        }
+    }
+
     appInfoFooter.innerHTML = `
-        <span class="font-cinzel-decorative">Crafted by the hand of Michiel, with the wisdom of the Oracles (ChatGPT).</span><br>
+        <span class="font-cinzel-decorative">${schikkoInfoText}</span><br>
         <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
         ${lastPunishmentText}
     `;
@@ -321,6 +361,19 @@ function createActionButtons(parsedJudgement) {
     if (!geminiActionButtonsContainer.parentNode) {
         geminiOutput.parentNode.insertBefore(geminiActionButtonsContainer, geminiOutput.nextSibling);
     }
+    
+    if (!isSchikkoSessionActive) {
+         const acknowledgeBtn = document.createElement('button');
+        acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        acknowledgeBtn.textContent = `Acknowledge Judgement`;
+        acknowledgeBtn.onclick = (e) => {
+            e.stopPropagation();
+            geminiModal.classList.add('hidden');
+        };
+        geminiActionButtonsContainer.appendChild(acknowledgeBtn);
+        return;
+    }
+
 
     if (parsedJudgement.innocent) {
         const acknowledgeBtn = document.createElement('button');
@@ -379,31 +432,7 @@ function createActionButtons(parsedJudgement) {
         
         combinedBtn.onclick = async (e) => {
             e.stopPropagation();
-            for (let i = 0; i < totalStripes; i++) {
-                await addStripeToPerson(person.id);
-            }
-            lastPunishmentInfo = {
-                name: person.name,
-                amount: totalStripes,
-                type: 'stripes',
-                timestamp: new Date()
-            };
-            updateAppFooter();
-
-            sortedDice.forEach(diceValue => {
-                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
-            });
-            geminiModal.classList.add('hidden');
-        };
-        geminiActionButtonsContainer.appendChild(combinedBtn);
-    } 
-    else {
-        if (hasStripes) {
-            const stripesBtn = document.createElement('button');
-            stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-            stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
-            stripesBtn.onclick = async (e) => {
-                e.stopPropagation();
+             if (await confirmSchikko()) {
                 for (let i = 0; i < totalStripes; i++) {
                     await addStripeToPerson(person.id);
                 }
@@ -414,7 +443,35 @@ function createActionButtons(parsedJudgement) {
                     timestamp: new Date()
                 };
                 updateAppFooter();
+
+                sortedDice.forEach(diceValue => {
+                    rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
+                });
                 geminiModal.classList.add('hidden');
+            }
+        };
+        geminiActionButtonsContainer.appendChild(combinedBtn);
+    } 
+    else {
+        if (hasStripes) {
+            const stripesBtn = document.createElement('button');
+            stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+            stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
+            stripesBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (await confirmSchikko()) {
+                    for (let i = 0; i < totalStripes; i++) {
+                        await addStripeToPerson(person.id);
+                    }
+                    lastPunishmentInfo = {
+                        name: person.name,
+                        amount: totalStripes,
+                        type: 'stripes',
+                        timestamp: new Date()
+                    };
+                    updateAppFooter();
+                    geminiModal.classList.add('hidden');
+                }
             };
             geminiActionButtonsContainer.appendChild(stripesBtn);
         }
@@ -423,10 +480,12 @@ function createActionButtons(parsedJudgement) {
             const diceBtn = document.createElement('button');
             diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
             diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
-            diceBtn.onclick = (e) => {
+            diceBtn.onclick = async (e) => {
                 e.stopPropagation();
-                rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
-                geminiModal.classList.add('hidden');
+                if(await confirmSchikko()) {
+                    rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
+                    geminiModal.classList.add('hidden');
+                }
             };
             geminiActionButtonsContainer.appendChild(diceBtn);
         });
@@ -537,6 +596,7 @@ async function handleGeminiSubmit() {
 
 // --- EVENT HANDLERS ---
 async function handleAddName() {
+    if (!await confirmSchikko()) return;
     const name = mainInput.value.trim();
     if (!name) return;
     if (ledgerDataCache.some(p => p.name.toLowerCase() === name.toLowerCase())) {
@@ -627,7 +687,7 @@ showDecreesBtn?.addEventListener('click', () => {
         handleRenderRules();
     }
 });
-punishmentListDiv.addEventListener('click', (e) => {
+punishmentListDiv.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-action]');
     if (!target) return;
     e.preventDefault();
@@ -635,11 +695,15 @@ punishmentListDiv.addEventListener('click', (e) => {
     const id = target.dataset.id;
     if (action !== 'toggle-menu') closeMenus();
     switch (action) {
-        case 'toggle-menu': document.getElementById(`menu-${id}`)?.classList.toggle('hidden'); break;
+        case 'toggle-menu': 
+            if(isSchikkoSessionActive) document.getElementById(`menu-${id}`)?.classList.toggle('hidden');
+            break;
         case 'add-stripe': 
-            addStripeToPerson(id); 
-            lastPunishmentInfo = { name: ledgerDataCache.find(p => p.id === id)?.name, amount: 1, type: 'stripes', timestamp: new Date() };
-            updateAppFooter();
+            if (await confirmSchikko()) {
+                addStripeToPerson(id); 
+                lastPunishmentInfo = { name: ledgerDataCache.find(p => p.id === id)?.name, amount: 1, type: 'stripes', timestamp: new Date() };
+                updateAppFooter();
+            }
             break;
         case 'add-drunk-stripe': 
             currentPersonIdForDrunkStripes = id; 
@@ -658,13 +722,27 @@ punishmentListDiv.addEventListener('click', (e) => {
 
             drunkStripesModal.classList.remove('hidden'); 
             break;
-        case 'remove-stripe': handleRemoveStripe(id); break;
-        case 'remove-drunk-stripe': 
-            const personToRemoveDrunkStripe = ledgerDataCache.find(p => p.id === id);
-            if (personToRemoveDrunkStripe) removeLastDrunkStripeFromPerson(personToRemoveDrunkStripe);
+        case 'remove-stripe':
+            if (await confirmSchikko()) {
+                handleRemoveStripe(id); 
+            }
             break;
-        case 'rename': handleRename(id); break;
-        case 'delete': handleDeletePerson(id); break;
+        case 'remove-drunk-stripe': 
+            if (await confirmSchikko()) {
+                const personToRemoveDrunkStripe = ledgerDataCache.find(p => p.id === id);
+                if (personToRemoveDrunkStripe) removeLastDrunkStripeFromPerson(personToRemoveDrunkStripe);
+            }
+            break;
+        case 'rename': 
+             if (await confirmSchikko()) {
+                handleRename(id);
+             }
+            break;
+        case 'delete':
+             if (await confirmSchikko()) {
+                handleDeletePerson(id);
+             }
+            break;
         case 'show-stats':
             const personToShowStats = ledgerDataCache.find(p => p.id === id);
             if (personToShowStats) showStatsModal(personToShowStats);
@@ -795,6 +873,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
 });
 
 editCalendarBtn.addEventListener('click', async () => {
+    if(!await confirmSchikko()) return;
     const config = await getCalendarConfig();
     const newUrl = await showPrompt('Enter the public iCal URL for the calendar:', config.url || '', 'Update Calendar');
     if (newUrl) {
@@ -814,7 +893,7 @@ closeAgendaModalBtn.addEventListener('click', () => {
 
 // New listeners for Schikko auth flow
 setSchikkoBtn.addEventListener('click', async () => {
-    const email = await showSetSchikkoModal();
+    const email = await showPrompt("Enter thy email to claim the title of Schikko. The sacred password will be revealed to you once.", "", "Claim the Title of Schikko");
     if (!email || !email.includes('@')) {
         if (email !== null) { // if not cancelled by user
             showAlert("A valid email is required to claim the title.", "Invalid Email");
@@ -825,10 +904,15 @@ setSchikkoBtn.addEventListener('click', async () => {
     try {
         const functions = getFunctions(undefined, "europe-west4");
         const setSchikko = httpsCallable(functions, 'setSchikko');
-        await setSchikko({ email });
+        const result = await setSchikko({ email });
         
-        await showAlert("You have claimed the title! The sacred password has been logged to the Firebase Functions console. Guard it with your life.", "Title Claimed!");
-        checkSchikkoStatus(); // Refresh the UI to show the login button
+        if(result.data.success && result.data.password) {
+            await showAlert(`You have claimed the title! Your sacred password is: ${result.data.password}. Guard it with your life, it will not be shown again.`, "Title Claimed!");
+            checkSchikkoStatus();
+        } else {
+            throw new Error(result.data.message || "Password could not be retrieved.");
+        }
+
     } catch (error) {
         console.error("Error setting Schikko:", error);
         await showAlert(`An error occurred: ${error.message}`, "Error Claiming Title");

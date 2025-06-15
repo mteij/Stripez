@@ -8,7 +8,6 @@ const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const {request: gaxiosRequest} = require("gaxios");
 const cors = require("cors")({origin: true});
-const nodemailer = require("nodemailer");
 
 // Initialize Firebase Admin SDK
 initializeApp();
@@ -139,13 +138,34 @@ exports.getSchikkoStatus = onCall(
 );
 
 /**
- * Sets the Schikko for the current year and emails the password.
+ * Gets information about the current Schikko.
+ */
+exports.getSchikkoInfo = onCall(
+    {
+        region: "europe-west4",
+        cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+    },
+    async () => {
+        const year = new Date().getFullYear();
+        const schikkoRef = adminDb.collection('config').doc(`schikko_${year}`);
+        const schikkoDoc = await schikkoRef.get();
+        if (schikkoDoc.exists) {
+            const data = schikkoDoc.data();
+            const expiry = new Date(year, 11, 31, 23, 59, 59); // End of the year
+            return {email: data.email, expires: expiry.toISOString()};
+        } else {
+            return {email: null, expires: null};
+        }
+    },
+);
+
+/**
+ * Sets the Schikko for the current year and returns the password.
  */
 exports.setSchikko = onCall(
     {
         region: "europe-west4",
         cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
-        secrets: ["MAIL_USER", "MAIL_PASS"],
     },
     async (request) => {
         const {email} = request.data;
@@ -159,31 +179,9 @@ exports.setSchikko = onCall(
         const password = Math.random().toString(36).slice(-8);
         await schikkoRef.set({email, password, createdAt: FieldValue.serverTimestamp()});
 
-        const mailUser = process.env.MAIL_USER;
-        const mailPass = process.env.MAIL_PASS;
-        if (!mailUser || !mailPass) {
-          throw new HttpsError("internal", "Mail service is not configured on the backend.");
-        }
-
-        const transporter = nodemailer.createTransport({
-            host: "smtp.purelymail.com", port: 465, secure: true,
-            auth: {user: mailUser, pass: mailPass},
-        });
-
-        const mailOptions = {
-            from: `"The Schikko Scribe" <${mailUser}>`, to: email,
-            subject: `Your Sacred Password as Schikko for ${year}`,
-            html: `<p>Hark, claimant!</p><p>You have been chosen as the Schikko for the year ${year}.</p><p>Guard the following password with your life, for it grants the power to shape the Decrees:</p><p style="font-size: 20px; font-weight: bold; letter-spacing: 2px; background: #f5eeda; padding: 10px; border: 1px solid #b9987e;">${password}</p><p>May your reign be just.</p>`,
-        };
-
-        try {
-            await transporter.sendMail(mailOptions);
-            logger.info(`Schikko password sent to ${email}.`);
-            return {success: true};
-        } catch (error) {
-            logger.error(`Failed to send email to ${email}:`, error);
-            throw new HttpsError("internal", "The Schikko was set, but the raven failed to deliver the password.");
-        }
+        logger.info(`Schikko set for ${email}. Password: ${password}`);
+        
+        return {success: true, password: password};
     },
 );
 

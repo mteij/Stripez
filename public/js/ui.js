@@ -163,8 +163,9 @@ function showAgendaModal(show) {
  * Renders the entire list of transgressors into the DOM.
  * @param {Array} viewData - The sorted and filtered array of person objects to display.
  * @param {string} term - The current search term.
+ * @param {boolean} isSchikko - Flag to determine if the user is the Schikko.
  */
-function renderLedger(viewData, term) {
+function renderLedger(viewData, term, isSchikko) {
     const punishmentListDiv = document.getElementById('punishment-list');
     punishmentListDiv.innerHTML = '';
 
@@ -174,45 +175,27 @@ function renderLedger(viewData, term) {
         return;
     }
 
-    // --- DYNAMIC THRESHOLD CALCULATION ---
-    // This is a more robust way to calculate the threshold based on the container's actual width at runtime.
     const containerWidth = punishmentListDiv.clientWidth;
-    
-    // We estimate a "safe" area for stripes is about 55% of the container width,
-    // leaving ample room for the person's name and the action buttons on the right.
     const safeStripeAreaPercentage = 0.55; 
     const safeStripeAreaWidth = containerWidth * safeStripeAreaPercentage;
-    
-    // Each stripe element takes up 5px width + 3px margin-right.
     const effectiveStripeWidthPx = 8; 
-
-    // Calculate how many stripes can fit in the designated safe area.
     const calculatedThreshold = Math.floor(safeStripeAreaWidth / effectiveStripeWidthPx);
-
-    // We then clamp the threshold to a reasonable minimum and maximum to prevent extreme values on
-    // very narrow or very wide screens. We always want to show at least a few stripes.
     const MIN_THRESHOLD = 15;
     const MAX_THRESHOLD = 40;
     const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.max(MIN_THRESHOLD, Math.min(calculatedThreshold, MAX_THRESHOLD));
-    // --- END OF DYNAMIC CALCULATION ---
-
 
     viewData.forEach(person => {
         const normalStripesCount = person.stripes?.length || 0;
-        const drunkStripesCount = person.drunkStripes?.length || 0; // Changed to 'drunkStripes'
+        const drunkStripesCount = person.drunkStripes?.length || 0;
         
-        let stripesContentHtml = ''; // Will hold either individual stripe divs or the number string
-        let stripeContainerDynamicClasses = ''; // Classes for the div wrapping stripes/number
+        let stripesContentHtml = '';
+        let stripeContainerDynamicClasses = '';
         
-        // Decide whether to show individual stripes or a number
         if (normalStripesCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
-            // Display total count as a number if it exceeds the threshold
             stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drank: ${drunkStripesCount})</p>`; 
-            stripeContainerDynamicClasses += 'justify-start'; // Left-align the number
+            stripeContainerDynamicClasses += 'justify-start';
         } else {
-            // Display individual stripes, allowing horizontal scroll if needed
             const stripesToDisplay = normalStripesCount; 
-
             for (let i = 0; i < stripesToDisplay; i++) {
                 const isCurrentStripeDrunk = i < drunkStripesCount;
                 const isFifthInSequence = (i + 1) % 5 === 0;
@@ -224,7 +207,7 @@ function renderLedger(viewData, term) {
                     } else {
                         stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk"></div>`;
                     }
-                } else { // This stripe is normal (un-drunk)
+                } else {
                     if (isFifthInSequence && !isLastStripeOverall) {
                         stripesContentHtml += `<div class="punishment-stripe punishment-stripe-black"></div>`;
                     } else {
@@ -232,22 +215,19 @@ function renderLedger(viewData, term) {
                     }
                 }
             }
-            // Add classes for horizontal scrolling, nowrap, min-height, items-start, and padding-left/right
             stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2 pr-2';
         }
 
         const personDiv = document.createElement('div');
-        // Use flex-wrap on the main personDiv to allow name/stripes and buttons to stack
         personDiv.className = 'flex flex-wrap items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
-        personDiv.innerHTML = `
-            <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
-                <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <div class="mt-2 flex items-center min-h-[32px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0 mt-2 md:mt-0">
-                <button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>
-                <button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">🍺</button>
-                <div class="relative">
+        
+        let buttonsHTML = `<div class="flex items-center gap-2 flex-shrink-0 mt-2 md:mt-0">`;
+        if (isSchikko) {
+            buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
+        }
+        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">🍺</button>`;
+        if (isSchikko) {
+            buttonsHTML += `<div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
                     <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-52 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
                         <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Remove Last Stripe</a>
@@ -256,8 +236,16 @@ function renderLedger(viewData, term) {
                         <div class="border-t border-[#b9987e] my-1"></div>
                         <a href="#" data-action="delete" data-id="${person.id}" class="block px-4 py-2 text-md text-red-700 hover:bg-[#f5eeda] hover:text-red-800 font-bold">Delete Person</a>
                     </div>
-                </div>
-            </div>`;
+                </div>`;
+        }
+        buttonsHTML += `</div>`;
+
+        personDiv.innerHTML = `
+            <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
+                <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
+                <div class="mt-2 flex items-center min-h-[32px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
+            </div>
+            ${buttonsHTML}`;
         punishmentListDiv.appendChild(personDiv);
     });
 }
@@ -463,26 +451,25 @@ function closeMenus() {
 /**
  * Renders the interactive list of all rules into the DOM.
  * @param {Array} rulesData - The sorted array of all rule objects to display.
+ * @param {boolean} isSchikko - Flag to determine if the user is the Schikko.
  */
-function renderRules(rulesData) {
+function renderRules(rulesData, isSchikko) {
     const rulesListOl = document.getElementById('rules-list');
     if (!rulesListOl) return;
     rulesListOl.innerHTML = ''; // Clear existing rules
 
-    // Get the current rule search term from main.js to check if a search is active
     const ruleSearchInput = document.getElementById('rule-search-input');
     const hasSearchTerm = ruleSearchInput && ruleSearchInput.value.trim() !== '';
 
     if (rulesData.length === 0) {
         const li = document.createElement('li');
-        li.className = "text-center text-xl text-[#6f4e37] no-roman-numeral"; // Add a class to remove roman numeral
-        // Use a different message based on whether a search term is present
+        li.className = "text-center text-xl text-[#6f4e37] no-roman-numeral";
         li.textContent = hasSearchTerm ? "No Schikko's decrees match your quest." : "The scrolls of Schikko's decrees remain unwritten.";
         rulesListOl.appendChild(li);
         return;
     }
 
-    const isEditing = rulesListOl.classList.contains('rules-list-editing');
+    const isEditing = rulesListOl.classList.contains('rules-list-editing') && isSchikko;
 
     rulesData.forEach((rule, index) => {
         const li = document.createElement('li');
@@ -490,32 +477,30 @@ function renderRules(rulesData) {
         
         let buttonsHTML = '<div class="rule-actions items-center gap-2 pl-4">';
 
-        if (isEditing) { // Only show these buttons in edit mode
-            buttonsHTML += `<button data-rule-action="edit" data-id="${rule.id}" class="btn-ancient text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md" title="Edit Rule">&#x270E;</button>`; // Edit icon
+        if (isEditing) {
+            buttonsHTML += `<button data-rule-action="edit" data-id="${rule.id}" class="btn-ancient text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md" title="Edit Rule">&#x270E;</button>`;
 
-            // Don't show "up" arrow for the first item
             if (index > 0) {
                 buttonsHTML += `<button data-rule-action="move-up" data-id="${rule.id}" class="btn-ancient text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md" title="Move Up">&uarr;</button>`;
             } else {
-                buttonsHTML += `<span class="w-[44px] h-[44px]"></span>`; // Placeholder for alignment
+                buttonsHTML += `<span class="w-[44px] h-[44px]"></span>`;
             }
             
-            // Don't show "down" arrow for the last item
             if (index < rulesData.length - 1) {
                 buttonsHTML += `<button data-rule-action="move-down" data-id="${rule.id}" class="btn-ancient text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md" title="Move Down">&darr;</button>`;
             } else {
-                buttonsHTML += `<span class="w-[44px] h-[44px]"></span>`; // Placeholder for alignment
+                buttonsHTML += `<span class="w-[44px] h-[44px]"></span>`;
             }
 
             buttonsHTML += `<button data-rule-action="delete" data-id="${rule.id}" class="btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md" title="Delete Rule">&times;</button>`;
         }
-        buttonsHTML += '</div>'; // Close rule-actions div
+        buttonsHTML += '</div>';
 
         let ruleTextContent = rule.text;
         const colonIndex = rule.text.indexOf(':');
 
         if (colonIndex !== -1) {
-            const partBeforeColon = rule.text.substring(0, colonIndex + 1); // Include the colon
+            const partBeforeColon = rule.text.substring(0, colonIndex + 1);
             const partAfterColon = rule.text.substring(colonIndex + 1);
             ruleTextContent = `${partBeforeColon}<span class="text-red-700">${partAfterColon}</span>`;
         }
