@@ -11,36 +11,32 @@ All data is stored and synced live using Google's Firebase, and the project is s
 * **Ancient Tome Aesthetic:** Uses custom fonts and CSS to create an immersive, old-world feel.
 * **Real-time Database:** Built with Firebase Firestore, allowing multiple users to see updates instantly without refreshing the page.
 * **Secure Schikko Role (Admin):**
-    * A "Set Schikko" button appears once per year, allowing a user to claim the role by providing an email.
-    * A password is generated on the backend and must be retrieved from the Firebase Function logs (for development) or sent via an integrated email service.
-    * A "Schikko Login" button allows the designated Schikko to log in using the password to gain administrative rights for the session.
-    * The Schikko role is automatically reset annually by a scheduled function.
+    * A "Set Schikko" button allows a user to claim the role by providing an email address once per year.
+    * The system instantly generates a unique password and **displays it directly in a pop-up alert** to the new Schikko. This password is not shown again.
+    * A "Schikko Login" button allows the designated Schikko to authenticate for the current session.
+    * **Protected Actions:** Once logged in, the Schikko can perform administrative tasks such as adding/removing people, managing stripes, and editing the Decrees. Executing punishments from the Oracle's Judgement is also a protected action.
+    * **Guest View:** Unauthenticated users have a read-only view of the ledger and rules. The UI automatically hides all administrative controls for guests, who can only self-report transgressions using the "Pour Liquid" (🍺) button.
+    * The Schikko role is automatically reset annually by a scheduled Cloud Function.
 * **Google Calendar Integration:**
     * Displays the next upcoming event from a public Google Calendar.
     * A "Full Agenda" button opens a popup with all upcoming events.
     * An "Edit Calendar Link" button allows easy updating of the calendar's public iCal URL, which is stored in Firestore.
 * **Enhanced Ledger Functionality:**
-    * Full CRUD (Create, Read, Update, Delete) functionality for names on the ledger.
+    * Full CRUD (Create, Read, Update, Delete) functionality for names on the ledger, protected by Schikko authentication.
     * **Improved Punishment Tracking:** Add or remove punishment stripes for each person.
-        * Every 5th stripe (excluding the very last stripe for a person) is now subtly marked in black.
-        * If the number of stripes exceeds a set threshold, they are displayed as a numerical count rather than individual stripes, preventing overflow.
-        * Individual stripes allow horizontal scrolling if they exceed the container width, instead of wrapping.
-    * Statistics Chart: View a person's history of transgressions on a smooth, interactive chart that groups events occurring in close succession.
-    * Search & Sort: Easily find names on the ledger and sort them alphabetically or by the number of stripes.
+        * Every 5th stripe is subtly marked in black.
+        * If the number of stripes exceeds a dynamic threshold, they are displayed as a numerical count to prevent UI overflow.
+    * **Statistics Chart:** View a person's history of transgressions on a smooth, interactive chart.
+    * **Search & Sort:** Easily find names on the ledger and sort them alphabetically or by the number of stripes.
+    * **Footer Information:** The footer displays the current Schikko's name and when their reign expires, adding to the lore.
 * **Dynamic Rules Management ("Schikko's Decrees"):**
     * Display a collapsible section for lesser decrees.
-    * **Rule Search:** A dedicated search field allows filtering rules by text.
-    * **Rule Editing:** Option to edit the text of an existing rule (requires Schikko password authentication).
-    * **Conditional Text Styling:** Any text appearing after a colon (':') in a rule is automatically displayed in red.
-    * **Streamlined Rule Addition:** The "Add Decree" button now directly uses the text from the rule search field as input for the new rule.
-    * Move rules up and down in the list to reorder them.
-    * Delete rules (requires Schikko password authentication).
-    * Rule action buttons (Edit, Move Up/Down, Delete) are consistently sized and aligned for better UI.
+    * **Rule Editing:** The Schikko can edit the text of an existing rule, reorder rules, and delete them.
 * **Randomizers Hub:**
     * A central hub to access different randomization tools.
-    * **Name Selector/Shuffler:** Randomly picks or shuffles names loaded directly from the Firebase Punishment Ledger.
-    * **Dice Roller:** A simpler dice roller that generates a random number up to a user-defined maximum value.
-    * **Oracle's Judgement (Gemini AI):** A new option in the hub where users can describe a transgression in natural language. A backend function securely calls the Google Gemini API to analyze the situation against the current rules and returns a thematic, AI-generated consequence.
+    * **Name Selector/Shuffler:** Randomly picks or shuffles names loaded directly from the Punishment Ledger.
+    * **Dice Roller:** A dice roller that can be used for manual rolls or by the Oracle.
+    * **Oracle's Judgement (Gemini AI):** Users can describe a transgression in natural language. A backend function calls the Google Gemini API to return a thematic consequence. A logged-in Schikko can then execute the suggested punishment with a single click.
 * **Continuous Deployment:** The project is configured to automatically deploy to Firebase Hosting whenever changes are pushed to the `main` branch on GitHub.
 
 ---
@@ -102,7 +98,7 @@ If you wish to clone this repository and set it up with your own Firebase projec
 
 2.  **Create a Firebase Project:**
     * Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-    * **Upgrade to the Blaze Plan:** To use Cloud Functions (including scheduled functions), you must upgrade your project to the "Blaze (Pay-as-you-go)" plan. This is required to enable the necessary APIs.
+    * **Upgrade to the Blaze Plan:** To use Cloud Functions (including scheduled functions), you must upgrade your project to the "Blaze (Pay-as-you-go)" plan.
     * Inside your project, go to **Build > Firestore Database** and create a database in **Production mode**.
     * Go to **Build > Authentication**, select the **Sign-in method** tab, and **enable** the **Anonymous** provider.
 
@@ -130,7 +126,7 @@ If you wish to clone this repository and set it up with your own Firebase projec
 4.  **Set up Google Calendar:**
     * Create a Google Calendar that you want to use for the agenda.
     * Make the calendar public and get the "Secret address in iCal format".
-    * Once the application is running, click the "Edit Calendar Link" button and paste this URL.
+    * Once the application is running, a logged-in Schikko can click the "Edit Calendar Link" button (✎) and paste this URL.
 
 5.  **Set up Backend Functions:**
     * **Initialize Functions:** In your local project root, run `firebase init functions` and select JavaScript.
@@ -146,11 +142,9 @@ If you wish to clone this repository and set it up with your own Firebase projec
         * `Cloud Functions Admin`
         * `Firebase Hosting Admin`
         * `Service Account User`
-        * `Firebase Extensions Viewer`
         * `API Keys Viewer`
         * `Service Usage Consumer`
         * **`Cloud Scheduler Admin`** (for the annual reset function)
-        * **`Logs Viewer`** (to see the generated Schikko password)
 
 7.  **Configure GitHub Secrets for CI/CD:**
     * In your GitHub repository, go to **Settings > Secrets and variables > Actions**.
@@ -158,11 +152,10 @@ If you wish to clone this repository and set it up with your own Firebase projec
     * Add secrets for your Firebase config values (`FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`, etc.) to be used by the workflows.
 
 8.  **Deploy:**
-    * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`. This will deploy hosting and all functions, including the scheduled function.
-    * The GitHub Actions will automatically deploy changes pushed to `main` or a pull request.
+    * You can deploy manually by installing the Firebase CLI (`npm install -g firebase-tools`) and running `firebase deploy`.
+    * The GitHub Actions will automatically deploy changes pushed to `main`.
 
 9.  **First-Time Schikko Setup (Post-Deploy):**
     * Open the deployed web application. Click the "Set Schikko" button.
-    * Enter an email address.
-    * Go to your Firebase project -> **Functions -> Logs**. Find the log entry from the `setSchikko` function containing the generated password.
-    * **IMPORTANT**: For a real-world application, you **must** replace the password logging in `functions/index.js` with a service that sends the password to the user's email (e.g., using the "Trigger Email" Firebase Extension). Storing plain-text passwords is not secure.
+    * Enter an email address. A pop-up alert will immediately display the generated password.
+    * **IMPORTANT**: The password is only shown once. Ensure you save it securely. The user who claims the role is responsible for sharing it if needed.
