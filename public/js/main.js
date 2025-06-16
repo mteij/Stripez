@@ -131,6 +131,26 @@ onAuthStateChanged(auth, (user) => {
 
 // --- HELPER & NEW AUTH FUNCTIONS ---
 
+/**
+ * Handles the Schikko login process.
+ */
+async function handleLogin() {
+    await confirmSchikko();
+}
+
+/**
+ * Handles the Schikko logout process.
+ */
+async function handleLogout() {
+    const confirmed = await showConfirm("Are you sure you want to log out as Schikko? This will end your administrative session.", "Confirm Logout");
+    if (confirmed) {
+        isSchikkoSessionActive = false;
+        updateGuestUI();
+        updateAppFooter();
+        showAlert("You have logged out.", "Logout Successful");
+    }
+}
+
 function updateGuestUI() {
     const isGuest = !isSchikkoSessionActive;
 
@@ -141,8 +161,9 @@ function updateGuestUI() {
     if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'inline-flex';
     if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
     
-    // REMOVED: Redundant text change on oracle button.
-    // if(openGeminiFromHubBtn) openGeminiFromHubBtn.textContent = isGuest ? "Oracle's Judgement (Read-Only)" : "Oracle's Judgement";
+    if (schikkoLoginBtn) {
+        schikkoLoginBtn.textContent = isSchikkoSessionActive ? 'Schikko Logout' : 'Schikko Login';
+    }
 
     handleRender();
     handleRenderRules();
@@ -924,5 +945,9 @@ setSchikkoBtn.addEventListener('click', async () => {
 });
 
 schikkoLoginBtn.addEventListener('click', async () => {
-    await confirmSchikko();
+    if (isSchikkoSessionActive) {
+        await handleLogout();
+    } else {
+        await handleLogin();
+    }
 });
