@@ -225,7 +225,7 @@ function renderLedger(viewData, term, isSchikko) {
         if (isSchikko) {
             buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
         }
-        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">🍺</button>`;
+        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">Drink 🍺</button>`;
         if (isSchikko) {
             buttonsHTML += `<div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
