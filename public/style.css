@@ -71,25 +71,26 @@ body {
     box-shadow: 0 3px 6px rgba(0,0,0,0.15); /* Slightly more prominent shadow on hover */
 }
 
-/* Square Beer Button */
-.btn-square-beer-button {
+/* Flexible Beer Button */
+.btn-beer {
     background-color: #f39c12; /* Beer color */
     color: white;
     border: 2px solid #e67e22; /* Darker border */
-    width: 44px; /* Fixed width */
-    height: 44px; /* Fixed height */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px; /* Rounded corners */
-    font-size: 1.5rem; /* Larger emoji */
+    padding: 0.5rem 0.75rem; /* py-2 px-3 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 1rem; /* Base font size */
+    line-height: 1.5rem; /* Ensure vertical alignment of text and emoji */
+    font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     flex-shrink: 0; /* Prevent it from shrinking */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.btn-square-beer-button:hover {
+.btn-beer:hover {
     background-color: #e67e22; /* Darker beer color on hover */
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
@@ -293,6 +294,7 @@ body {
 .stripe-wrapper {
     position: relative;
     display: inline-block;
+    vertical-align: top; /* Aligns wrappers with regular stripes */
 }
 
 .stripe-number {
@@ -300,7 +302,7 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 9px;
+    font-size: 8px;
     font-weight: bold;
     color: white;
     font-family: Arial, sans-serif;

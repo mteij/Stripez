@@ -222,7 +222,7 @@ function renderLedger(viewData, term, isSchikko) {
                     stripesContentHtml += `<div class="${stripeClasses}"></div>`;
                 }
             }
-            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-center pl-2 pr-2';
+            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2 pr-2';
         }
 
         const personDiv = document.createElement('div');
@@ -232,7 +232,9 @@ function renderLedger(viewData, term, isSchikko) {
         if (isSchikko) {
             buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
         }
-        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">🍺</button>`;
+        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-beer" title="Pour Liquid">
+                            <span class="hidden sm:inline">Drink </span><span>🍺</span>
+                        </button>`;
         if (isSchikko) {
             buttonsHTML += `<div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
