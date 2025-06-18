@@ -208,6 +208,8 @@ function renderLedger(viewData, term, isSchikko) {
             stripeContainerDynamicClasses += 'justify-start';
         } else {
             const stripesToDisplay = normalStripesCount;
+            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[44px] items-center pl-2 pr-2 pt-4';
+
             for (let i = 0; i < stripesToDisplay; i++) {
                 const isCurrentStripeDrunk = i < drunkStripesCount;
                 const isFifthInSequence = (i + 1) % 5 === 0;
@@ -226,17 +228,16 @@ function renderLedger(viewData, term, isSchikko) {
                     } else {
                         stripeClasses += ' punishment-stripe-black';
                     }
-                    
-                    stripesContentHtml += `
-                        <div class="stripe-wrapper">
-                            <div class="${stripeClasses}"></div>
-                            <span class="stripe-number">${i + 1}</span>
-                        </div>`;
-                } else {
-                    stripesContentHtml += `<div class="${stripeClasses}"></div>`;
                 }
+                
+                const numberHTML = applySpecialFormatting ? `<span class="stripe-number">${i + 1}</span>` : '';
+                
+                stripesContentHtml += `
+                    <div class="stripe-wrapper">
+                        <div class="${stripeClasses}"></div>
+                        ${numberHTML}
+                    </div>`;
             }
-            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[44px] items-start pl-2 pr-2 pt-4';
         }
 
         const personDiv = document.createElement('div');
