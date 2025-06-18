@@ -282,8 +282,8 @@ function showStatsModal(person) {
     const statsModal = document.getElementById('stats-modal');
     const statsName = document.getElementById('stats-name');
     const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d');
-    const stripeFilterSelect = document.getElementById('stripe-filter-select'); // Get the new select element
-    const remainingStripesDisplay = document.getElementById('remaining-stripes-display'); // New element
+    const stripeFilterSelect = document.getElementById('stripe-filter-select');
+    const remainingStripesDisplay = document.getElementById('remaining-stripes-display');
 
 
     statsName.textContent = `Statistics for ${person.name}`;
@@ -306,15 +306,15 @@ function showStatsModal(person) {
 
         const THIRTY_MINUTES_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
 
-        let displayValue = 0; // Initialize display value for the text
+        let displayValue = 0;
         if (filterType === 'total') {
-            displayValue = normalStripesCount.length;
+            displayValue = normalStripeTimestamps.length;
             remainingStripesDisplay.textContent = `Total Stripes: ${displayValue}`;
         } else if (filterType === 'drunk') {
             displayValue = drunkStripeTimestamps.length;
             remainingStripesDisplay.textContent = `Drunk Stripes: ${displayValue}`;
         } else if (filterType === 'left') {
-            displayValue = Math.max(0, normalStripesCount.length - drunkStripeTimestamps.length);
+            displayValue = Math.max(0, normalStripeTimestamps.length - drunkStripeTimestamps.length);
             remainingStripesDisplay.textContent = `Stripes Left: ${displayValue}`;
         }
 
@@ -457,10 +457,10 @@ function showStatsModal(person) {
     // Initial chart render based on current select value
     updateChart(stripeFilterSelect.value);
 
-    // Attach event listeners to filter dropdown
-    stripeFilterSelect.addEventListener('change', (e) => {
+    // Replace previous listener to avoid stacking them
+    stripeFilterSelect.onchange = (e) => {
         updateChart(e.target.value);
-    });
+    };
 
     statsModal.classList.remove('hidden');
 }
