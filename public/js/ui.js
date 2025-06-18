@@ -199,20 +199,22 @@ function renderLedger(viewData, term, isSchikko) {
             for (let i = 0; i < stripesToDisplay; i++) {
                 const isCurrentStripeDrunk = i < drunkStripesCount;
                 const isFifthInSequence = (i + 1) % 5 === 0;
+                const isLastStripeOverall = (i + 1) === normalStripesCount;
 
                 let stripeClasses = 'punishment-stripe';
                 if (isCurrentStripeDrunk) {
                     stripeClasses += ' punishment-stripe-drunk';
-                    if (isFifthInSequence) {
-                        stripeClasses += ' punishment-stripe-drunk-fifth';
-                    }
-                } else {
-                    if (isFifthInSequence) {
-                        stripeClasses += ' punishment-stripe-black';
-                    }
                 }
 
-                if (isFifthInSequence) {
+                const applySpecialFormatting = isFifthInSequence && !isLastStripeOverall;
+
+                if (applySpecialFormatting) {
+                    if (isCurrentStripeDrunk) {
+                        stripeClasses += ' punishment-stripe-drunk-fifth';
+                    } else {
+                        stripeClasses += ' punishment-stripe-black';
+                    }
+                    
                     stripesContentHtml += `
                         <div class="stripe-wrapper">
                             <div class="${stripeClasses}"></div>
@@ -233,7 +235,7 @@ function renderLedger(viewData, term, isSchikko) {
             buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
         }
         buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-beer" title="Pour Liquid">
-                            <span class="hidden sm:inline">Drink </span><span>🍺</span>
+                            <span class="hidden sm:inline mr-2">Drink</span><span>🍺</span>
                         </button>`;
         if (isSchikko) {
             buttonsHTML += `<div class="relative">
