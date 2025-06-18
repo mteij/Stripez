@@ -312,7 +312,6 @@ function updateTagFilterDropdown() {
         (rule.tags || []).forEach(tag => allTags.add(tag));
     });
 
-    const currentFilterValue = ruleTagFilter.value;
     ruleTagFilter.innerHTML = '<option value="all">All Tags</option>';
     
     [...allTags].sort().forEach(tag => {
@@ -321,7 +320,9 @@ function updateTagFilterDropdown() {
         option.textContent = tag;
         ruleTagFilter.appendChild(option);
     });
-    ruleTagFilter.value = currentFilterValue;
+
+    // Ensure the dropdown's visible state matches the current filter state
+    ruleTagFilter.value = currentTagFilter;
 }
 
 // --- RENDER LOGIC ---
