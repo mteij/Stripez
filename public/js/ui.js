@@ -267,7 +267,7 @@ function renderLedger(viewData, term, isSchikko) {
         personDiv.innerHTML = `
             <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <div class="mt-2 flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
+                <div class="flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             ${buttonsHTML}`;
         punishmentListDiv.appendChild(personDiv);
@@ -308,13 +308,13 @@ function showStatsModal(person) {
 
         let displayValue = 0; // Initialize display value for the text
         if (filterType === 'total') {
-            displayValue = normalStripeTimestamps.length;
+            displayValue = normalStripesCount.length;
             remainingStripesDisplay.textContent = `Total Stripes: ${displayValue}`;
         } else if (filterType === 'drunk') {
             displayValue = drunkStripeTimestamps.length;
             remainingStripesDisplay.textContent = `Drunk Stripes: ${displayValue}`;
         } else if (filterType === 'left') {
-            displayValue = Math.max(0, normalStripeTimestamps.length - drunkStripeTimestamps.length);
+            displayValue = Math.max(0, normalStripesCount.length - drunkStripeTimestamps.length);
             remainingStripesDisplay.textContent = `Stripes Left: ${displayValue}`;
         }
 
