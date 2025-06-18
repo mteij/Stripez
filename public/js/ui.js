@@ -482,9 +482,9 @@ function renderRules(rulesData, isSchikko) {
 
     rulesData.forEach((rule, index) => {
         const li = document.createElement('li');
-        li.className = 'flex justify-between items-center';
+        li.className = 'flex justify-between items-start gap-4';
         
-        let buttonsHTML = '<div class="rule-actions items-center gap-2 pl-4">';
+        let buttonsHTML = '<div class="rule-actions items-center gap-2 pl-4 flex-shrink-0">';
 
         if (isEditing) {
             buttonsHTML += `<button data-rule-action="edit" data-id="${rule.id}" class="btn-ancient text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md" title="Edit Rule">&#x270E;</button>`;
@@ -514,7 +514,21 @@ function renderRules(rulesData, isSchikko) {
             ruleTextContent = `${partBeforeColon}<span class="text-red-700">${partAfterColon}</span>`;
         }
 
-        li.innerHTML = `<span>${ruleTextContent}</span> ${buttonsHTML}`;
+        let tagsHTML = '';
+        if (rule.tags && rule.tags.length > 0) {
+            tagsHTML += '<div class="rule-tags-container">';
+            rule.tags.forEach(tag => {
+                tagsHTML += `<span class="rule-tag">${tag}</span>`;
+            });
+            tagsHTML += '</div>';
+        }
+
+        li.innerHTML = `
+            <div class="flex-grow">
+                <span>${ruleTextContent}</span>
+                ${tagsHTML}
+            </div>
+            ${buttonsHTML}`;
         rulesListOl.appendChild(li);
     });
 }
@@ -605,5 +619,40 @@ function showSetSchikkoModal() {
     });
 }
 
+function showRuleEditModal(currentText, currentTags = []) {
+    const modal = document.getElementById('edit-rule-modal');
+    const textInput = document.getElementById('edit-rule-text-input');
+    const tagsInput = document.getElementById('edit-rule-tags-input');
+    const okBtn = document.getElementById('edit-rule-ok-btn');
+    const cancelBtn = document.getElementById('edit-rule-cancel-btn');
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal };
+    textInput.value = currentText;
+    tagsInput.value = (currentTags || []).join(', ');
+
+    modal.classList.remove('hidden');
+    textInput.focus();
+
+    return new Promise(resolve => {
+        const cleanup = () => {
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+        };
+
+        okBtn.onclick = () => {
+            modal.classList.add('hidden');
+            // Split by comma, trim whitespace, and filter out empty strings
+            const tags = tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+            cleanup();
+            resolve({ text: textInput.value, tags: tags });
+        };
+
+        cancelBtn.onclick = () => {
+            modal.classList.add('hidden');
+            cleanup();
+            resolve(null);
+        };
+    });
+}
+
+
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal };

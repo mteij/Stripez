@@ -309,3 +309,22 @@ body {
     text-shadow: 0px 0px 3px rgba(0, 0, 0, 0.9);
     pointer-events: none;
 }
+
+/* New styles for rule tags */
+.rule-tags-container {
+    display: flex;
+    gap: 0.5rem; /* 8px */
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.rule-tag {
+    background-color: #a58467;
+    color: #fdf8e9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px; /* pill shape */
+    font-size: 0.8rem;
+    font-family: 'MedievalSharp', cursive;
+    border: 1px solid #5c3d2e;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}

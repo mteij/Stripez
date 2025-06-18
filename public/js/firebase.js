@@ -120,7 +120,7 @@ const deletePersonFromLedger = async (docId) => {
 };
 
 const addRuleToFirestore = async (text, order) => {
-    await addDoc(rulesCollectionRef, { text, order, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    await addDoc(rulesCollectionRef, { text, order, tags: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 };
 
 const deleteRuleFromFirestore = async (docId) => {
@@ -140,10 +140,13 @@ const updateRuleOrderInFirestore = async (rule1, rule2) => {
     await batch.commit();
 };
 
-// New function to update rule text
-const updateRuleTextInFirestore = async (docId, newText) => {
+const updateRuleInFirestore = async (docId, newText, tags) => {
     const docRef = doc(db, 'rules', docId);
-    await updateDoc(docRef, { text: newText.trim(), updatedAt: serverTimestamp() });
+    await updateDoc(docRef, { 
+        text: newText.trim(), 
+        tags: tags,
+        updatedAt: serverTimestamp() 
+    });
 };
 
 /**
@@ -195,7 +198,7 @@ export {
     addRuleToFirestore,
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
-    updateRuleTextInFirestore,
+    updateRuleInFirestore,
     addDrunkStripeToPerson, 
     removeLastDrunkStripeFromPerson,
     getCalendarConfig,

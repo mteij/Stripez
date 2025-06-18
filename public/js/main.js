@@ -5,7 +5,7 @@ import {
     auth, onAuthStateChanged, signInAnonymously, setupRealtimeListener,
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
-    deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleTextInFirestore,
+    deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleInFirestore,
     addDrunkStripeToPerson,
     removeLastDrunkStripeFromPerson,
     getCalendarConfig,
@@ -14,7 +14,8 @@ import {
 import { 
     renderLedger, showStatsModal, closeMenus, renderRules, 
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
-    showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal
+    showAlert, showConfirm, showPrompt, showSchikkoLoginModal, 
+    showSetSchikkoModal, showRuleEditModal
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -158,7 +159,7 @@ function updateGuestUI() {
     document.querySelectorAll('[data-action="toggle-menu"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
     
     if (editRulesBtn) editRulesBtn.style.display = isGuest ? 'none' : 'inline-flex';
-    if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'inline-flex';
+    if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'flex';
     if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
     
     if (schikkoLoginBtn) {
@@ -675,9 +676,14 @@ async function handleAddRule() {
 async function handleEditRule(docId) {
     const rule = rulesDataCache.find(r => r.id === docId);
     if (!rule) return;
-    const newText = await showPrompt("Enter the new text for the decree:", rule.text, "Edit Decree");
-    if (newText && newText.trim() !== "") {
-        await updateRuleTextInFirestore(docId, newText);
+    
+    const result = await showRuleEditModal(rule.text, rule.tags);
+
+    if (result) {
+        const { text, tags } = result;
+        if (text.trim() !== "") {
+            await updateRuleInFirestore(docId, text, tags);
+        }
     }
 }
 
