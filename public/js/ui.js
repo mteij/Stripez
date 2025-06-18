@@ -533,7 +533,8 @@ function renderRules(rulesData, isSchikko) {
         if (rule.tags && rule.tags.length > 0) {
             const numColors = 5;
             tagsHTML += '<div class="rule-tags-container flex-shrink-0 ml-4">';
-            rule.tags.forEach(tag => {
+            // Sort tags alphabetically before rendering
+            rule.tags.sort().forEach(tag => {
                 const colorClassIndex = hashCode(tag) % numColors + 1;
                 tagsHTML += `<span class="rule-tag tag-color-${colorClassIndex}">${tag}</span>`;
             });
