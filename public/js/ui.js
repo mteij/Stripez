@@ -195,27 +195,34 @@ function renderLedger(viewData, term, isSchikko) {
             stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drank: ${drunkStripesCount})</p>`; 
             stripeContainerDynamicClasses += 'justify-start';
         } else {
-            const stripesToDisplay = normalStripesCount; 
+            const stripesToDisplay = normalStripesCount;
             for (let i = 0; i < stripesToDisplay; i++) {
                 const isCurrentStripeDrunk = i < drunkStripesCount;
                 const isFifthInSequence = (i + 1) % 5 === 0;
-                const isLastStripeOverall = (i + 1) === normalStripesCount;
 
+                let stripeClasses = 'punishment-stripe';
                 if (isCurrentStripeDrunk) {
-                    if (isFifthInSequence && !isLastStripeOverall) {
-                        stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk punishment-stripe-drunk-fifth"></div>`;
-                    } else {
-                        stripesContentHtml += `<div class="punishment-stripe punishment-stripe-drunk"></div>`;
+                    stripeClasses += ' punishment-stripe-drunk';
+                    if (isFifthInSequence) {
+                        stripeClasses += ' punishment-stripe-drunk-fifth';
                     }
                 } else {
-                    if (isFifthInSequence && !isLastStripeOverall) {
-                        stripesContentHtml += `<div class="punishment-stripe punishment-stripe-black"></div>`;
-                    } else {
-                        stripesContentHtml += `<div class="punishment-stripe"></div>`;
+                    if (isFifthInSequence) {
+                        stripeClasses += ' punishment-stripe-black';
                     }
                 }
+
+                if (isFifthInSequence) {
+                    stripesContentHtml += `
+                        <div class="stripe-wrapper">
+                            <div class="${stripeClasses}"></div>
+                            <span class="stripe-number">${i + 1}</span>
+                        </div>`;
+                } else {
+                    stripesContentHtml += `<div class="${stripeClasses}"></div>`;
+                }
             }
-            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2 pr-2';
+            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-center pl-2 pr-2';
         }
 
         const personDiv = document.createElement('div');
@@ -225,7 +232,7 @@ function renderLedger(viewData, term, isSchikko) {
         if (isSchikko) {
             buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
         }
-        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">Drink 🍺</button>`;
+        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-square-beer-button" title="Pour Liquid">🍺</button>`;
         if (isSchikko) {
             buttonsHTML += `<div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
