@@ -108,6 +108,7 @@
                 <div class="pt-4 border-t-4 border-dotted border-[#b9987e]">
                     <div class="flex flex-col sm:flex-row items-center justify-end gap-2 mb-4">
                         <input type="text" id="rule-search-input" placeholder="Search decrees..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                        <select id="rule-tag-filter" class="bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]"></select>
                         <button id="add-decree-btn" class="btn-ancient w-[44px] h-[44px] flex items-center justify-center rounded-md text-2xl font-bold hidden" title="Add Decree">
                             +
                         </button>
@@ -358,7 +359,9 @@
                 <textarea id="edit-rule-text-input" rows="4" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4"></textarea>
                 
                 <label for="edit-rule-tags-input" class="block text-lg text-[#4a3024] mb-2">Tags (comma-separated):</label>
-                <input type="text" id="edit-rule-tags-input" placeholder="e.g., NICAT, Meeting" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6">
+                <input type="text" id="edit-rule-tags-input" placeholder="e.g., NICAT, Meeting" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4">
+
+                <div id="existing-tags-container" class="mb-6"></div>
             </div>
             <div class="flex justify-center gap-4">
                 <button id="edit-rule-ok-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Update</button>
