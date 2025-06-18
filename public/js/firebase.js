@@ -56,6 +56,18 @@ const saveCalendarUrl = async (url) => {
     await setDoc(docRef, { url: url }, { merge: true });
 };
 
+const getNicatDate = async () => {
+    const docRef = doc(db, 'config', 'nicat');
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? docSnap.data() : { date: null };
+};
+
+const saveNicatDate = async (dateString) => {
+    const docRef = doc(db, 'config', 'nicat');
+    const date = new Date(dateString);
+    await setDoc(docRef, { date: date }, { merge: true });
+};
+
 const addNameToLedger = async (name, userId) => {
     await addDoc(ledgerCollectionRef, { name, stripes: [], drunkStripes: [], addedBy: userId }); // Changed to 'drunkStripes'
 };
@@ -202,5 +214,7 @@ export {
     addDrunkStripeToPerson, 
     removeLastDrunkStripeFromPerson,
     getCalendarConfig,
-    saveCalendarUrl
+    saveCalendarUrl,
+    getNicatDate,
+    saveNicatDate
 };

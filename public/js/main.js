@@ -9,13 +9,15 @@ import {
     addDrunkStripeToPerson,
     removeLastDrunkStripeFromPerson,
     getCalendarConfig,
-    saveCalendarUrl
+    saveCalendarUrl,
+    getNicatDate,
+    saveNicatDate
 } from './firebase.js';
 import { 
     renderLedger, showStatsModal, closeMenus, renderRules, 
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
     showAlert, showConfirm, showPrompt, showSchikkoLoginModal, 
-    showSetSchikkoModal, showRuleEditModal
+    showSetSchikkoModal, showRuleEditModal, renderNicatCountdown
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -29,6 +31,7 @@ let calendarEventsCache = [];
 let currentSortOrder = 'asc';
 let currentSearchTerm = ''; // For ledger search
 let currentRuleSearchTerm = ''; // New: For rules inconsistencies search
+let currentTagFilter = 'all'; // For tag filtering
 let isSchikkoSessionActive = false; // Secure session state for Schikko
 let isSchikkoSetForTheYear = false; // NEW: Tracks if a schikko is set for the year
 let lastPunishmentInfo = { // New state for last punishment awarded
@@ -54,6 +57,7 @@ const showDecreesContainer = document.getElementById('show-decrees-container');
 const decreesContent = document.getElementById('decrees-content');
 const showDecreesBtn = document.getElementById('show-decrees-btn');
 const ruleSearchInput = document.getElementById('rule-search-input');
+const ruleTagFilter = document.getElementById('rule-tag-filter');
 const appInfoFooter = document.getElementById('app-info-footer');
 const ledgerNamesDatalist = document.getElementById('ledger-names');
 const upcomingEventDiv = document.getElementById('upcoming-event');
@@ -64,6 +68,7 @@ const closeAgendaModalBtn = document.getElementById('close-agenda-modal');
 const setSchikkoBtn = document.getElementById('set-schikko-btn');
 const schikkoLoginContainer = document.getElementById('schikko-login-container');
 const schikkoLoginBtn = document.getElementById('schikko-login-btn');
+const editNicatBtn = document.getElementById('edit-nicat-btn');
 
 
 // Dice randomizer modal and buttons
@@ -114,6 +119,7 @@ onAuthStateChanged(auth, (user) => {
             updateAppFooter();
         });
         loadCalendarData();
+        loadAndRenderNicatCountdown();
         setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
@@ -123,6 +129,7 @@ onAuthStateChanged(auth, (user) => {
         setupRealtimeListener('rules', (data) => {
             rulesDataCache = data.sort((a, b) => a.order - b.order);
             handleRenderRules();
+            updateTagFilterDropdown();
             updateAppFooter();
         });
     } else {
@@ -168,6 +175,7 @@ function updateGuestUI() {
 
     handleRender();
     handleRenderRules();
+    loadAndRenderNicatCountdown();
 }
 
 /**
@@ -282,6 +290,11 @@ async function loadCalendarData() {
     }
 }
 
+async function loadAndRenderNicatCountdown() {
+    const nicatData = await getNicatDate();
+    renderNicatCountdown(nicatData, isSchikkoSessionActive);
+}
+
 function updateDatalist() {
     if (ledgerNamesDatalist) {
         ledgerNamesDatalist.innerHTML = '';
@@ -291,6 +304,24 @@ function updateDatalist() {
             ledgerNamesDatalist.appendChild(option);
         });
     }
+}
+
+function updateTagFilterDropdown() {
+    const allTags = new Set();
+    rulesDataCache.forEach(rule => {
+        (rule.tags || []).forEach(tag => allTags.add(tag));
+    });
+
+    const currentFilterValue = ruleTagFilter.value;
+    ruleTagFilter.innerHTML = '<option value="all">All Tags</option>';
+    
+    [...allTags].sort().forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag;
+        ruleTagFilter.appendChild(option);
+    });
+    ruleTagFilter.value = currentFilterValue;
 }
 
 // --- RENDER LOGIC ---
@@ -321,9 +352,15 @@ function handleRender() {
 function handleRenderRules() {
     let filteredRules = [...rulesDataCache];
     const term = currentRuleSearchTerm.toLowerCase();
+
     if (term) {
         filteredRules = filteredRules.filter(rule => rule.text.toLowerCase().includes(term));
     }
+
+    if (currentTagFilter !== 'all') {
+        filteredRules = filteredRules.filter(rule => (rule.tags || []).includes(currentTagFilter));
+    }
+
     renderRules(filteredRules, isSchikkoSessionActive);
 }
 
@@ -677,7 +714,7 @@ async function handleEditRule(docId) {
     const rule = rulesDataCache.find(r => r.id === docId);
     if (!rule) return;
     
-    const result = await showRuleEditModal(rule.text, rule.tags);
+    const result = await showRuleEditModal(rule.text, rule.tags, rulesDataCache);
 
     if (result) {
         const { text, tags } = result;
@@ -690,6 +727,7 @@ async function handleEditRule(docId) {
 // --- EVENT LISTENERS ---
 mainInput.addEventListener('input', () => { currentSearchTerm = mainInput.value; handleRender(); });
 ruleSearchInput?.addEventListener('input', () => { currentRuleSearchTerm = ruleSearchInput.value; handleRenderRules(); });
+ruleTagFilter.addEventListener('change', (e) => { currentTagFilter = e.target.value; handleRenderRules(); });
 mainInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddName(); } });
 addBtn.addEventListener('click', handleAddName);
 addDecreeBtn?.addEventListener('click', handleAddRule);
@@ -910,6 +948,29 @@ editCalendarBtn.addEventListener('click', async () => {
     if (newUrl) {
         await saveCalendarUrl(newUrl);
         loadCalendarData();
+    }
+});
+
+editNicatBtn.addEventListener('click', async () => {
+    if (!await confirmSchikko()) return;
+    
+    const nicatData = await getNicatDate();
+    const currentDate = nicatData.date ? nicatData.date.toDate().toISOString().split('T')[0] : '';
+    
+    const newDateStr = await showPrompt(
+        'Enter the date for the next NICAT.', 
+        currentDate, 
+        'Decree NICAT Date (YYYY-MM-DD)'
+    );
+
+    if (newDateStr) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(newDateStr)) {
+            await saveNicatDate(newDateStr);
+            await showAlert("The date for the NICAT has been decreed!", "Success");
+            loadAndRenderNicatCountdown();
+        } else {
+            await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
+        }
     }
 });
 

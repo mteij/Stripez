@@ -1,6 +1,18 @@
 // public/js/ui.js
 
 let stripeChart = null;
+let nicatCountdownInterval = null;
+
+// --- UTILITY FUNCTIONS ---
+function hashCode(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+}
 
 // --- GENERIC MODAL UI FUNCTIONS ---
 
@@ -224,7 +236,7 @@ function renderLedger(viewData, term, isSchikko) {
                     stripesContentHtml += `<div class="${stripeClasses}"></div>`;
                 }
             }
-            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[32px] items-start pl-2 pr-2';
+            stripeContainerDynamicClasses += 'overflow-x-auto whitespace-nowrap min-h-[44px] items-start pl-2 pr-2 pt-4';
         }
 
         const personDiv = document.createElement('div');
@@ -235,7 +247,7 @@ function renderLedger(viewData, term, isSchikko) {
             buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
         }
         buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-beer" title="Pour Liquid">
-                            <span class="hidden sm:inline mr-2">Drink</span><span>🍺</span>
+                            <span class="hidden sm:inline">Drink</span><span>🍺</span>
                         </button>`;
         if (isSchikko) {
             buttonsHTML += `<div class="relative">
@@ -254,7 +266,7 @@ function renderLedger(viewData, term, isSchikko) {
         personDiv.innerHTML = `
             <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
-                <div class="mt-2 flex items-center min-h-[32px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
+                <div class="mt-2 flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             ${buttonsHTML}`;
         punishmentListDiv.appendChild(personDiv);
@@ -518,21 +530,65 @@ function renderRules(rulesData, isSchikko) {
 
         let tagsHTML = '';
         if (rule.tags && rule.tags.length > 0) {
-            tagsHTML += '<div class="rule-tags-container">';
+            const numColors = 5;
+            tagsHTML += '<div class="rule-tags-container flex-shrink-0 ml-4">';
             rule.tags.forEach(tag => {
-                tagsHTML += `<span class="rule-tag">${tag}</span>`;
+                const colorClassIndex = hashCode(tag) % numColors + 1;
+                tagsHTML += `<span class="rule-tag tag-color-${colorClassIndex}">${tag}</span>`;
             });
             tagsHTML += '</div>';
         }
 
         li.innerHTML = `
-            <div class="flex-grow">
+            <div class="flex-grow flex justify-between items-center">
                 <span>${ruleTextContent}</span>
                 ${tagsHTML}
             </div>
             ${buttonsHTML}`;
         rulesListOl.appendChild(li);
     });
+}
+
+function renderNicatCountdown(nicatData, isSchikko) {
+    const countdownContainer = document.getElementById('nicat-countdown');
+    const editBtn = document.getElementById('edit-nicat-btn');
+    
+    if (isSchikko) {
+        editBtn.classList.remove('hidden');
+    } else {
+        editBtn.classList.add('hidden');
+    }
+
+    if (nicatCountdownInterval) clearInterval(nicatCountdownInterval);
+
+    if (!nicatData || !nicatData.date) {
+        countdownContainer.textContent = 'Date for the next NICAT is not yet decreed.';
+        return;
+    }
+
+    const targetDate = nicatData.date.toDate();
+
+    nicatCountdownInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = targetDate - now;
+
+        if (distance < 0) {
+            clearInterval(nicatCountdownInterval);
+            countdownContainer.textContent = "The NICAT has passed! Awaiting the next decree...";
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        countdownContainer.innerHTML = `Next NICAT in: 
+            <span class="font-bold">${days}d</span> 
+            <span class="font-bold">${hours}h</span> 
+            <span class="font-bold">${minutes}m</span> 
+            <span class="font-bold">${seconds}s</span>`;
+    }, 1000);
 }
 
 /**
@@ -621,15 +677,45 @@ function showSetSchikkoModal() {
     });
 }
 
-function showRuleEditModal(currentText, currentTags = []) {
+function showRuleEditModal(currentText, currentTags = [], allRules = []) {
     const modal = document.getElementById('edit-rule-modal');
     const textInput = document.getElementById('edit-rule-text-input');
     const tagsInput = document.getElementById('edit-rule-tags-input');
     const okBtn = document.getElementById('edit-rule-ok-btn');
     const cancelBtn = document.getElementById('edit-rule-cancel-btn');
+    const existingTagsContainer = document.getElementById('existing-tags-container');
 
     textInput.value = currentText;
     tagsInput.value = (currentTags || []).join(', ');
+
+    const allTags = new Set();
+    allRules.forEach(rule => {
+        (rule.tags || []).forEach(tag => allTags.add(tag));
+    });
+
+    existingTagsContainer.innerHTML = '';
+    if (allTags.size > 0) {
+        const sortedTags = [...allTags].sort();
+        existingTagsContainer.innerHTML = '<p class="text-sm text-left mb-2 text-[#6f4e37]">Click to add existing tag:</p><div class="flex flex-wrap gap-2"></div>';
+        const tagsWrapper = existingTagsContainer.querySelector('div');
+        
+        sortedTags.forEach(tag => {
+            const tagEl = document.createElement('span');
+            const numColors = 5;
+            const colorClassIndex = hashCode(tag) % numColors + 1;
+            tagEl.className = `rule-tag tag-color-${colorClassIndex} cursor-pointer`;
+            tagEl.textContent = tag;
+            tagEl.onclick = () => {
+                const currentTagInputValue = tagsInput.value.trim();
+                const currentModalTags = currentTagInputValue ? currentTagInputValue.split(',').map(t => t.trim()) : [];
+                if (!currentModalTags.includes(tag)) {
+                    currentModalTags.push(tag);
+                    tagsInput.value = currentModalTags.join(', ');
+                }
+            };
+            tagsWrapper.appendChild(tagEl);
+        });
+    }
 
     modal.classList.remove('hidden');
     textInput.focus();
@@ -642,7 +728,6 @@ function showRuleEditModal(currentText, currentTags = []) {
 
         okBtn.onclick = () => {
             modal.classList.add('hidden');
-            // Split by comma, trim whitespace, and filter out empty strings
             const tags = tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
             cleanup();
             resolve({ text: textInput.value, tags: tags });
@@ -657,4 +742,4 @@ function showRuleEditModal(currentText, currentTags = []) {
 }
 
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown };
