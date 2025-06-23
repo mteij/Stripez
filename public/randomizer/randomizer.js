@@ -6,8 +6,8 @@ function rand(min, max) {
 }
 
 // --- List Randomizer Logic ---
-let shuffleListBtn, pickRandomItemBtn, listOutput; // Removed listOutputHeading
-let availableNames = []; // This will hold the names from Firebase
+let shuffleListBtn, pickRandomItemBtn, listOutput;
+let availableNames = [];
 
 function shuffleArray(array) {
     let currentIndex = array.length, randomIndex;
@@ -22,7 +22,7 @@ function shuffleArray(array) {
 function renderListOutput(names, isShuffled = true) {
     if (names.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names available from the ledger.</span>';
-        listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
+        listOutput.classList.remove('hidden');
         return;
     }
 
@@ -37,13 +37,13 @@ function renderListOutput(names, isShuffled = true) {
         outputHTML = `<h3>Selected Name:</h3><p class="text-xl font-bold">${names[0]}</p>`;
     }
     listOutput.innerHTML = outputHTML;
-    listOutput.classList.remove('hidden'); // Show the output div
+    listOutput.classList.remove('hidden');
 }
 
 function handleShuffleList() {
     if (availableNames.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names to shuffle. The ledger is empty.</span>';
-        listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
+        listOutput.classList.remove('hidden');
         return;
     }
     const shuffledNames = shuffleArray([...availableNames]);
@@ -53,7 +53,7 @@ function handleShuffleList() {
 function handlePickRandomItem() {
     if (availableNames.length === 0) {
         listOutput.innerHTML = '<span class="text-red-700">No names to pick from. The ledger is empty.</span>';
-        listOutput.classList.remove('hidden'); // Ensure it's visible to show the error
+        listOutput.classList.remove('hidden');
         return;
     }
     const randomIndex = rand(0, availableNames.length - 1);
@@ -72,10 +72,8 @@ export function initListRandomizer(ledgerData) {
     }
 
     availableNames = ledgerData.map(person => person.name);
-
-    // Hide the output initially
     listOutput.classList.add('hidden');
-    listOutput.innerHTML = ''; // Clear any previous content
+    listOutput.innerHTML = '';
 
     shuffleListBtn.onclick = handleShuffleList;
     pickRandomItemBtn.onclick = handlePickRandomItem;
@@ -84,13 +82,10 @@ export function initListRandomizer(ledgerData) {
 
 // --- Dice Randomizer Logic ---
 let diceSpinBtn, diceResultsContainer, addDiceBtn, diceListContainer;
-
-// New elements for punishment assignment
 let dicePunishmentAssignContainer;
 let assignPersonSelect;
 let assignStripesBtn;
 
-// New: store functions and data globally within randomizer.js scope.
 let _addStripeToPersonFn = null;
 let _ledgerData = [];
 let _showAlertFn = null;
@@ -103,7 +98,6 @@ function renderDiceList() {
             label.textContent = `Die ${index + 1}:`;
         }
     });
-    // Show/hide remove buttons
     const removeBtns = diceListContainer.querySelectorAll('.remove-dice-btn');
     removeBtns.forEach(btn => {
         btn.style.display = diceEntries.length > 1 ? 'flex' : 'none';
@@ -125,6 +119,8 @@ function handleAddDie() {
 function handleRemoveDie(event) {
     const removeBtn = event.target.closest('.remove-dice-btn');
     if (removeBtn) {
+        event.preventDefault();
+        event.stopPropagation();
         if (diceListContainer.children.length > 1) {
             removeBtn.closest('.flex').remove();
             renderDiceList();
@@ -140,7 +136,7 @@ function handleDiceSpin() {
     const individualResults = [];
 
     diceInputs.forEach(input => {
-        const maxValue = parseInt(input.value);
+        const maxValue = parseInt(input.value) || 0;
         if (maxValue > 0) {
             const result = rand(1, maxValue);
             individualResults.push(result);
@@ -148,9 +144,8 @@ function handleDiceSpin() {
         }
     });
 
-    diceResultsContainer.innerHTML = ''; // Clear previous result
+    diceResultsContainer.innerHTML = '';
     
-    // Display individual rolls if more than one die is rolled
     if (individualResults.length > 1) {
         const individualRollsText = individualResults.join(' + ');
         const individualDiv = document.createElement("div");
@@ -159,16 +154,13 @@ function handleDiceSpin() {
         diceResultsContainer.appendChild(individualDiv);
     }
     
-    // Display total sum
     let resultDiv = document.createElement("div");
     resultDiv.className = `font-cinzel-decorative text-5xl font-bold mt-2 text-[#5c3d2e]`;
     resultDiv.textContent = totalResult;
     diceResultsContainer.appendChild(resultDiv);
 
-    // Show punishment assignment section
     dicePunishmentAssignContainer.classList.remove('hidden');
 
-    // Populate the select dropdown
     assignPersonSelect.innerHTML = '';
     _ledgerData.forEach(person => {
         const option = document.createElement('option');
@@ -177,12 +169,11 @@ function handleDiceSpin() {
         assignPersonSelect.appendChild(option);
     });
 
-    // Set up the button to assign stripes
     assignStripesBtn.onclick = async () => {
         const selectedPersonId = assignPersonSelect.value;
         const stripesToAdd = totalResult;
 
-        if (selectedPersonId && stripesToAdd >= 0) { // Allow assigning 0 stripes if that's the roll
+        if (selectedPersonId && stripesToAdd >= 0) {
             if (_addStripeToPersonFn && _showAlertFn) {
                 for (let i = 0; i < stripesToAdd; i++) {
                     await _addStripeToPersonFn(selectedPersonId);
@@ -194,23 +185,19 @@ function handleDiceSpin() {
                 diceResultsContainer.innerHTML = '';
                 document.getElementById('dice-randomizer-modal').classList.add('hidden');
             } else {
-                console.error("addStripeToPerson or showAlert function not available for manual assignment.");
-                await _showAlertFn("Error: Cannot assign stripes.", "Error");
+                if(_showAlertFn) await _showAlertFn("Error: Cannot assign stripes.", "Error");
             }
         } else {
-            await _showAlertFn('Please select a person.', "Missing Information");
+            if(_showAlertFn) await _showAlertFn('Please select a person.', "Missing Information");
         }
     };
 }
 
-
 export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, showAlertFn = null) {
     diceSpinBtn = document.getElementById('dice-spin-btn');
     diceResultsContainer = document.getElementById('dice-roulette-results');
-    
     addDiceBtn = document.getElementById('add-dice-btn');
     diceListContainer = document.getElementById('dice-list-container');
-
     dicePunishmentAssignContainer = document.getElementById('dice-punishment-assign-container');
     assignPersonSelect = document.getElementById('assign-person-select');
     assignStripesBtn = document.getElementById('assign-stripes-btn');
@@ -223,14 +210,27 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
         console.error("One or more Dice Randomizer elements are missing from the DOM.");
         return;
     }
-    
-    // Reset UI state
+
+    // Reset UI to its initial state
+    diceListContainer.innerHTML = `
+        <div class="flex items-center gap-2">
+            <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0">Die 1:</label>
+            <input type="number" value="20" min="1" max="100" class="dice-max-value-input w-full text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+            <button class="remove-dice-btn btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex-shrink-0 flex items-center justify-center rounded-md" title="Remove Die" style="display: none;">&times;</button>
+        </div>
+    `;
     diceResultsContainer.innerHTML = '';
     dicePunishmentAssignContainer.classList.add('hidden'); 
-    
-    // Ensure event listeners are not duplicated
-    diceSpinBtn.onclick = handleDiceSpin;
-    addDiceBtn.onclick = handleAddDie;
+
+    // Re-attach listeners to avoid duplicates
+    const newDiceSpinBtn = diceSpinBtn.cloneNode(true);
+    diceSpinBtn.parentNode.replaceChild(newDiceSpinBtn, diceSpinBtn);
+    newDiceSpinBtn.onclick = handleDiceSpin;
+
+    const newAddDiceBtn = addDiceBtn.cloneNode(true);
+    addDiceBtn.parentNode.replaceChild(newAddDiceBtn, addDiceBtn);
+    newAddDiceBtn.onclick = handleAddDie;
+
     const newDiceListContainer = diceListContainer.cloneNode(true);
     diceListContainer.parentNode.replaceChild(newDiceListContainer, diceListContainer);
     diceListContainer = newDiceListContainer;
@@ -241,16 +241,14 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
 
 export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, ledgerData, showAlertFn) {
     console.warn("rollDiceAndAssign is deprecated. The Oracle will now open the manual dice roller.");
-    if (_showAlertFn) {
-        await _showAlertFn("The Oracle's judgement requires a dice roll. The manual Dice Roller will now open.", "Oracle Decree");
+    if (showAlertFn) {
+        await showAlertFn("The Oracle's judgement requires a dice roll. The manual Dice Roller will now open.", "Oracle Decree");
     }
 
     const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
     if (diceRandomizerModal) {
-        // Initialize the manual roller for the user
         initDiceRandomizer(ledgerData, addStripeFn, showAlertFn);
 
-        // Pre-fill the dice for the user
         const diceListContainer = document.getElementById('dice-list-container');
         if (diceListContainer && Array.isArray(diceValues) && diceValues.length > 0) {
             diceListContainer.innerHTML = ''; // Clear default
