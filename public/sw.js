@@ -9,8 +9,7 @@ const urlsToCache = [
   '/randomizer/randomizer.js',
   '/randomizer/randomizer.css',
   '/assets/favicon.png',
-  'https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&display=swap',
-  'https://cdn.tailwindcss.com'
+  'https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&display=swap'
 ];
 
 // Install a service worker
