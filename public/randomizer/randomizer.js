@@ -1,4 +1,4 @@
-// public/randomizer/randomizer.js - REWRITTEN FOR BOTH LIST AND DICE RANDOMIZERS
+// public/randomizer/randomizer.js
 
 // --- Shared Utility Functions ---
 function rand(min, max) {
@@ -80,57 +80,77 @@ export function initListRandomizer(ledgerData) {
 }
 
 
-// --- Dice Randomizer Logic ---
-let diceSpinBtn, diceResultsContainer, addDiceBtn, diceListContainer;
-let dicePunishmentAssignContainer;
-let assignPersonSelect;
-let assignStripesBtn;
+// --- REVISED DICE RANDOMIZER LOGIC ---
+let diceSpinBtn, addDiceBtn, diceListContainer, diceResultsContainer;
+let dicePunishmentAssignContainer, assignPersonSelect, assignStripesBtn;
 
 let _addStripeToPersonFn = null;
 let _ledgerData = [];
 let _showAlertFn = null;
 
-function renderDiceList() {
-    const diceRows = diceListContainer.querySelectorAll('.flex');
+/**
+ * Updates the entire dice UI based on the current state of the DOM.
+ * It re-numbers labels and manages button visibility.
+ */
+function updateDiceUI() {
+    const diceRows = diceListContainer.querySelectorAll('.dice-row');
+    const shouldShowRemove = diceRows.length > 1;
+
     diceRows.forEach((row, index) => {
         const label = row.querySelector('label');
         if (label) {
             label.textContent = `Die ${index + 1}:`;
         }
-    });
 
-    const removeBtns = diceListContainer.querySelectorAll('.remove-dice-btn');
-    removeBtns.forEach(btn => {
-        btn.style.display = diceRows.length > 1 ? 'flex' : 'none';
+        const removeBtn = row.querySelector('.remove-dice-btn');
+        if (removeBtn) {
+            removeBtn.style.display = shouldShowRemove ? 'flex' : 'none';
+        }
     });
 }
 
-function handleAddDie() {
-    const newDieHtml = `
-        <div class="flex items-center gap-2">
-            <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0"></label>
-            <input type="number" value="6" min="1" max="100" class="dice-max-value-input w-full text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
-            <button class="remove-dice-btn btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex-shrink-0 flex items-center justify-center rounded-md" title="Remove Die">&times;</button>
-        </div>
+/**
+ * Creates and appends a new die row to the container.
+ * @param {number} [value=6] - The default number of sides for the new die.
+ */
+function addDieRow(value = 6) {
+    const newDieRow = document.createElement('div');
+    // Added 'dice-row' class for easier and more specific selection
+    newDieRow.className = 'dice-row flex items-center gap-2'; 
+
+    newDieRow.innerHTML = `
+        <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0"></label>
+        <input type="number" value="${value}" min="1" max="100" class="dice-max-value-input w-full text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+        <button class="remove-dice-btn btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex-shrink-0 flex items-center justify-center rounded-md" title="Remove Die">&times;</button>
     `;
-    diceListContainer.insertAdjacentHTML('beforeend', newDieHtml);
-    renderDiceList();
+
+    diceListContainer.appendChild(newDieRow);
+    updateDiceUI(); // Update the entire UI after adding the new row
 }
 
+/**
+ * Handles clicks within the dice list container, specifically for removing dice.
+ * @param {Event} event - The click event.
+ */
 function handleRemoveDie(event) {
+    // Use event delegation to find the specific button that was clicked.
     const removeBtn = event.target.closest('.remove-dice-btn');
-    if (!removeBtn) return;
-
-    event.stopPropagation();
-
-    if (diceListContainer.querySelectorAll('.flex').length > 1) {
-        removeBtn.closest('.flex').remove();
-        renderDiceList();
-    } else {
-        if (_showAlertFn) _showAlertFn("You must have at least one die.", "Cannot Remove");
+    if (!removeBtn) {
+        return; // Exit if the click was not on a remove button.
     }
+    
+    event.stopPropagation(); // Prevent the event from bubbling up.
+
+    // Remove the entire parent row for the clicked button.
+    removeBtn.closest('.dice-row').remove();
+    
+    // After removing, update the UI to re-number dice and hide the last remove button.
+    updateDiceUI();
 }
 
+/**
+ * The main function to roll all dice and handle assignment logic.
+ */
 function handleDiceSpin() {
     const diceInputs = diceListContainer.querySelectorAll('.dice-max-value-input');
     let totalResult = 0;
@@ -155,14 +175,14 @@ function handleDiceSpin() {
         diceResultsContainer.appendChild(individualDiv);
     }
     
-    let resultDiv = document.createElement("div");
+    const resultDiv = document.createElement("div");
     resultDiv.className = `font-cinzel-decorative text-5xl font-bold mt-2 text-[#5c3d2e]`;
     resultDiv.textContent = totalResult;
     diceResultsContainer.appendChild(resultDiv);
 
     dicePunishmentAssignContainer.classList.remove('hidden');
 
-    assignPersonSelect.innerHTML = '';
+    assignPersonSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
     _ledgerData.forEach(person => {
         const option = document.createElement('option');
         option.value = person.id;
@@ -194,7 +214,14 @@ function handleDiceSpin() {
     };
 }
 
+/**
+ * Initializes the dice randomizer, sets up the UI and attaches event listeners.
+ * @param {Array} ledgerData - The current ledger data.
+ * @param {Function} addStripeToPersonFn - Callback function to add stripes.
+ * @param {Function} showAlertFn - Callback function to show alerts.
+ */
 export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, showAlertFn = null) {
+    // Get all DOM elements
     diceSpinBtn = document.getElementById('dice-spin-btn');
     diceResultsContainer = document.getElementById('dice-roulette-results');
     addDiceBtn = document.getElementById('add-dice-btn');
@@ -203,33 +230,31 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
     assignPersonSelect = document.getElementById('assign-person-select');
     assignStripesBtn = document.getElementById('assign-stripes-btn');
 
+    // Store callbacks
     _ledgerData = ledgerData;
     _addStripeToPersonFn = addStripeToPersonFn;
     _showAlertFn = showAlertFn;
 
-    if (!diceSpinBtn || !diceResultsContainer || !addDiceBtn || !diceListContainer || !dicePunishmentAssignContainer || !assignPersonSelect || !assignStripesBtn) {
+    // Check if all elements were found
+    if (!diceSpinBtn || !diceListContainer) {
         console.error("One or more Dice Randomizer elements are missing from the DOM.");
         return;
     }
 
-    // Reset UI to its initial state with one die
-    diceListContainer.innerHTML = `
-        <div class="flex items-center gap-2">
-            <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0">Die 1:</label>
-            <input type="number" value="20" min="1" max="100" class="dice-max-value-input w-full text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
-            <button class="remove-dice-btn btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex-shrink-0 flex items-center justify-center rounded-md" title="Remove Die" style="display: none;">&times;</button>
-        </div>
-    `;
+    // Reset UI state
+    diceListContainer.innerHTML = '';
     diceResultsContainer.innerHTML = '';
-    dicePunishmentAssignContainer.classList.add('hidden'); 
+    dicePunishmentAssignContainer.classList.add('hidden');
 
-    // Assigning .onclick overwrites any previous listener. This is safe for re-initialization.
+    // Add the first die
+    addDieRow(20);
+
+    // Set up event listeners, overwriting any previous ones to prevent duplicates.
+    addDiceBtn.onclick = () => addDieRow(6);
+    diceListContainer.onclick = handleRemoveDie;
     diceSpinBtn.onclick = handleDiceSpin;
-    addDiceBtn.onclick = handleAddDie;
-    diceListContainer.onclick = handleRemoveDie; // Handles clicks on remove buttons via delegation.
-
-    renderDiceList();
 }
+
 
 export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, ledgerData, showAlertFn) {
     console.warn("rollDiceAndAssign is deprecated. The Oracle will now open the manual dice roller.");
@@ -239,22 +264,22 @@ export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, l
 
     const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
     if (diceRandomizerModal) {
+        // Initialize the dice roller with a clean slate
         initDiceRandomizer(ledgerData, addStripeFn, showAlertFn);
 
+        // Then customize it based on the Oracle's decree
         const diceListContainer = document.getElementById('dice-list-container');
         if (diceListContainer && Array.isArray(diceValues) && diceValues.length > 0) {
-            diceListContainer.innerHTML = ''; // Clear default
+            diceListContainer.innerHTML = ''; // Clear the default die added by init
             diceValues.forEach(val => {
-                const newDieHtml = `
-                    <div class="flex items-center gap-2">
-                        <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0">Die:</label>
-                        <input type="number" value="${val}" min="1" max="100" class="dice-max-value-input w-full text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
-                        <button class="remove-dice-btn btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex-shrink-0 flex items-center justify-center rounded-md" title="Remove Die">&times;</button>
-                    </div>
-                `;
-                diceListContainer.insertAdjacentHTML('beforeend', newDieHtml);
+                addDieRow(val); // Use the new function to add dice
             });
-            renderDiceList();
+        }
+        
+        // Pre-select the person in the assignment dropdown
+        const assignPersonSelect = document.getElementById('assign-person-select');
+        if (assignPersonSelect) {
+            assignPersonSelect.value = targetPerson.id;
         }
 
         diceRandomizerModal.classList.remove('hidden');
