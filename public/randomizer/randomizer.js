@@ -211,7 +211,7 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
         return;
     }
 
-    // Reset UI to its initial state
+    // Reset UI to its initial state with one die
     diceListContainer.innerHTML = `
         <div class="flex items-center gap-2">
             <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0">Die 1:</label>
@@ -222,19 +222,10 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
     diceResultsContainer.innerHTML = '';
     dicePunishmentAssignContainer.classList.add('hidden'); 
 
-    // Re-attach listeners to avoid duplicates
-    const newDiceSpinBtn = diceSpinBtn.cloneNode(true);
-    diceSpinBtn.parentNode.replaceChild(newDiceSpinBtn, diceSpinBtn);
-    newDiceSpinBtn.onclick = handleDiceSpin;
-
-    const newAddDiceBtn = addDiceBtn.cloneNode(true);
-    addDiceBtn.parentNode.replaceChild(newAddDiceBtn, addDiceBtn);
-    newAddDiceBtn.onclick = handleAddDie;
-
-    const newDiceListContainer = diceListContainer.cloneNode(true);
-    diceListContainer.parentNode.replaceChild(newDiceListContainer, diceListContainer);
-    diceListContainer = newDiceListContainer;
-    diceListContainer.addEventListener('click', handleRemoveDie);
+    // Assigning .onclick overwrites any previous listener. This is safe for re-initialization.
+    diceSpinBtn.onclick = handleDiceSpin;
+    addDiceBtn.onclick = handleAddDie;
+    diceListContainer.onclick = handleRemoveDie; // Use event delegation
 
     renderDiceList();
 }
