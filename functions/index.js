@@ -7,6 +7,7 @@ const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const {request: gaxiosRequest} = require("gaxios");
+const crypto = require("crypto");
 
 // Initialize Firebase Admin SDK
 initializeApp();
@@ -201,7 +202,7 @@ exports.setSchikko = onCall(
         const schikkoDoc = await schikkoRef.get();
         if (schikkoDoc.exists) throw new HttpsError("already-exists", `A Schikko is already set for ${year}.`);
 
-        const password = Math.random().toString(36).slice(-8);
+        const password = crypto.randomBytes(4).toString('hex');
         await schikkoRef.set({email, password, createdAt: FieldValue.serverTimestamp()});
 
         logger.info(`Schikko set for ${email}. Password: ${password}`);
