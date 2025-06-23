@@ -476,13 +476,15 @@ function createActionButtons(parsedJudgement) {
     let totalStripes = 0;
     const diceRolls = []; // Use an array to allow for multiple dice of the same type.
     
-    parsedJudgement.penalties.forEach(penalty => {
-        if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
-            totalStripes += penalty.amount;
-        } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
-            diceRolls.push(penalty.value);
-        }
-    });
+    if (Array.isArray(parsedJudgement.penalties)) {
+        parsedJudgement.penalties.forEach(penalty => {
+            if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
+                totalStripes += penalty.amount;
+            } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
+                diceRolls.push(penalty.value);
+            }
+        });
+    }
 
     const hasStripes = totalStripes > 0;
     const hasDice = diceRolls.length > 0;
@@ -582,13 +584,15 @@ async function handleGeminiSubmit() {
             let totalStripes = 0;
             const diceRollsSummary = [];
             
-            parsedJudgement.penalties.forEach(penalty => {
-                if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
-                    totalStripes += penalty.amount;
-                } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
-                    diceRollsSummary.push(`d${penalty.value}`);
-                }
-            });
+            if (Array.isArray(parsedJudgement.penalties)) {
+                parsedJudgement.penalties.forEach(penalty => {
+                    if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
+                        totalStripes += penalty.amount;
+                    } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
+                        diceRollsSummary.push(`d${penalty.value}`);
+                    }
+                });
+            }
 
             const penaltyParts = [];
             if (totalStripes > 0) {
@@ -982,7 +986,7 @@ editNicatBtn.addEventListener('click', async () => {
             await showAlert("The date for the NICAT has been decreed!", "Success");
             loadAndRenderNicatCountdown();
         } else {
-            await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
+            await showAlert("Invalid date format. Please use<x_bin_42>-MM-DD.", "Scribe's Error");
         }
     }
 });
