@@ -98,7 +98,10 @@ let _showAlertFn = null;
 function renderDiceList() {
     const diceEntries = diceListContainer.querySelectorAll('.flex');
     diceEntries.forEach((entry, index) => {
-        entry.querySelector('label').textContent = `Die ${index + 1}:`;
+        const label = entry.querySelector('label');
+        if (label) {
+            label.textContent = `Die ${index + 1}:`;
+        }
     });
     // Show/hide remove buttons
     const removeBtns = diceListContainer.querySelectorAll('.remove-dice-btn');
@@ -179,7 +182,7 @@ function handleDiceSpin() {
         const selectedPersonId = assignPersonSelect.value;
         const stripesToAdd = totalResult;
 
-        if (selectedPersonId && stripesToAdd > 0) {
+        if (selectedPersonId && stripesToAdd >= 0) { // Allow assigning 0 stripes if that's the roll
             if (_addStripeToPersonFn && _showAlertFn) {
                 for (let i = 0; i < stripesToAdd; i++) {
                     await _addStripeToPersonFn(selectedPersonId);
@@ -224,16 +227,16 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
     // Reset UI state
     diceResultsContainer.innerHTML = '';
     dicePunishmentAssignContainer.classList.add('hidden'); 
-    diceSpinBtn.style.display = 'inline-block';
-    addDiceBtn.style.display = 'inline-block';
-
-    // Set up event listeners
+    
+    // Ensure event listeners are not duplicated
     diceSpinBtn.onclick = handleDiceSpin;
     addDiceBtn.onclick = handleAddDie;
-    diceListContainer.removeEventListener('click', handleRemoveDie); // Remove old listener to prevent duplicates
-    diceListContainer.addEventListener('click', handleRemoveDie); // Add fresh listener
+    const newDiceListContainer = diceListContainer.cloneNode(true);
+    diceListContainer.parentNode.replaceChild(newDiceListContainer, diceListContainer);
+    diceListContainer = newDiceListContainer;
+    diceListContainer.addEventListener('click', handleRemoveDie);
 
-    renderDiceList(); // Initial render for button visibility
+    renderDiceList();
 }
 
 export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, ledgerData, showAlertFn) {
