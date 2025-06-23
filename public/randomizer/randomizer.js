@@ -223,7 +223,7 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
     diceResultsContainer.innerHTML = '';
     dicePunishmentAssignContainer.classList.add('hidden'); 
 
-    // Assigning .onclick overwrites any previous listener, which is safe for re-initialization.
+    // Assigning .onclick overwrites any previous listener. This is safe for re-initialization.
     diceSpinBtn.onclick = handleDiceSpin;
     addDiceBtn.onclick = handleAddDie;
     diceListContainer.onclick = handleRemoveDie; // Handles clicks on remove buttons via delegation.
