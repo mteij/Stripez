@@ -1,6 +1,7 @@
 // public/js/ui.js
 
 let stripeChart = null;
+let logbookChart = null;
 let nicatCountdownInterval = null;
 
 // --- UTILITY FUNCTIONS ---
@@ -229,6 +230,90 @@ function renderLogbook(logData) {
     });
 }
 
+function renderLogbookChart(logData, filter) {
+    const ctx = document.getElementById('logbook-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    if (logbookChart) {
+        logbookChart.destroy();
+    }
+
+    const getActionType = (action) => {
+        if (action.includes('STRIPE') || action.includes('ORACLE')) return 'Punishments';
+        if (action.includes('RULE')) return 'Decree Changes';
+        if (action.includes('PERSON')) return 'Ledger Changes';
+        return 'Other';
+    };
+
+    const datasets = {};
+    const labels = new Set();
+    
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Initialize labels for the last 30 days
+    for (let i = 0; i <= 30; i++) {
+        const date = new Date(thirtyDaysAgo);
+        date.setDate(date.getDate() + i);
+        labels.add(date.toISOString().split('T')[0]);
+    }
+
+    const sortedLabels = Array.from(labels).sort();
+
+    const actionTypes = {
+        'Punishments': { color: 'rgba(192, 57, 43, 0.7)', data: new Array(sortedLabels.length).fill(0) },
+        'Decree Changes': { color: 'rgba(44, 62, 80, 0.7)', data: new Array(sortedLabels.length).fill(0) },
+        'Ledger Changes': { color: 'rgba(243, 156, 18, 0.7)', data: new Array(sortedLabels.length).fill(0) }
+    };
+
+    logData.forEach(log => {
+        if (log.timestamp) {
+            const dateStr = log.timestamp.toDate().toISOString().split('T')[0];
+            const type = getActionType(log.action);
+            const index = sortedLabels.indexOf(dateStr);
+            if (index !== -1 && actionTypes[type]) {
+                actionTypes[type].data[index]++;
+            }
+        }
+    });
+
+    const finalDatasets = [];
+    for (const [key, value] of Object.entries(actionTypes)) {
+        if (filter === 'all' || filter.toLowerCase().includes(key.split(' ')[0].toLowerCase())) {
+             finalDatasets.push({
+                label: key,
+                data: value.data,
+                borderColor: value.color,
+                backgroundColor: value.color.replace('0.7', '0.2'),
+                fill: true,
+                tension: 0.3
+            });
+        }
+    }
+
+    logbookChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: sortedLabels,
+            datasets: finalDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: { display: true, text: 'Activity Over Last 30 Days' },
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
+}
 
 /**
  * Renders the entire list of transgressors into the DOM.
@@ -803,4 +888,4 @@ function showRuleEditModal(currentText, currentTags = [], allRules = []) {
 }
 
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook, renderLogbookChart };

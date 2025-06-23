@@ -19,7 +19,7 @@ import {
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
     showAlert, showConfirm, showPrompt, showSchikkoLoginModal, 
     showSetSchikkoModal, showRuleEditModal, renderNicatCountdown,
-    showLogbookModal, renderLogbook
+    showLogbookModal, renderLogbook, renderLogbookChart
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -377,43 +377,48 @@ function handleRenderRules() {
 }
 
 function handleRenderLogbook() {
-    let viewData = [...logbookDataCache];
+    let filteredData = [...logbookDataCache];
 
     // Filter by search term
     const term = currentLogbookSearchTerm.toLowerCase();
     if (term) {
-        viewData = viewData.filter(log => log.details.toLowerCase().includes(term) || log.actor.toLowerCase().includes(term));
+        filteredData = filteredData.filter(log => log.details.toLowerCase().includes(term) || log.actor.toLowerCase().includes(term));
     }
 
     // Filter by category
-    if (currentLogbookFilter !== 'all') {
-        switch (currentLogbookFilter) {
+    const categoryFilter = currentLogbookFilter;
+    if (categoryFilter !== 'all') {
+        switch (categoryFilter) {
             case 'punishment':
-                viewData = viewData.filter(log => log.action.includes('STRIPE') || log.action.includes('ORACLE'));
+                filteredData = filteredData.filter(log => log.action.includes('STRIPE') || log.action.includes('ORACLE'));
                 break;
             case 'rules':
-                viewData = viewData.filter(log => log.action.includes('RULE'));
+                filteredData = filteredData.filter(log => log.action.includes('RULE'));
                 break;
             case 'ledger':
-                viewData = viewData.filter(log => log.action.includes('PERSON'));
+                filteredData = filteredData.filter(log => log.action.includes('PERSON'));
                 break;
             case 'schikko':
-                viewData = viewData.filter(log => log.actor === 'Schikko');
+                filteredData = filteredData.filter(log => log.actor === 'Schikko');
                 break;
             case 'guest':
-                viewData = viewData.filter(log => log.actor === 'Guest');
+                filteredData = filteredData.filter(log => log.actor === 'Guest');
                 break;
         }
     }
 
-    // Sort
-    viewData.sort((a, b) => {
+    // Render the chart with the filtered data
+    renderLogbookChart(filteredData, categoryFilter);
+
+    // Now, sort the filtered data for the list view
+    const listData = [...filteredData].sort((a, b) => {
         const timeA = a.timestamp?.toMillis() || 0;
         const timeB = b.timestamp?.toMillis() || 0;
         return currentLogbookSort === 'newest' ? timeB - timeA : timeA - timeB;
     });
 
-    renderLogbook(viewData);
+    // Render the sorted list
+    renderLogbook(listData);
 }
 
 async function updateAppFooter() {
@@ -1058,7 +1063,7 @@ editNicatBtn.addEventListener('click', async () => {
             await showAlert("The date for the NICAT has been decreed!", "Success");
             loadAndRenderNicatCountdown();
         } else {
-            await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
+            await showAlert("Invalid date format. Please use<x_bin_42>-MM-DD.", "Scribe's Error");
         }
     }
 });
