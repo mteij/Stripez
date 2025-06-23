@@ -270,10 +270,7 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
  * @param {Function} showAlertFn - Callback function to show alerts.
  */
 export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, ledgerData, showAlertFn) {
-    if (showAlertFn) {
-        await showAlertFn("The Oracle's judgement requires a dice roll. The manual Dice Roller will now open.", "Oracle Decree");
-    }
-
+    // The alert has been removed from here as per your request.
     const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
     if (diceRandomizerModal) {
         // Initialize the dice roller with a clean slate
