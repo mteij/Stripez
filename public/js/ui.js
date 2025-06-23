@@ -170,6 +170,65 @@ function showAgendaModal(show) {
     }
 }
 
+function showLogbookModal(show) {
+    const logbookModal = document.getElementById('logbook-modal');
+    if (show) {
+        logbookModal.classList.remove('hidden');
+    } else {
+        logbookModal.classList.add('hidden');
+    }
+}
+
+function renderLogbook(logData) {
+    const logContentDiv = document.getElementById('logbook-content');
+    if (!logContentDiv) return;
+    logContentDiv.innerHTML = '';
+
+    if (!logData || logData.length === 0) {
+        logContentDiv.innerHTML = '<p class="text-center text-lg text-[#6f4e37] p-4">No activities match your query.</p>';
+        return;
+    }
+
+    logData.forEach(log => {
+        const logEntryDiv = document.createElement('div');
+        logEntryDiv.className = 'flex items-start gap-3 p-3 bg-[#e9e2d7] rounded-md border border-[#b9987e]';
+
+        const iconMap = {
+            ADD_STRIPE: '⚖️',
+            ADD_DRUNK_STRIPE: '🍺',
+            REMOVE_STRIPE: '♻️',
+            ADD_PERSON: '👤',
+            RENAME_PERSON: '✏️',
+            DELETE_PERSON: '🗑️',
+            ADD_RULE: '📜',
+            EDIT_RULE: '🖋️',
+            DELETE_RULE: '🔥',
+            MOVE_RULE: '↕️',
+            ORACLE_JUDGEMENT: '🔮',
+            default: '•',
+        };
+
+        let icon = iconMap[log.action] || iconMap.default;
+        if(log.action.includes('ORACLE')) icon = iconMap.ORACLE_JUDGEMENT;
+
+
+        const actorColor = log.actor === 'Schikko' ? 'text-red-700' : 'text-blue-700';
+
+        const timestamp = log.timestamp ? log.timestamp.toDate().toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'}) : 'Just now';
+
+        logEntryDiv.innerHTML = `
+            <div class="text-2xl flex-shrink-0 pt-1">${icon}</div>
+            <div class="flex-grow">
+                <p class="text-md text-[#4a3024]">${log.details}</p>
+                <p class="text-sm text-[#6f4e37] mt-1">
+                    <span class="${actorColor} font-bold">${log.actor}</span> at ${timestamp}
+                </p>
+            </div>
+        `;
+        logContentDiv.appendChild(logEntryDiv);
+    });
+}
+
 
 /**
  * Renders the entire list of transgressors into the DOM.
@@ -744,4 +803,4 @@ function showRuleEditModal(currentText, currentTags = [], allRules = []) {
 }
 
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook };

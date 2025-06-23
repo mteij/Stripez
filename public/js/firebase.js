@@ -3,7 +3,7 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc, setDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
 
 // Firebase configuration. These placeholders will be replaced by GitHub Actions
 // during the build/deploy process using a string replacement utility.
@@ -25,20 +25,58 @@ const auth = getAuth(app);
 const ledgerCollectionRef = collection(db, 'punishments');
 const rulesCollectionRef = collection(db, 'rules');
 const configCollectionRef = collection(db, 'config');
+const activityLogCollectionRef = collection(db, 'activity_log');
 
 // --- DATABASE AND AUTH FUNCTIONS ---
 
 /**
  * Sets up a real-time listener for a specified collection.
- * @param {string} collectionName - The name of the collection ('punishments' or 'rules').
+ * @param {string} collectionName - The name of the collection ('punishments', 'rules', or 'activity_log').
  * @param {Function} callback - The function to call with the updated data.
  */
 const setupRealtimeListener = (collectionName, callback) => {
-    const collRef = collectionName === 'rules' ? rulesCollectionRef : ledgerCollectionRef;
-    onSnapshot(query(collRef), (snapshot) => {
+    let collRef;
+    let q; // query variable
+    switch (collectionName) {
+        case 'rules':
+            collRef = rulesCollectionRef;
+            q = query(collRef);
+            break;
+        case 'activity_log':
+            collRef = activityLogCollectionRef;
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            q = query(collRef, where("timestamp", ">=", thirtyDaysAgo));
+            break;
+        default:
+            collRef = ledgerCollectionRef;
+            q = query(collRef);
+            break;
+    }
+
+    onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(data);
-    }, (error) => console.error("Error fetching ledger:", error));
+    }, (error) => console.error(`Error fetching ${collectionName}:`, error));
+};
+
+/**
+ * Logs an action to the activity_log collection.
+ * @param {string} action - A short code for the action (e.g., 'ADD_STRIPE').
+ * @param {string} actor - 'Schikko' or 'Guest'.
+ * @param {string} details - A human-readable description of the event.
+ */
+const logActivity = async (action, actor, details) => {
+    try {
+        await addDoc(activityLogCollectionRef, {
+            action,
+            actor,
+            details,
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error("Error logging activity:", error);
+    }
 };
 
 const getCalendarConfig = async () => {
@@ -72,9 +110,19 @@ const addNameToLedger = async (name, userId) => {
     await addDoc(ledgerCollectionRef, { name, stripes: [], drunkStripes: [], addedBy: userId }); // Changed to 'drunkStripes'
 };
 
-const addStripeToPerson = async (docId) => {
+const addStripeToPerson = async (docId, count = 1) => {
     const docRef = doc(db, 'punishments', docId);
-    await updateDoc(docRef, { stripes: arrayUnion(new Date()) });
+    
+    // Create an array of new timestamps to add
+    const newStripes = [];
+    for (let i = 0; i < count; i++) {
+        // Adding 'i' milliseconds ensures uniqueness even if calls are very fast.
+        newStripes.push(new Date(Date.now() + i));
+    }
+    
+    await updateDoc(docRef, {
+        stripes: arrayUnion(...newStripes)
+    });
 };
 
 const removeLastStripeFromPerson = async (person) => {
@@ -202,6 +250,7 @@ export {
     onAuthStateChanged,
     signInAnonymously,
     setupRealtimeListener,
+    logActivity,
     addNameToLedger,
     addStripeToPerson,
     removeLastStripeFromPerson,

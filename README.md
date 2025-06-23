@@ -17,6 +17,10 @@ All data is stored and synced live using Google's Firebase, and the project is s
     * **Protected Actions:** Once logged in, the Schikko can perform administrative tasks such as adding/removing people, managing stripes, and editing the Decrees. Executing punishments from the Oracle's Judgement is also a protected action.
     * **Guest View:** Unauthenticated users have a read-only view of the ledger and rules. The UI automatically hides all administrative controls for guests, who can only self-report transgressions using the "Pour Liquid" (🍺) button.
     * The Schikko role is automatically reset annually by a scheduled Cloud Function.
+* **The Scribe's Logbook:**
+    * An easily accessible logbook (📖 icon) that displays a real-time feed of all significant actions taken within the application.
+    * Logs are kept for 30 days, with older entries being automatically deleted by a daily scheduled function.
+    * Features robust search, sorting (by date), and filtering (by action type, or by actor like Schikko/Guest) capabilities for easy review of past events.
 * **Google Calendar Integration:**
     * Displays the next upcoming event from a public Google Calendar.
     * A "Full Agenda" button opens a popup with all upcoming events.
@@ -113,6 +117,9 @@ If you wish to clone this repository and set it up with your own Firebase projec
         }
         match /rules/{docId} {
           allow read, write: if request.auth != null;
+        }
+        match /activity_log/{docId} {
+            allow read, write: if request.auth != null;
         }
         // Config is now managed by secure backend functions
         match /config/{docId} {

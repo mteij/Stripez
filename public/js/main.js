@@ -11,13 +11,15 @@ import {
     getCalendarConfig,
     saveCalendarUrl,
     getNicatDate,
-    saveNicatDate
+    saveNicatDate,
+    logActivity
 } from './firebase.js';
 import { 
     renderLedger, showStatsModal, closeMenus, renderRules, 
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
     showAlert, showConfirm, showPrompt, showSchikkoLoginModal, 
-    showSetSchikkoModal, showRuleEditModal, renderNicatCountdown
+    showSetSchikkoModal, showRuleEditModal, renderNicatCountdown,
+    showLogbookModal, renderLogbook
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -27,19 +29,17 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 let currentUserId = null;
 let ledgerDataCache = [];
 let rulesDataCache = []; // Full, unfiltered rules data
+let logbookDataCache = [];
 let calendarEventsCache = [];
 let currentSortOrder = 'asc';
 let currentSearchTerm = ''; // For ledger search
 let currentRuleSearchTerm = ''; // New: For rules inconsistencies search
 let currentTagFilter = 'all'; // For tag filtering
+let currentLogbookSearchTerm = '';
+let currentLogbookFilter = 'all';
+let currentLogbookSort = 'newest';
 let isSchikkoSessionActive = false; // Secure session state for Schikko
 let isSchikkoSetForTheYear = false; // NEW: Tracks if a schikko is set for the year
-let lastPunishmentInfo = { // New state for last punishment awarded
-    name: null,
-    amount: null,
-    type: null, // 'stripes' or 'drunkStripes'
-    timestamp: null
-};
 
 // --- DOM ELEMENTS ---
 const loadingState = document.getElementById('loading-state');
@@ -106,6 +106,13 @@ const decrementBeersBtn = document.getElementById('decrement-beers-btn');
 const confirmDrunkStripesBtn = document.getElementById('confirm-drunk-stripes-btn');
 const availableStripesDisplay = document.getElementById('available-stripes-display');
 
+// Logbook elements
+const openLogbookBtn = document.getElementById('open-logbook-btn');
+const closeLogbookModalBtn = document.getElementById('close-logbook-modal');
+const logbookSearchInput = document.getElementById('logbook-search-input');
+const logbookFilterSelect = document.getElementById('logbook-filter-select');
+const logbookSortSelect = document.getElementById('logbook-sort-select');
+
 
 let currentPersonIdForDrunkStripes = null;
 
@@ -131,6 +138,10 @@ onAuthStateChanged(auth, (user) => {
             handleRenderRules();
             updateTagFilterDropdown();
             updateAppFooter();
+        });
+        setupRealtimeListener('activity_log', (data) => {
+            logbookDataCache = data;
+            handleRenderLogbook();
         });
     } else {
         signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
@@ -365,6 +376,46 @@ function handleRenderRules() {
     renderRules(filteredRules, isSchikkoSessionActive);
 }
 
+function handleRenderLogbook() {
+    let viewData = [...logbookDataCache];
+
+    // Filter by search term
+    const term = currentLogbookSearchTerm.toLowerCase();
+    if (term) {
+        viewData = viewData.filter(log => log.details.toLowerCase().includes(term) || log.actor.toLowerCase().includes(term));
+    }
+
+    // Filter by category
+    if (currentLogbookFilter !== 'all') {
+        switch (currentLogbookFilter) {
+            case 'punishment':
+                viewData = viewData.filter(log => log.action.includes('STRIPE') || log.action.includes('ORACLE'));
+                break;
+            case 'rules':
+                viewData = viewData.filter(log => log.action.includes('RULE'));
+                break;
+            case 'ledger':
+                viewData = viewData.filter(log => log.action.includes('PERSON'));
+                break;
+            case 'schikko':
+                viewData = viewData.filter(log => log.actor === 'Schikko');
+                break;
+            case 'guest':
+                viewData = viewData.filter(log => log.actor === 'Guest');
+                break;
+        }
+    }
+
+    // Sort
+    viewData.sort((a, b) => {
+        const timeA = a.timestamp?.toMillis() || 0;
+        const timeB = b.timestamp?.toMillis() || 0;
+        return currentLogbookSort === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+
+    renderLogbook(viewData);
+}
+
 async function updateAppFooter() {
     if (!appInfoFooter) return;
     
@@ -386,15 +437,6 @@ async function updateAppFooter() {
                 hour: '2-digit', minute: '2-digit', hour12: false
             }) : 'Unknown Date';
     
-    let lastPunishmentText = '';
-    if (lastPunishmentInfo.name && lastPunishmentInfo.amount !== null && lastPunishmentInfo.timestamp) {
-        const punishmentType = lastPunishmentInfo.type === 'stripes' ? 'stripes' : 'draughts of golden liquid';
-        const timeAgo = lastPunishmentInfo.timestamp.toLocaleTimeString(undefined, {
-            hour: '2-digit', minute: '2-digit', hour12: false
-        });
-        lastPunishmentText = `<br><span class="font-cinzel-decorative text-[#c0392b]">The Oracle last decreed ${lastPunishmentInfo.amount} ${punishmentType} to ${lastPunishmentInfo.name} at the hour of ${timeAgo}.</span>`;
-    }
-
     let schikkoInfoText = 'No Schikko has been chosen for this year.';
     if (isSchikkoSetForTheYear) { // Use the correct state variable
         try {
@@ -416,7 +458,6 @@ async function updateAppFooter() {
     appInfoFooter.innerHTML = `
         <span class="font-cinzel-decorative">${schikkoInfoText}</span><br>
         <span class="font-cinzel-decorative">Decrees last inscribed upon the ledger on: <span class="text-[#c0392b]">${dateString}</span>.</span>
-        ${lastPunishmentText}
     `;
 }
 
@@ -450,6 +491,7 @@ function createActionButtons(parsedJudgement) {
         acknowledgeBtn.textContent = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent.`;
         acknowledgeBtn.onclick = (e) => {
             e.stopPropagation();
+            logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle declared ${parsedJudgement.person || 'Someone'} innocent.`);
             geminiModal.classList.add('hidden');
         };
         geminiActionButtonsContainer.appendChild(acknowledgeBtn);
@@ -496,11 +538,8 @@ function createActionButtons(parsedJudgement) {
         stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
         stripesBtn.onclick = async (e) => {
             e.stopPropagation();
-            for (let i = 0; i < totalStripes; i++) {
-                await addStripeToPerson(person.id);
-            }
-            lastPunishmentInfo = { name: person.name, amount: totalStripes, type: 'stripes', timestamp: new Date() };
-            updateAppFooter();
+            await addStripeToPerson(person.id, totalStripes);
+            logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed ${totalStripes} stripe(s) to ${person.name}.`);
             geminiModal.classList.add('hidden');
         };
         geminiActionButtonsContainer.appendChild(stripesBtn);
@@ -512,6 +551,7 @@ function createActionButtons(parsedJudgement) {
         diceBtn.textContent = `Roll Dice for ${person.name}`;
         diceBtn.onclick = (e) => {
             e.stopPropagation();
+            logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed a dice roll for ${person.name}.`);
             rollDiceAndAssign(diceRolls, person, addStripeToPerson, ledgerDataCache, showAlert); 
             geminiModal.classList.add('hidden');
         };
@@ -525,12 +565,10 @@ function createActionButtons(parsedJudgement) {
         combinedBtn.onclick = async (e) => {
             e.stopPropagation();
             // Add stripes first
-            for (let i = 0; i < totalStripes; i++) {
-                await addStripeToPerson(person.id);
-            }
-            lastPunishmentInfo = { name: person.name, amount: totalStripes, type: 'stripes', timestamp: new Date() };
-            updateAppFooter();
+            await addStripeToPerson(person.id, totalStripes);
+            logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed ${totalStripes} stripe(s) to ${person.name}.`);
             // Then open the pre-filled dice roller
+            logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle also decreed a dice roll for ${person.name}.`);
             rollDiceAndAssign(diceRolls, person, addStripeToPerson, ledgerDataCache, showAlert);
             geminiModal.classList.add('hidden');
         };
@@ -653,6 +691,7 @@ async function handleAddName() {
         return;
     }
     await addNameToLedger(name, currentUserId);
+    await logActivity('ADD_PERSON', 'Schikko', `Inscribed "${name}" onto the ledger.`);
     mainInput.value = '';
     currentSearchTerm = '';
 }
@@ -661,8 +700,10 @@ async function handleRename(docId) {
     const person = ledgerDataCache.find(p => p.id === docId);
     if (!person) return;
     const newName = await showPrompt("Enter the new name for " + person.name, person.name, "Rename Transgressor");
-    if (newName && newName.trim() !== "") {
+    if (newName && newName.trim() !== "" && newName.trim() !== person.name) {
+        const oldName = person.name;
         await renamePersonOnLedger(docId, newName);
+        await logActivity('RENAME_PERSON', 'Schikko', `Renamed "${oldName}" to "${newName.trim()}".`);
     }
 }
 
@@ -672,6 +713,7 @@ async function handleDeletePerson(docId) {
     const confirmed = await showConfirm(`Are you sure you want to remove "${person.name}" from the ledger? This action cannot be undone.`, "Confirm Deletion");
     if (confirmed) {
         await deletePersonFromLedger(docId);
+        await logActivity('DELETE_PERSON', 'Schikko', `Erased "${person.name}" from the ledger.`);
     }
 }
 
@@ -691,6 +733,7 @@ async function handleAddRule() {
     }
     const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
     await addRuleToFirestore(text, maxOrder + 1);
+    await logActivity('ADD_RULE', 'Schikko', `Added a new decree: "${text}"`);
     ruleSearchInput.value = '';
     currentRuleSearchTerm = '';
     handleRenderRules();
@@ -706,6 +749,7 @@ async function handleEditRule(docId) {
         const { text, tags } = result;
         if (text.trim() !== "") {
             await updateRuleInFirestore(docId, text, tags);
+            await logActivity('EDIT_RULE', 'Schikko', `Updated decree: "${text}"`);
         }
     }
 }
@@ -749,15 +793,18 @@ punishmentListDiv.addEventListener('click', async (e) => {
     const action = target.dataset.action;
     const id = target.dataset.id;
     if (action !== 'toggle-menu') closeMenus();
+    const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
     switch (action) {
         case 'toggle-menu': 
             if(isSchikkoSessionActive) document.getElementById(`menu-${id}`)?.classList.toggle('hidden');
             break;
         case 'add-stripe': 
             if (await confirmSchikko()) {
-                addStripeToPerson(id); 
-                lastPunishmentInfo = { name: ledgerDataCache.find(p => p.id === id)?.name, amount: 1, type: 'stripes', timestamp: new Date() };
-                updateAppFooter();
+                const person = ledgerDataCache.find(p => p.id === id);
+                if(person) {
+                    addStripeToPerson(id); 
+                    logActivity('ADD_STRIPE', actor, `Added 1 stripe to ${person.name}.`);
+                }
             }
             break;
         case 'add-drunk-stripe':
@@ -810,13 +857,20 @@ punishmentListDiv.addEventListener('click', async (e) => {
             break;
         case 'remove-stripe':
             if (await confirmSchikko()) {
-                handleRemoveStripe(id); 
+                const person = ledgerDataCache.find(p => p.id === id);
+                if (person) {
+                    handleRemoveStripe(id);
+                    logActivity('REMOVE_STRIPE', actor, `Removed the last stripe from ${person.name}.`);
+                }
             }
             break;
         case 'remove-drunk-stripe': 
             if (await confirmSchikko()) {
-                const personToRemoveDrunkStripe = ledgerDataCache.find(p => p.id === id);
-                if (personToRemoveDrunkStripe) removeLastDrunkStripeFromPerson(personToRemoveDrunkStripe);
+                const person = ledgerDataCache.find(p => p.id === id);
+                if (person) {
+                    removeLastDrunkStripeFromPerson(person);
+                    logActivity('REMOVE_DRUNK_STRIPE', actor, `Reverted a drunk stripe for ${person.name}.`);
+                }
             }
             break;
         case 'rename': 
@@ -851,10 +905,25 @@ rulesListOl?.addEventListener('click', async (e) => {
     const id = target.dataset.id;
     const ruleIndex = rulesDataCache.findIndex(r => r.id === id);
     if (ruleIndex === -1) return;
+    const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
     switch (action) {
-        case 'delete': await deleteRuleFromFirestore(id); break;
-        case 'move-up': if (ruleIndex > 0) await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex - 1]); break;
-        case 'move-down': if (ruleIndex < rulesDataCache.length - 1) await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]); break;
+        case 'delete': 
+            const ruleToDelete = rulesDataCache[ruleIndex];
+            await deleteRuleFromFirestore(id); 
+            await logActivity('DELETE_RULE', actor, `Deleted decree: "${ruleToDelete.text}"`);
+            break;
+        case 'move-up': 
+            if (ruleIndex > 0) {
+                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex - 1]);
+                await logActivity('MOVE_RULE', actor, `Moved decree up: "${rulesDataCache[ruleIndex].text}"`);
+            }
+            break;
+        case 'move-down': 
+            if (ruleIndex < rulesDataCache.length - 1) {
+                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]); 
+                await logActivity('MOVE_RULE', actor, `Moved decree down: "${rulesDataCache[ruleIndex].text}"`);
+            }
+            break;
         case 'edit': await handleEditRule(id); break;
     }
 });
@@ -869,6 +938,14 @@ document.addEventListener('click', (e) => {
         diceRandomizerModal.classList.add('hidden');
     }
 });
+
+// Logbook listeners
+openLogbookBtn?.addEventListener('click', () => showLogbookModal(true));
+closeLogbookModalBtn?.addEventListener('click', () => showLogbookModal(false));
+logbookSearchInput?.addEventListener('input', () => { currentLogbookSearchTerm = logbookSearchInput.value; handleRenderLogbook(); });
+logbookFilterSelect?.addEventListener('change', (e) => { currentLogbookFilter = e.target.value; handleRenderLogbook(); });
+logbookSortSelect?.addEventListener('change', (e) => { currentLogbookSort = e.target.value; handleRenderLogbook(); });
+
 
 openRandomizerHubBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -944,14 +1021,9 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         }
 
         if (count > 0) {
+            const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
             await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count); 
-            lastPunishmentInfo = {
-                name: person.name,
-                amount: count,
-                type: 'drunkStripes',
-                timestamp: new Date()
-            };
-            updateAppFooter();
+            await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person.name}.`);
         }
         drunkStripesModal.classList.add('hidden'); 
         currentPersonIdForDrunkStripes = null; 
@@ -986,7 +1058,7 @@ editNicatBtn.addEventListener('click', async () => {
             await showAlert("The date for the NICAT has been decreed!", "Success");
             loadAndRenderNicatCountdown();
         } else {
-            await showAlert("Invalid date format. Please use<x_bin_42>-MM-DD.", "Scribe's Error");
+            await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
         }
     }
 });

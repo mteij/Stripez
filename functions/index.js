@@ -7,7 +7,6 @@ const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const {request: gaxiosRequest} = require("gaxios");
-const cors = require("cors")({origin: true});
 
 // Initialize Firebase Admin SDK
 initializeApp();
@@ -17,26 +16,24 @@ const adminDb = getFirestore();
  * Cloud Function to act as a proxy for fetching iCal data.
  */
 exports.getCalendarDataProxy = onRequest(
-    {region: "europe-west4"},
-    (req, res) => {
-      cors(req, res, async () => {
+    {region: "europe-west4", cors: true},
+    async (req, res) => {
         if (req.method !== "POST") {
-          res.status(405).send("Method Not Allowed");
-          return;
+            res.status(405).send("Method Not Allowed");
+            return;
         }
         const url = req.body.data.url;
         if (!url) {
-          res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Missing 'url' argument."}});
-          return;
+            res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Missing 'url' argument."}});
+            return;
         }
         try {
-          const response = await gaxiosRequest({url, method: "GET"});
-          res.json({data: {icalData: response.data}});
+            const response = await gaxiosRequest({url, method: "GET"});
+            res.json({data: {icalData: response.data}});
         } catch (error) {
-          logger.error("Error fetching iCal data from proxy:", error);
-          res.status(500).json({error: {status: "INTERNAL", message: "Could not fetch calendar data."}});
+            logger.error("Error fetching iCal data from proxy:", error);
+            res.status(500).json({error: {status: "INTERNAL", message: "Could not fetch calendar data."}});
         }
-      });
     },
 );
 
@@ -240,5 +237,41 @@ exports.resetAnnualSchikko = onSchedule({schedule: "0 0 1 1 *", timeZone: "Europ
     const schikkoRef = adminDb.collection('config').doc(`schikko_${previousYear}`);
     logger.info(`Running annual Schikko reset for year ${previousYear}.`);
     await schikkoRef.delete();
+    return null;
+});
+
+/**
+ * Scheduled function to clean up old activity logs.
+ * Runs once a day.
+ */
+exports.cleanupOldLogs = onSchedule({schedule: "every 24 hours", timeZone: "Europe/Amsterdam"}, async () => {
+    logger.info("Running daily cleanup of old activity logs.");
+
+    const activityLogRef = adminDb.collection("activity_log");
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Query for documents older than 30 days
+    const oldLogsQuery = activityLogRef.where("timestamp", "<", thirtyDaysAgo);
+
+    try {
+        const snapshot = await oldLogsQuery.get();
+        if (snapshot.empty) {
+            logger.info("No old logs to delete.");
+            return null;
+        }
+
+        // Create a batch to delete all old documents
+        const batch = adminDb.batch();
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        logger.info(`Successfully deleted ${snapshot.size} old log entries.`);
+    } catch (error) {
+        logger.error("Error cleaning up old logs:", error);
+    }
+
     return null;
 });
