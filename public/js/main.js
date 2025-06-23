@@ -776,6 +776,33 @@ punishmentListDiv.addEventListener('click', async (e) => {
             }
             break;
         case 'add-drunk-stripe': 
+            const nicatData = await getNicatDate();
+            if (nicatData && nicatData.date) {
+                const nicatDate = nicatData.date.toDate();
+                const now = new Date();
+
+                if (now < nicatDate) {
+                    const distance = nicatDate - now;
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    const countdownString = `Next NICAT in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+                    await showAlert(
+                        `The consumption of the Golden Liquid is a sacred rite reserved for the NICAT.\n${countdownString}`,
+                        'Patience, Young One!'
+                    );
+                    return; // Stop execution
+                }
+            } else {
+                await showAlert(
+                    'The date for the next NICAT has not been decreed. The Golden Liquid cannot be consumed.',
+                    'Patience, Young One!'
+                );
+                return;
+            }
+
             currentPersonIdForDrunkStripes = id; 
             const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
             const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
