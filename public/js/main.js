@@ -420,12 +420,17 @@ async function updateAppFooter() {
     `;
 }
 
+/**
+ * Creates action buttons based on the Oracle's judgement.
+ * @param {object} parsedJudgement - The parsed JSON object from the Gemini function.
+ */
 function createActionButtons(parsedJudgement) {
     geminiActionButtonsContainer.innerHTML = ''; 
     if (!geminiActionButtonsContainer.parentNode) {
         geminiOutput.parentNode.insertBefore(geminiActionButtonsContainer, geminiOutput.nextSibling);
     }
     
+    // For non-Schikko users, just show an acknowledgement button.
     if (!isSchikkoSessionActive) {
          const acknowledgeBtn = document.createElement('button');
         acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
@@ -438,7 +443,7 @@ function createActionButtons(parsedJudgement) {
         return;
     }
 
-
+    // Handle case where the person is declared innocent.
     if (parsedJudgement.innocent) {
         const acknowledgeBtn = document.createElement('button');
         acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
@@ -454,10 +459,11 @@ function createActionButtons(parsedJudgement) {
     const targetPersonName = parsedJudgement.person || 'Someone';
     const person = ledgerDataCache.find(p => p.name.toLowerCase() === targetPersonName.toLowerCase());
 
+    // Handle case where the judged person is not on the ledger.
     if (!person) {
         const acknowledgeBtn = document.createElement('button');
         acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-        acknowledgeBtn.textContent = `Person "${targetPersonName}" not found on ledger. Acknowledge Judgement.`;
+        acknowledgeBtn.textContent = `Person "${targetPersonName}" not found. Acknowledge.`;
         acknowledgeBtn.onclick = (e) => {
             e.stopPropagation();
             geminiModal.classList.add('hidden');
@@ -466,106 +472,81 @@ function createActionButtons(parsedJudgement) {
         return;
     }
 
+    // Collect all penalties.
     let totalStripes = 0;
-    const uniqueDiceValues = new Set(); 
+    const diceRolls = []; // Use an array to allow for multiple dice of the same type.
     
     parsedJudgement.penalties.forEach(penalty => {
         if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
             totalStripes += penalty.amount;
         } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
-            uniqueDiceValues.add(penalty.value);
+            diceRolls.push(penalty.value);
         }
     });
 
     const hasStripes = totalStripes > 0;
-    const hasDice = uniqueDiceValues.size > 0;
+    const hasDice = diceRolls.length > 0;
 
-    if (hasStripes && hasDice) {
+    // Create a single button for stripes if they are the only penalty.
+    if (hasStripes && !hasDice) {
+        const stripesBtn = document.createElement('button');
+        stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
+        stripesBtn.onclick = async (e) => {
+            e.stopPropagation();
+            for (let i = 0; i < totalStripes; i++) {
+                await addStripeToPerson(person.id);
+            }
+            lastPunishmentInfo = { name: person.name, amount: totalStripes, type: 'stripes', timestamp: new Date() };
+            updateAppFooter();
+            geminiModal.classList.add('hidden');
+        };
+        geminiActionButtonsContainer.appendChild(stripesBtn);
+    }
+    // Create a single button for dice if they are the only penalty.
+    else if (!hasStripes && hasDice) {
+        const diceBtn = document.createElement('button');
+        diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        diceBtn.textContent = `Roll Dice for ${person.name}`;
+        diceBtn.onclick = (e) => {
+            e.stopPropagation();
+            rollDiceAndAssign(diceRolls, person, addStripeToPerson, ledgerDataCache, showAlert); 
+            geminiModal.classList.add('hidden');
+        };
+        geminiActionButtonsContainer.appendChild(diceBtn);
+    }
+    // Create a combined button if there are both stripes and dice.
+    else if (hasStripes && hasDice) {
         const combinedBtn = document.createElement('button');
         combinedBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-        
-        let diceText = '';
-        const sortedDice = [...uniqueDiceValues].sort((a, b) => a - b);
-        if (sortedDice.length === 1) {
-            diceText = `Roll 🎲 ${sortedDice[0]}`;
-        } else {
-            diceText = `Roll Dice: ${sortedDice.map(d => `🎲${d}`).join(', ')}`;
-        }
-
-        combinedBtn.textContent = `Add ${totalStripes} Stripes & ${diceText} for ${person.name}`;
-        
+        combinedBtn.textContent = `Add ${totalStripes} Stripes & Roll Dice for ${person.name}`;
         combinedBtn.onclick = async (e) => {
             e.stopPropagation();
-             if (await confirmSchikko()) {
-                for (let i = 0; i < totalStripes; i++) {
-                    await addStripeToPerson(person.id);
-                }
-                lastPunishmentInfo = {
-                    name: person.name,
-                    amount: totalStripes,
-                    type: 'stripes',
-                    timestamp: new Date()
-                };
-                updateAppFooter();
-
-                sortedDice.forEach(diceValue => {
-                    rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
-                });
-                geminiModal.classList.add('hidden');
+            // Add stripes first
+            for (let i = 0; i < totalStripes; i++) {
+                await addStripeToPerson(person.id);
             }
+            lastPunishmentInfo = { name: person.name, amount: totalStripes, type: 'stripes', timestamp: new Date() };
+            updateAppFooter();
+            // Then open the pre-filled dice roller
+            rollDiceAndAssign(diceRolls, person, addStripeToPerson, ledgerDataCache, showAlert);
+            geminiModal.classList.add('hidden');
         };
         geminiActionButtonsContainer.appendChild(combinedBtn);
-    } 
+    }
+    // Handle cases with no actionable penalties.
     else {
-        if (hasStripes) {
-            const stripesBtn = document.createElement('button');
-            stripesBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-            stripesBtn.textContent = `Add ${totalStripes} Stripes to ${person.name}`;
-            stripesBtn.onclick = async (e) => {
-                e.stopPropagation();
-                if (await confirmSchikko()) {
-                    for (let i = 0; i < totalStripes; i++) {
-                        await addStripeToPerson(person.id);
-                    }
-                    lastPunishmentInfo = {
-                        name: person.name,
-                        amount: totalStripes,
-                        type: 'stripes',
-                        timestamp: new Date()
-                    };
-                    updateAppFooter();
-                    geminiModal.classList.add('hidden');
-                }
-            };
-            geminiActionButtonsContainer.appendChild(stripesBtn);
-        }
-
-        uniqueDiceValues.forEach(diceValue => {
-            const diceBtn = document.createElement('button');
-            diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-            diceBtn.textContent = `Roll 🎲 ${diceValue} for ${person.name}`;
-            diceBtn.onclick = async (e) => {
-                e.stopPropagation();
-                if(await confirmSchikko()) {
-                    rollDiceAndAssign(diceValue, person, addStripeToPerson, ledgerDataCache, showAlert); 
-                    geminiModal.classList.add('hidden');
-                }
-            };
-            geminiActionButtonsContainer.appendChild(diceBtn);
-        });
-
-        if (!hasStripes && !hasDice) {
-            const acknowledgeBtn = document.createElement('button');
-            acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
-            acknowledgeBtn.textContent = `Acknowledge Judgement for ${person.name}`;
-            acknowledgeBtn.onclick = (e) => {
-                e.stopPropagation();
-                geminiModal.classList.add('hidden');
-            };
-            geminiActionButtonsContainer.appendChild(acknowledgeBtn);
-        }
+        const acknowledgeBtn = document.createElement('button');
+        acknowledgeBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
+        acknowledgeBtn.textContent = `Acknowledge Judgement`;
+        acknowledgeBtn.onclick = (e) => {
+            e.stopPropagation();
+            geminiModal.classList.add('hidden');
+        };
+        geminiActionButtonsContainer.appendChild(acknowledgeBtn);
     }
 }
+
 
 async function handleGeminiSubmit() {
     const inputText = geminiInput.value.trim();
@@ -614,7 +595,7 @@ async function handleGeminiSubmit() {
                 penaltyParts.push(`${totalStripes} stripes`);
             }
             if (diceRollsSummary.length > 0) {
-                penaltyParts.push(`rolls: ${[...new Set(diceRollsSummary)].join(', ')}`);
+                penaltyParts.push(`rolls: ${diceRollsSummary.join(', ')}`);
             }
             
             const ruleNumbers = parsedJudgement.rulesBroken || [];

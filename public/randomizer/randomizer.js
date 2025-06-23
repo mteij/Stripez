@@ -182,6 +182,7 @@ function handleDiceSpin() {
 
     dicePunishmentAssignContainer.classList.remove('hidden');
 
+    const currentSelection = assignPersonSelect.value;
     assignPersonSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
     _ledgerData.forEach(person => {
         const option = document.createElement('option');
@@ -189,6 +190,11 @@ function handleDiceSpin() {
         option.textContent = person.name;
         assignPersonSelect.appendChild(option);
     });
+    // Restore selection if it's still valid
+    if (_ledgerData.some(p => p.id === currentSelection)) {
+        assignPersonSelect.value = currentSelection;
+    }
+
 
     assignStripesBtn.onclick = async () => {
         const selectedPersonId = assignPersonSelect.value;
@@ -255,9 +261,15 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
     diceSpinBtn.onclick = handleDiceSpin;
 }
 
-
+/**
+ * Opens and pre-configures the dice roller based on the Oracle's judgement.
+ * @param {Array<number>} diceValues - An array of dice sides (e.g., [20, 6, 6]).
+ * @param {object} targetPerson - The person object from the ledger.
+ * @param {Function} addStripeFn - Callback function to add stripes.
+ * @param {Array} ledgerData - The current ledger data.
+ * @param {Function} showAlertFn - Callback function to show alerts.
+ */
 export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, ledgerData, showAlertFn) {
-    console.warn("rollDiceAndAssign is deprecated. The Oracle will now open the manual dice roller.");
     if (showAlertFn) {
         await showAlertFn("The Oracle's judgement requires a dice roll. The manual Dice Roller will now open.", "Oracle Decree");
     }
@@ -272,13 +284,22 @@ export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, l
         if (diceListContainer && Array.isArray(diceValues) && diceValues.length > 0) {
             diceListContainer.innerHTML = ''; // Clear the default die added by init
             diceValues.forEach(val => {
-                addDieRow(val); // Use the new function to add dice
+                addDieRow(val); // Use the new function to add each required die
             });
         }
         
         // Pre-select the person in the assignment dropdown
         const assignPersonSelect = document.getElementById('assign-person-select');
         if (assignPersonSelect) {
+            // Populate the dropdown first, as initDiceRandomizer doesn't do it.
+             assignPersonSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
+            ledgerData.forEach(person => {
+                const option = document.createElement('option');
+                option.value = person.id;
+                option.textContent = person.name;
+                assignPersonSelect.appendChild(option);
+            });
+            // Now, set the value to the target person.
             assignPersonSelect.value = targetPerson.id;
         }
 
