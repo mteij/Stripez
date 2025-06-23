@@ -112,19 +112,26 @@ If you wish to clone this repository and set it up with your own Firebase projec
     rules_version = '2';
     service cloud.firestore {
       match /databases/{database}/documents {
+        // Punishments and Rules can be read and written by any authenticated user
         match /punishments/{docId} {
           allow read, write: if request.auth != null;
         }
         match /rules/{docId} {
           allow read, write: if request.auth != null;
         }
-        match /activity_log/{docId} {
-            allow read, write: if request.auth != null;
+
+        // Activity logs can be created and read by any authenticated user.
+        // They cannot be updated or deleted from the client to preserve the audit trail.
+        match /activity_log/{logId} {
+          allow get, list: if request.auth != null;
+          allow create: if request.auth != null;
+          allow update, delete: if false;
         }
-        // Config is now managed by secure backend functions
+
+        // Config is read-only for clients and only writable by backend functions
         match /config/{docId} {
-            allow read: if request.auth != null; // Client reads calendar URL
-            allow write: if false; // Disallow direct client writes
+            allow read: if request.auth != null;
+            allow write: if false;
         }
       }
     }
