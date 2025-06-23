@@ -91,23 +91,24 @@ let _ledgerData = [];
 let _showAlertFn = null;
 
 function renderDiceList() {
-    const diceEntries = diceListContainer.querySelectorAll('.flex');
-    diceEntries.forEach((entry, index) => {
-        const label = entry.querySelector('label');
+    const diceRows = diceListContainer.querySelectorAll('.flex');
+    diceRows.forEach((row, index) => {
+        const label = row.querySelector('label');
         if (label) {
             label.textContent = `Die ${index + 1}:`;
         }
     });
+
     const removeBtns = diceListContainer.querySelectorAll('.remove-dice-btn');
     removeBtns.forEach(btn => {
-        btn.style.display = diceEntries.length > 1 ? 'flex' : 'none';
+        btn.style.display = diceRows.length > 1 ? 'flex' : 'none';
     });
 }
 
 function handleAddDie() {
     const newDieHtml = `
         <div class="flex items-center gap-2">
-            <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0">Die:</label>
+            <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0"></label>
             <input type="number" value="6" min="1" max="100" class="dice-max-value-input w-full text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
             <button class="remove-dice-btn btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex-shrink-0 flex items-center justify-center rounded-md" title="Remove Die">&times;</button>
         </div>
@@ -118,15 +119,15 @@ function handleAddDie() {
 
 function handleRemoveDie(event) {
     const removeBtn = event.target.closest('.remove-dice-btn');
-    if (removeBtn) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (diceListContainer.children.length > 1) {
-            removeBtn.closest('.flex').remove();
-            renderDiceList();
-        } else {
-            if (_showAlertFn) _showAlertFn("You must have at least one die.", "Cannot Remove");
-        }
+    if (!removeBtn) return;
+
+    event.stopPropagation();
+
+    if (diceListContainer.querySelectorAll('.flex').length > 1) {
+        removeBtn.closest('.flex').remove();
+        renderDiceList();
+    } else {
+        if (_showAlertFn) _showAlertFn("You must have at least one die.", "Cannot Remove");
     }
 }
 
@@ -222,10 +223,10 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
     diceResultsContainer.innerHTML = '';
     dicePunishmentAssignContainer.classList.add('hidden'); 
 
-    // Assigning .onclick overwrites any previous listener. This is safe for re-initialization.
+    // Assigning .onclick overwrites any previous listener, which is safe for re-initialization.
     diceSpinBtn.onclick = handleDiceSpin;
     addDiceBtn.onclick = handleAddDie;
-    diceListContainer.onclick = handleRemoveDie; // Use event delegation
+    diceListContainer.onclick = handleRemoveDie; // Handles clicks on remove buttons via delegation.
 
     renderDiceList();
 }
