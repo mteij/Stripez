@@ -211,17 +211,22 @@
             <button id="close-dice-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
             <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Dice Roller</h2>
             
-            <div class="text-center mt-4">
-                <label for="dice-max-value-slider" class="font-cinzel-decorative text-lg text-[#6f4e37]">
-                    Max Roll Value: <span id="dice-slider-value" class="font-bold">20</span>
-                </label>
-                <input type="range" id="dice-max-value-slider" min="1" max="50" value="20" class="w-full">
+            <div id="dice-list-container" class="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2">
+                <div class="flex items-center gap-2">
+                    <label class="font-cinzel-decorative text-lg text-[#6f4e37] flex-shrink-0">Die 1:</label>
+                    <input type="number" value="20" min="1" max="100" class="dice-max-value-input w-full text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                    <button class="remove-dice-btn btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex-shrink-0 flex items-center justify-center rounded-md" title="Remove Die" style="display: none;">&times;</button>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-4 mb-6">
+                <button id="add-dice-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base">Add Another Die</button>
             </div>
 
             <div class="text-center mt-2">
-                <button id="dice-spin-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Roll Dice</button>
+                <button id="dice-spin-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Roll All Dice</button>
                 <div id="dice-roulette-results" class="mt-4">
-                    </div>
+                </div>
             </div>
 
             <div id="dice-punishment-assign-container" class="mt-6 pt-4 border-t-2 border-dotted border-[#b9987e] hidden">
