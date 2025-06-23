@@ -65,28 +65,6 @@ All data is stored and synced live using Google's Firebase, and the project is s
 
 The project's code is organized to separate the frontend (`public`) from the backend (`functions`).
 
-.
-├── functions/
-│   ├── node_modules/
-│   ├── index.js         # Backend logic, including Schikko auth and Oracle
-│   └── package.json
-├── public/
-│   ├── js/
-│   │   ├── firebase.js
-│   │   ├── main.js
-│   │   └── ui.js
-│   ├── randomizer/
-│   │   ├── randomizer.js
-│   │   └── randomizer.css
-│   ├── index.html
-│   ├── style.css
-│   └── 404.html
-├── .github/
-│   └── workflows/       # GitHub Actions for CI/CD
-├── .firebaserc
-├── firebase.json
-└── README.md
-
 
 ---
 
