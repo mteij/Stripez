@@ -91,7 +91,32 @@ exports.getOracleJudgement = onCall(
         const genAI = new GoogleGenerativeAI(geminiApiKey);
         const model = genAI.getGenerativeModel({model: "gemini-1.5-flash"});
         const rulesText = rules.map((rule, index) => `${index + 1}. ${rule.text}`).join("\n");
-        const fullPrompt = `You are an ancient, wise, and slightly dramatic Oracle for a game called "Schikko Rules". Your task is to pass judgement on a transgression described by a user. You must determine the broken rules and their individual penalties. You will output your judgement as a JSON string, wrapped in a markdown code block (e.g., \`\`\`json { ... } \`\`\`). Do NOT output anything else outside the code block. The JSON must have the following structure: { "person": "string", "penalties": [ { "type": "stripes", "amount": number }, { "type": "dice", "value": number } ], "rulesBroken": [number, ...], "innocent": boolean }. Important: - For "penalties", list each penalty from each broken rule individually. Do NOT sum them. If multiple dice rolls are required, create a separate 'dice' penalty object for each roll. For example, if the penalty is to roll a d20 and a d6, the penalties array would be: [{ "type": "dice", "value": 20 }, { "type": "dice", "value": 6 }]. - If no rules are broken, set "innocent" to true. Here are the official "Schikko's Decrees":\n---\n${rulesText}\n---\nA user has described the following transgression:\n---\n"${promptText}"\n---`;
+        const fullPrompt = `You are an ancient, wise, and slightly dramatic Oracle for a game called "Schikko Rules". Your task is to pass judgement on a transgression described by a user. You must determine the broken rules and their individual penalties. You will output your judgement as a JSON string, wrapped in a markdown code block (e.g., \`\`\`json { ... } \`\`\`). Do NOT output anything else outside the code block.
+
+The JSON must have the following structure:
+{
+  "person": "string",
+  "penalties": [
+    {"type": "stripes", "amount": number},
+    {"type": "dice", "value": number}
+  ],
+  "rulesBroken": [number, ...],
+  "innocent": boolean
+}
+
+IMPORTANT:
+- The "penalties" array must contain an object for each individual penalty. Do NOT sum them.
+- If multiple dice rolls are required, create a separate "dice" penalty object for each roll. For example, a penalty to roll a d20 and two d6s would result in: "penalties": [{"type": "dice", "value": 20}, {"type": "dice", "value": 6}, {"type": "dice", "value": 6}].
+- If no rules are broken, set "innocent" to true and the "penalties" array can be empty.
+
+Here are the official "Schikko's Decrees":
+---
+${rulesText}
+---
+A user has described the following transgression:
+---
+"${promptText}"
+---`;
         
         const result = await model.generateContent(fullPrompt);
         const judgementText = result.response.text().trim();
@@ -99,6 +124,9 @@ exports.getOracleJudgement = onCall(
         const jsonString = (jsonMatch && jsonMatch[1]) ? jsonMatch[1].trim() : judgementText;
         
         const parsedJudgement = JSON.parse(jsonString);
+
+        // For debugging: log the exact object returned by the AI
+        logger.info("Parsed judgement from Gemini:", JSON.stringify(parsedJudgement, null, 2));
 
         if (ledgerNames && ledgerNames.length > 0 && parsedJudgement.person && parsedJudgement.person.toLowerCase() !== 'someone') {
             let closestName = parsedJudgement.person;
