@@ -8,6 +8,7 @@ const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const {request: gaxiosRequest} = require("gaxios");
 const crypto = require("crypto");
+const net = require("net");
 
 // Initialize Firebase Admin SDK
 initializeApp();
@@ -17,19 +18,101 @@ const adminDb = getFirestore();
  * Cloud Function to act as a proxy for fetching iCal data.
  */
 exports.getCalendarDataProxy = onRequest(
-    {region: "europe-west4", cors: true},
+    {
+        region: "europe-west4",
+        // Restrict CORS to known frontends (defense-in-depth)
+        cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+    },
     async (req, res) => {
+        // Explicitly deny non-POST and log any attempted PURGE for visibility
+        if (req.method === "PURGE") {
+            logger.warn(`Denied PURGE request to getCalendarDataProxy from ${req.ip || "unknown-ip"}`);
+            res.status(405).send("Method Not Allowed");
+            return;
+        }
         if (req.method !== "POST") {
             res.status(405).send("Method Not Allowed");
             return;
         }
-        const url = req.body.data.url;
-        if (!url) {
+
+        // Optional: enforce JSON requests
+        if (typeof req.is === "function" && !req.is("application/json")) {
+            res.status(415).json({error: {status: "UNSUPPORTED_MEDIA_TYPE", message: "Content-Type must be application/json."}});
+            return;
+        }
+
+        const url = req?.body?.data?.url;
+        if (!url || typeof url !== "string") {
             res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Missing 'url' argument."}});
             return;
         }
+
+        // Basic SSRF hardening: allow only http(s), disallow localhost/metadata/private IPs and raw IP hosts
+        const isPrivateOrDisallowedHost = (hostname) => {
+            const lower = String(hostname || "").toLowerCase();
+
+            // Block localhost and link-local/loopback
+            if (lower === "localhost" || lower === "127.0.0.1" || lower === "::1") return true;
+
+            // Block common metadata/internal hostnames
+            if (lower.endsWith(".internal") || lower === "metadata.google.internal") return true;
+
+            // Block private IPv4 ranges and link-local via pattern
+            const ipv4Private =
+                /^10\./.test(lower) ||
+                /^192\.168\./.test(lower) ||
+                /^172\.(1[6-9]|2\d|3[0-1])\./.test(lower) ||
+                /^169\.254\./.test(lower);
+
+            // Block IPv6 unique-local/link-local (fd00::/8, fe80::/10)
+            const ipv6Private = lower.startsWith("fd") || lower.startsWith("fe80");
+
+            // If hostname is a literal IP, check class
+            const ipVersion = net.isIP(lower);
+            if (ipVersion === 4 && ipv4Private) return true;
+            if (ipVersion === 6 && (ipv6Private || lower === "::1")) return true;
+
+            // Also block any raw IP literal to be conservative
+            if (ipVersion === 4 || ipVersion === 6) return true;
+
+            return false;
+        };
+
+        let urlObj;
         try {
-            const response = await gaxiosRequest({url, method: "GET"});
+            urlObj = new URL(url);
+        } catch {
+            res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Invalid URL."}});
+            return;
+        }
+
+        if (!["http:", "https:"].includes(urlObj.protocol)) {
+            res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Only http(s) URLs are allowed."}});
+            return;
+        }
+
+        if (isPrivateOrDisallowedHost(urlObj.hostname)) {
+            res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Target host is not allowed."}});
+            return;
+        }
+
+        try {
+            const response = await gaxiosRequest({
+                url: urlObj.toString(),
+                method: "GET",
+                timeout: 8000,
+                headers: {
+                    "Accept": "text/calendar, text/plain;q=0.9, */*;q=0.1",
+                    "User-Agent": "schikko-rules-ical-proxy/1.0"
+                },
+                // If supported by gaxios, limit payload size (~1MB)
+                maxContentLength: 1000000
+            });
+            const ct = String(response.headers?.["content-type"] || response.headers?.["Content-Type"] || "").toLowerCase();
+            if (ct && !(ct.startsWith("text/calendar") || ct.startsWith("text/plain") || ct.startsWith("text/"))) {
+                res.status(400).json({error: {status: "INVALID_ARGUMENT", message: "Unsupported content type from target host."}});
+                return;
+            }
             res.json({data: {icalData: response.data}});
         } catch (error) {
             logger.error("Error fetching iCal data from proxy:", error);
@@ -203,9 +286,20 @@ exports.setSchikko = onCall(
         if (schikkoDoc.exists) throw new HttpsError("already-exists", `A Schikko is already set for ${year}.`);
 
         const password = crypto.randomBytes(4).toString('hex');
-        await schikkoRef.set({email, password, createdAt: FieldValue.serverTimestamp()});
 
-        logger.info(`Schikko set for ${email}. Password: ${password}`);
+        // Store only a salted hash of the password (no plaintext)
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+
+        await schikkoRef.set({
+            email,
+            passwordHash: hash,
+            passwordSalt: salt,
+            createdAt: FieldValue.serverTimestamp()
+        });
+
+        // Do NOT log secrets
+        logger.info(`Schikko set for ${email}.`);
         
         return {success: true, password: password};
     },
@@ -222,11 +316,52 @@ exports.loginSchikko = onCall(
     async (request) => {
         const {password} = request.data;
         if (!password) throw new HttpsError("invalid-argument", "Missing 'password' argument.");
+        const now = Date.now();
+
+        // Simple global rate limit: max 20 attempts in a 10-minute window
+        const throttleRef = adminDb.collection('config').doc('login_throttle');
+        try {
+            await adminDb.runTransaction(async (tx) => {
+                const snap = await tx.get(throttleRef);
+                const data = snap.exists ? snap.data() : {};
+                const attempts = Array.isArray(data.attempts) ? data.attempts : [];
+                const windowMs = 10 * 60 * 1000;
+                const cutoff = now - windowMs;
+                const recent = attempts.filter((t) => typeof t === 'number' && t > cutoff);
+                if (recent.length >= 20) {
+                    throw new HttpsError("resource-exhausted", "Too many login attempts. Please try again later.");
+                }
+                recent.push(now);
+                tx.set(throttleRef, { attempts: recent }, { merge: true });
+            });
+        } catch (e) {
+            if (e instanceof HttpsError) throw e;
+            logger.warn("Login throttle transaction failed:", e);
+        }
+
         const year = new Date().getFullYear();
         const schikkoRef = adminDb.collection('config').doc(`schikko_${year}`);
         const schikkoDoc = await schikkoRef.get();
         if (!schikkoDoc.exists) throw new HttpsError("not-found", `No Schikko set for ${year}.`);
-        return {success: schikkoDoc.data().password === password};
+
+        const data = schikkoDoc.data();
+        let success = false;
+
+        if (data.passwordHash && data.passwordSalt) {
+            const computed = crypto.scryptSync(password, data.passwordSalt, 64).toString('hex');
+            // timing-safe comparison
+            success = crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(data.passwordHash, 'hex'));
+        } else if (typeof data.password === 'string') {
+            // Backward compatibility for legacy plaintext storage; migrate on success
+            success = data.password === password;
+            if (success) {
+                const salt = crypto.randomBytes(16).toString('hex');
+                const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+                await schikkoRef.set({ passwordHash: hash, passwordSalt: salt, password: FieldValue.delete() }, { merge: true }).catch(() => {});
+            }
+        }
+
+        return {success};
     },
 );
 

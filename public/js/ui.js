@@ -15,6 +15,16 @@ function hashCode(str) {
     return Math.abs(hash);
 }
 
+// Simple HTML escaper to avoid XSS when injecting user-controlled text
+function escapeHTML(str) {
+    return String(str)
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, ''');
+}
+ 
 // --- GENERIC MODAL UI FUNCTIONS ---
 
 /**
@@ -129,7 +139,7 @@ function renderUpcomingEvent(event) {
         const timeString = eventDate.toLocaleTimeString(undefined, {
             hour: '2-digit', minute: '2-digit'
         });
-        upcomingEventDiv.innerHTML = `<strong>Next Activity:</strong> ${event.summary} on ${dateString} at ${timeString}`;
+        upcomingEventDiv.innerHTML = `<strong>Next Activity:</strong> ${escapeHTML(event.summary || '')} on ${dateString} at ${timeString}`;
     } else {
         upcomingEventDiv.innerHTML = 'No upcoming activities found.';
     }
@@ -153,10 +163,10 @@ function renderFullAgenda(events) {
         const timeString = `${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
 
         eventDiv.innerHTML = `
-            <h3 class="text-xl font-bold text-[#5c3d2e]">${event.summary}</h3>
+            <h3 class="text-xl font-bold text-[#5c3d2e]">${escapeHTML(event.summary || '')}</h3>
             <p class="text-md text-[#6f4e37]">${dateString} at ${timeString}</p>
-            ${event.location ? `<p class="text-sm text-[#6f4e37]">Location: ${event.location}</p>` : ''}
-            ${event.description ? `<p class="text-sm mt-2">${event.description}</p>` : ''}
+            ${event.location ? `<p class="text-sm text-[#6f4e37]">Location: ${escapeHTML(event.location)}</p>` : ''}
+            ${event.description ? `<p class="text-sm mt-2">${escapeHTML(event.description)}</p>` : ''}
         `;
         agendaContentDiv.appendChild(eventDiv);
     });
@@ -220,9 +230,9 @@ function renderLogbook(logData) {
         logEntryDiv.innerHTML = `
             <div class="text-2xl flex-shrink-0 pt-1">${icon}</div>
             <div class="flex-grow">
-                <p class="text-md text-[#4a3024]">${log.details}</p>
+                <p class="text-md text-[#4a3024]">${escapeHTML(log.details || '')}</p>
                 <p class="text-sm text-[#6f4e37] mt-1">
-                    <span class="${actorColor} font-bold">${log.actor}</span> at ${timestamp}
+                    <span class="${actorColor} font-bold">${escapeHTML(log.actor || '')}</span> at ${escapeHTML(timestamp)}
                 </p>
             </div>
         `;
@@ -410,7 +420,7 @@ function renderLedger(viewData, term, isSchikko) {
 
         personDiv.innerHTML = `
             <div class="flex-grow w-full md:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
-                <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${person.name}</p>
+                <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>
                 <div class="flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             ${buttonsHTML}`;
@@ -664,12 +674,12 @@ function renderRules(rulesData, isSchikko) {
         }
         buttonsHTML += '</div>';
 
-        let ruleTextContent = rule.text;
+        let ruleTextContent = escapeHTML(rule.text);
         const colonIndex = rule.text.indexOf(':');
-
+        
         if (colonIndex !== -1) {
-            const partBeforeColon = rule.text.substring(0, colonIndex + 1);
-            const partAfterColon = rule.text.substring(colonIndex + 1);
+            const partBeforeColon = escapeHTML(rule.text.substring(0, colonIndex + 1));
+            const partAfterColon = escapeHTML(rule.text.substring(colonIndex + 1));
             ruleTextContent = `${partBeforeColon}<span class="text-red-700">${partAfterColon}</span>`;
         }
 
@@ -680,7 +690,7 @@ function renderRules(rulesData, isSchikko) {
             // Sort tags alphabetically before rendering
             rule.tags.sort().forEach(tag => {
                 const colorClassIndex = hashCode(tag) % numColors + 1;
-                tagsHTML += `<span class="rule-tag tag-color-${colorClassIndex}">${tag}</span>`;
+                tagsHTML += `<span class="rule-tag tag-color-${colorClassIndex}">${escapeHTML(tag)}</span>`;
             });
             tagsHTML += '</div>';
         }

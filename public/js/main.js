@@ -1063,7 +1063,7 @@ editNicatBtn.addEventListener('click', async () => {
             await showAlert("The date for the NICAT has been decreed!", "Success");
             loadAndRenderNicatCountdown();
         } else {
-            await showAlert("Invalid date format. Please use<x_bin_42>-MM-DD.", "Scribe's Error");
+            await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
         }
     }
 });
