@@ -15,7 +15,7 @@ function hashCode(str) {
     return Math.abs(hash);
 }
 
-// Simple HTML escaper to avoid XSS when injecting user-controlled text
+//// Simple HTML escaper to avoid XSS when injecting user-controlled text
 function escapeHTML(str) {
     return String(str)
         .replace(/&/g, '&')
