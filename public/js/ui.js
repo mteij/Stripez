@@ -22,7 +22,7 @@ function escapeHTML(str) {
         .replace(/</g, '<')
         .replace(/>/g, '>')
         .replace(/"/g, '"')
-        .replace(/'/g, ''');
+        .replace(/'/g, '&#39;');
 }
  
 // --- GENERIC MODAL UI FUNCTIONS ---
