@@ -3,7 +3,8 @@
 // Import necessary Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc, setDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot, query, arrayUnion, arrayRemove, deleteDoc, writeBatch, serverTimestamp, getDoc, setDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 // Firebase configuration. These placeholders will be replaced by GitHub Actions
 // during the build/deploy process using a string replacement utility.
@@ -26,6 +27,14 @@ const ledgerCollectionRef = collection(db, 'punishments');
 const rulesCollectionRef = collection(db, 'rules');
 const configCollectionRef = collection(db, 'config');
 const activityLogCollectionRef = collection(db, 'activity_log');
+
+// --- SECURE CALLABLE WRAPPER ---
+const functionsClient = getFunctions(undefined, "europe-west4");
+const schikkoActionCallable = httpsCallable(functionsClient, 'schikkoAction');
+const callSchikkoAction = async (action, data = {}) => {
+    const res = await schikkoActionCallable({ action, ...data });
+    return res.data;
+};
 
 // --- DATABASE AND AUTH FUNCTIONS ---
 
@@ -90,8 +99,7 @@ const getCalendarConfig = async () => {
 };
 
 const saveCalendarUrl = async (url) => {
-    const docRef = doc(db, 'config', 'calendar');
-    await setDoc(docRef, { url: url }, { merge: true });
+    await callSchikkoAction('saveCalendarUrl', { url });
 };
 
 const getNicatDate = async () => {
@@ -101,112 +109,44 @@ const getNicatDate = async () => {
 };
 
 const saveNicatDate = async (dateString) => {
-    const docRef = doc(db, 'config', 'nicat');
-    const date = new Date(dateString);
-    await setDoc(docRef, { date: date }, { merge: true });
+    await callSchikkoAction('saveNicatDate', { dateString });
 };
 
 const addNameToLedger = async (name, userId) => {
-    await addDoc(ledgerCollectionRef, { name, stripes: [], drunkStripes: [], addedBy: userId }); // Changed to 'drunkStripes'
+    await callSchikkoAction('addPerson', { name });
 };
 
 const addStripeToPerson = async (docId, count = 1) => {
-    const docRef = doc(db, 'punishments', docId);
-    
-    // Create an array of new timestamps to add
-    const newStripes = [];
-    for (let i = 0; i < count; i++) {
-        // Adding 'i' milliseconds ensures uniqueness even if calls are very fast.
-        newStripes.push(new Date(Date.now() + i));
-    }
-    
-    await updateDoc(docRef, {
-        stripes: arrayUnion(...newStripes)
-    });
+    await callSchikkoAction('addStripe', { docId, count });
 };
 
 const removeLastStripeFromPerson = async (person) => {
-    if (person && Array.isArray(person.stripes) && person.stripes.length > 0) {
-        const docRef = doc(db, 'punishments', person.id);
-        
-        // Sort in descending order to get the latest timestamp to remove
-        const sortedStripes = [...person.stripes].sort((a, b) => b.toMillis() - a.toMillis());
-        const lastStripeToRemove = sortedStripes[0];
-
-        // 1. Remove the normal stripe from Firestore
-        await updateDoc(docRef, { stripes: arrayRemove(lastStripeToRemove) });
-
-        // 2. Fetch the updated document immediately to get the latest state after the first update
-        const updatedSnap = await getDoc(docRef);
-        const updatedPersonData = updatedSnap.data();
-
-        let currentNormalStripes = updatedPersonData.stripes?.length || 0;
-        let currentDrunkStripes = updatedPersonData.drunkStripes?.length || 0;
-        
-        // Determine how many drunk stripes need to be removed to maintain consistency
-        let drunkStripesToRemove = [];
-        if (currentDrunkStripes > currentNormalStripes) {
-            const diff = currentDrunkStripes - currentNormalStripes;
-            // Sort drunk stripes by timestamp in descending order to remove the most recent ones
-            const sortedDrunkStripes = [...(updatedPersonData.drunkStripes || [])].sort((a, b) => b.toMillis() - a.toMillis());
-            
-            // Collect the timestamps of the drunk stripes to be removed
-            for (let i = 0; i < diff; i++) {
-                if (sortedDrunkStripes[i]) {
-                    drunkStripesToRemove.push(sortedDrunkStripes[i]);
-                }
-            }
-        }
-
-        // 3. If any drunk stripes need to be removed, perform this update in a batch
-        if (drunkStripesToRemove.length > 0) {
-            const batch = writeBatch(db);
-            drunkStripesToRemove.forEach(ts => {
-                batch.update(docRef, { drunkStripes: arrayRemove(ts) });
-            });
-            await batch.commit();
-        }
-    }
+    if (!person?.id) return;
+    await callSchikkoAction('removeLastStripe', { docId: person.id });
 };
 
 const renamePersonOnLedger = async (docId, newName) => {
-    const docRef = doc(db, 'punishments', docId);
-    await updateDoc(docRef, { name: newName.trim() });
+    await callSchikkoAction('renamePerson', { docId, newName });
 };
 
 const deletePersonFromLedger = async (docId) => {
-    const docRef = doc(db, 'punishments', docId);
-    await deleteDoc(docRef).catch(error => console.error("Error removing document: ", error));
+    await callSchikkoAction('deletePerson', { docId });
 };
 
 const addRuleToFirestore = async (text, order) => {
-    await addDoc(rulesCollectionRef, { text, order, tags: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    await callSchikkoAction('addRule', { text, order });
 };
 
 const deleteRuleFromFirestore = async (docId) => {
-    const docRef = doc(db, 'rules', docId);
-    await deleteDoc(docRef);
+    await callSchikkoAction('deleteRule', { docId });
 };
 
 const updateRuleOrderInFirestore = async (rule1, rule2) => {
-    const batch = writeBatch(db);
-
-    const rule1Ref = doc(db, "rules", rule1.id);
-    batch.update(rule1Ref, { order: rule2.order, updatedAt: serverTimestamp() });
-
-    const rule2Ref = doc(db, "rules", rule2.id);
-    batch.update(rule2Ref, { order: rule1.order, updatedAt: serverTimestamp() });
-
-    await batch.commit();
+    await callSchikkoAction('updateRuleOrder', { rule1, rule2 });
 };
 
 const updateRuleInFirestore = async (docId, newText, tags) => {
-    const docRef = doc(db, 'rules', docId);
-    await updateDoc(docRef, { 
-        text: newText.trim(), 
-        tags: tags,
-        updatedAt: serverTimestamp() 
-    });
+    await callSchikkoAction('updateRule', { docId, text: newText.trim(), tags });
 };
 
 /**
@@ -234,13 +174,8 @@ const addDrunkStripeToPerson = async (docId, count) => {
  * @param {object} person - The person object from the ledger.
  */
 const removeLastDrunkStripeFromPerson = async (person) => {
-    if (person && Array.isArray(person.drunkStripes) && person.drunkStripes.length > 0) { // Changed to 'drunkStripes'
-        const docRef = doc(db, 'punishments', person.id);
-        // Sort by timestamp (most recent first) to remove the last one added
-        const sortedDrunkStripes = [...person.drunkStripes].sort((a, b) => b.toMillis() - a.toMillis()); // Changed to 'drunkStripes'
-        const lastDrunkStripe = sortedDrunkStripes[0];
-        await updateDoc(docRef, { drunkStripes: arrayRemove(lastDrunkStripe) }); // Changed to 'drunkStripes'
-    }
+    if (!person?.id) return;
+    await callSchikkoAction('removeLastDrunkStripe', { docId: person.id });
 };
 
 

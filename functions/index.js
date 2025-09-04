@@ -4,7 +4,7 @@ const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {logger} = require("firebase-functions");
 const {initializeApp} = require("firebase-admin/app");
-const {getFirestore, FieldValue} = require("firebase-admin/firestore");
+const {getFirestore, FieldValue, Timestamp} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const {request: gaxiosRequest} = require("gaxios");
 const crypto = require("crypto");
@@ -306,7 +306,7 @@ exports.setSchikko = onCall(
 );
 
 /**
- * Logs in the Schikko using a password.
+ * Logs in the Schikko using a password and issues a short-lived session token.
  */
 exports.loginSchikko = onCall(
     {
@@ -314,12 +314,12 @@ exports.loginSchikko = onCall(
         cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
     },
     async (request) => {
-        const {password} = request.data;
+        const { password } = request.data;
         if (!password) throw new HttpsError("invalid-argument", "Missing 'password' argument.");
         const now = Date.now();
 
         // Simple global rate limit: max 20 attempts in a 10-minute window
-        const throttleRef = adminDb.collection('config').doc('login_throttle');
+        const throttleRef = adminDb.collection("config").doc("login_throttle");
         try {
             await adminDb.runTransaction(async (tx) => {
                 const snap = await tx.get(throttleRef);
@@ -327,7 +327,7 @@ exports.loginSchikko = onCall(
                 const attempts = Array.isArray(data.attempts) ? data.attempts : [];
                 const windowMs = 10 * 60 * 1000;
                 const cutoff = now - windowMs;
-                const recent = attempts.filter((t) => typeof t === 'number' && t > cutoff);
+                const recent = attempts.filter((t) => typeof t === "number" && t > cutoff);
                 if (recent.length >= 20) {
                     throw new HttpsError("resource-exhausted", "Too many login attempts. Please try again later.");
                 }
@@ -340,7 +340,7 @@ exports.loginSchikko = onCall(
         }
 
         const year = new Date().getFullYear();
-        const schikkoRef = adminDb.collection('config').doc(`schikko_${year}`);
+        const schikkoRef = adminDb.collection("config").doc(`schikko_${year}`);
         const schikkoDoc = await schikkoRef.get();
         if (!schikkoDoc.exists) throw new HttpsError("not-found", `No Schikko set for ${year}.`);
 
@@ -348,20 +348,45 @@ exports.loginSchikko = onCall(
         let success = false;
 
         if (data.passwordHash && data.passwordSalt) {
-            const computed = crypto.scryptSync(password, data.passwordSalt, 64).toString('hex');
+            const computed = crypto.scryptSync(password, data.passwordSalt, 64).toString("hex");
             // timing-safe comparison
-            success = crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(data.passwordHash, 'hex'));
-        } else if (typeof data.password === 'string') {
+            success = crypto.timingSafeEqual(Buffer.from(computed, "hex"), Buffer.from(data.passwordHash, "hex"));
+        } else if (typeof data.password === "string") {
             // Backward compatibility for legacy plaintext storage; migrate on success
             success = data.password === password;
             if (success) {
-                const salt = crypto.randomBytes(16).toString('hex');
-                const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-                await schikkoRef.set({ passwordHash: hash, passwordSalt: salt, password: FieldValue.delete() }, { merge: true }).catch(() => {});
+                const salt = crypto.randomBytes(16).toString("hex");
+                const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+                await schikkoRef
+                    .set({ passwordHash: hash, passwordSalt: salt, password: FieldValue.delete() }, { merge: true })
+                    .catch(() => {});
             }
         }
 
-        return {success};
+        if (!success) {
+            return { success: false };
+        }
+
+        // Require an authenticated (anonymous is fine) caller to bind the session.
+        const uid = request.auth?.uid;
+        if (!uid) {
+            throw new HttpsError("unauthenticated", "Must be signed in to start a Schikko session.");
+        }
+
+        // Create a short-lived session (12h)
+        const sessionId = crypto.randomBytes(16).toString("hex");
+        const expiresAtMs = Date.now() + 12 * 60 * 60 * 1000;
+
+        await adminDb
+            .collection("config")
+            .doc(`schikko_session_${sessionId}`)
+            .set({
+                uid,
+                createdAt: FieldValue.serverTimestamp(),
+                expiresAtMs,
+            });
+
+        return { success: true, sessionId, expiresAtMs };
     },
 );
 
@@ -411,3 +436,198 @@ exports.cleanupOldLogs = onSchedule({schedule: "every 24 hours", timeZone: "Euro
 
     return null;
 });
+
+// Schikko privileged mutations via Admin SDK
+exports.schikkoAction = onCall(
+    {
+        region: "europe-west4",
+        cors: ["https://nicat.mteij.nl", "https://schikko-rules.web.app", "https://schikko-rules.firebaseapp.com"],
+    },
+    async (request) => {
+        const uid = request.auth?.uid;
+        if (!uid) throw new HttpsError("unauthenticated", "Must be signed in.");
+
+        // Verify active Schikko session (created by loginSchikko)
+        const nowMs = Date.now();
+        const sessionQuery = await adminDb
+            .collection("config")
+            .where("uid", "==", uid)
+            .where("expiresAtMs", ">", nowMs)
+            .limit(1)
+            .get();
+
+        if (sessionQuery.empty) {
+            throw new HttpsError("permission-denied", "Schikko session required.");
+        }
+
+        const { action, ...data } = request.data || {};
+        if (!action || typeof action !== "string") {
+            throw new HttpsError("invalid-argument", "Missing or invalid 'action'.");
+        }
+
+        try {
+            switch (action) {
+                // Ledger
+                case "addPerson": {
+                    const name = String(data.name || "").trim();
+                    if (!name) throw new HttpsError("invalid-argument", "Name required.");
+                    await adminDb.collection("punishments").add({
+                        name,
+                        stripes: [],
+                        drunkStripes: [],
+                        addedBy: uid,
+                    });
+                    return { ok: true };
+                }
+                case "addStripe": {
+                    const { docId, count = 1 } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    const ts = [];
+                    for (let i = 0; i < Math.max(1, Number(count)); i++) {
+                        ts.push(new Date(Date.now() + i));
+                    }
+                    await adminDb.collection("punishments").doc(docId).update({
+                        stripes: FieldValue.arrayUnion(...ts),
+                    });
+                    return { ok: true };
+                }
+                case "removeLastStripe": {
+                    const { docId } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    const ref = adminDb.collection("punishments").doc(docId);
+                    const snap = await ref.get();
+                    if (!snap.exists) return { ok: true };
+                    const person = snap.data() || {};
+                    const stripes = Array.isArray(person.stripes) ? person.stripes : [];
+                    const drunk = Array.isArray(person.drunkStripes) ? person.drunkStripes : [];
+                    if (stripes.length === 0) return { ok: true };
+
+                    // Remove latest normal stripe
+                    const sortedStripes = [...stripes].sort((a, b) => a.toMillis() - b.toMillis());
+                    const lastStripe = sortedStripes[sortedStripes.length - 1];
+                    await ref.update({ stripes: FieldValue.arrayRemove(lastStripe) });
+
+                    // Refresh and possibly remove excess drunk stripes
+                    const afterSnap = await ref.get();
+                    const after = afterSnap.data() || {};
+                    const n = (after.stripes || []).length;
+                    const d = (after.drunkStripes || []).length;
+
+                    if (d > n) {
+                        const sortedDrunk = [...(after.drunkStripes || [])].sort((a, b) => b.toMillis() - a.toMillis());
+                        const toRemove = sortedDrunk.slice(0, d - n);
+                        if (toRemove.length) {
+                            await ref.update({ drunkStripes: FieldValue.arrayRemove(...toRemove) });
+                        }
+                    }
+                    return { ok: true };
+                }
+                case "renamePerson": {
+                    const { docId, newName } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    const name = String(newName || "").trim();
+                    if (!name) throw new HttpsError("invalid-argument", "newName required.");
+                    await adminDb.collection("punishments").doc(docId).update({ name });
+                    return { ok: true };
+                }
+                case "deletePerson": {
+                    const { docId } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    await adminDb.collection("punishments").doc(docId).delete();
+                    return { ok: true };
+                }
+
+                // Rules
+                case "addRule": {
+                    const { text, order } = data;
+                    const ruleText = String(text || "").trim();
+                    if (!ruleText || typeof order !== "number") {
+                        throw new HttpsError("invalid-argument", "text and order required.");
+                    }
+                    await adminDb.collection("rules").add({
+                        text: ruleText,
+                        order,
+                        tags: [],
+                        createdAt: FieldValue.serverTimestamp(),
+                        updatedAt: FieldValue.serverTimestamp(),
+                    });
+                    return { ok: true };
+                }
+                case "deleteRule": {
+                    const { docId } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    await adminDb.collection("rules").doc(docId).delete();
+                    return { ok: true };
+                }
+                case "updateRuleOrder": {
+                    const { rule1, rule2 } = data;
+                    if (!rule1?.id || !rule2?.id) throw new HttpsError("invalid-argument", "rule1 and rule2 required.");
+                    const batch = adminDb.batch();
+                    batch.update(adminDb.collection("rules").doc(rule1.id), {
+                        order: rule2.order,
+                        updatedAt: FieldValue.serverTimestamp(),
+                    });
+                    batch.update(adminDb.collection("rules").doc(rule2.id), {
+                        order: rule1.order,
+                        updatedAt: FieldValue.serverTimestamp(),
+                    });
+                    await batch.commit();
+                    return { ok: true };
+                }
+                case "updateRule": {
+                    const { docId, text, tags } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    const ruleText = String(text || "").trim();
+                    await adminDb.collection("rules").doc(docId).update({
+                        text: ruleText,
+                        tags: Array.isArray(tags) ? tags : [],
+                        updatedAt: FieldValue.serverTimestamp(),
+                    });
+                    return { ok: true };
+                }
+
+                // Drunk stripes (Schikko-only revert)
+                case "removeLastDrunkStripe": {
+                    const { docId } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    const ref = adminDb.collection("punishments").doc(docId);
+                    const snap = await ref.get();
+                    if (!snap.exists) return { ok: true };
+                    const person = snap.data() || {};
+                    const drunk = Array.isArray(person.drunkStripes) ? person.drunkStripes : [];
+                    if (drunk.length === 0) return { ok: true };
+                    const sorted = [...drunk].sort((a, b) => b.toMillis() - a.toMillis());
+                    await ref.update({ drunkStripes: FieldValue.arrayRemove(sorted[0]) });
+                    return { ok: true };
+                }
+
+                // Config
+                case "saveCalendarUrl": {
+                    const { url } = data;
+                    if (!url || typeof url !== "string") throw new HttpsError("invalid-argument", "url required.");
+                    await adminDb.collection("config").doc("calendar").set({ url }, { merge: true });
+                    return { ok: true };
+                }
+                case "saveNicatDate": {
+                    const { dateString } = data;
+                    if (!dateString || typeof dateString !== "string") {
+                        throw new HttpsError("invalid-argument", "dateString required.");
+                    }
+                    const date = new Date(dateString);
+                    if (Number.isNaN(date.getTime())) {
+                        throw new HttpsError("invalid-argument", "Invalid dateString.");
+                    }
+                    await adminDb.collection("config").doc("nicat").set({ date }, { merge: true });
+                    return { ok: true };
+                }
+
+                default:
+                    throw new HttpsError("invalid-argument", `Unknown action: ${action}`);
+            }
+        } catch (err) {
+            logger.error("schikkoAction failed:", err);
+            if (err instanceof HttpsError) throw err;
+            throw new HttpsError("internal", "Mutation failed.");
+        }
+    },
+);
