@@ -409,9 +409,9 @@ function renderLedger(viewData, term, isSchikko) {
         }
 
         const personDiv = document.createElement('div');
-        personDiv.className = 'flex flex-wrap items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
+        personDiv.className = 'flex items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
         
-        let buttonsHTML = `<div class="flex items-center gap-2 flex-shrink-0 mt-2 sm:mt-0">`;
+        let buttonsHTML = `<div class="flex items-center gap-2 flex-shrink-0">`;
         if (isSchikko) {
             buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
         }
@@ -433,7 +433,7 @@ function renderLedger(viewData, term, isSchikko) {
         buttonsHTML += `</div>`;
 
         personDiv.innerHTML = `
-            <div class="flex-grow w-full sm:w-auto cursor-pointer" data-action="show-stats" data-id="${person.id}">
+            <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>
                 <div class="flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
