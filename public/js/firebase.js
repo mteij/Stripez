@@ -31,9 +31,10 @@ const activityLogCollectionRef = collection(db, 'activity_log');
 // --- SECURE CALLABLE WRAPPER ---
 const functionsClient = getFunctions(undefined, "europe-west4");
 const schikkoActionCallable = httpsCallable(functionsClient, 'schikkoAction');
-const callSchikkoAction = async (action, data = {}) => {
-    const res = await schikkoActionCallable({ action, ...data });
-    return res.data;
+export const callSchikkoAction = async (action, data = {}) => {
+  const sessionId = sessionStorage.getItem('schikkoSessionId');
+  const res = await schikkoActionCallable({ action, sessionId, ...data });
+  return res.data;
 };
 
 // --- DATABASE AND AUTH FUNCTIONS ---

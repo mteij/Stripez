@@ -447,20 +447,24 @@ exports.schikkoAction = onCall(
         const uid = request.auth?.uid;
         if (!uid) throw new HttpsError("unauthenticated", "Must be signed in.");
 
-        // Verify active Schikko session (created by loginSchikko)
-        const nowMs = Date.now();
-        const sessionQuery = await adminDb
-            .collection("config")
-            .where("uid", "==", uid)
-            .where("expiresAtMs", ">", nowMs)
-            .limit(1)
-            .get();
-
-        if (sessionQuery.empty) {
-            throw new HttpsError("permission-denied", "Schikko session required.");
+        // Require explicit Schikko session ID and validate it against the caller
+        const { action, sessionId, ...data } = request.data || {};
+        if (!sessionId || typeof sessionId !== "string") {
+            throw new HttpsError("unauthenticated", "Schikko session ID is required.");
         }
 
-        const { action, ...data } = request.data || {};
+        const sessionDocRef = adminDb.collection("config").doc(`schikko_session_${sessionId}`);
+        const sessionSnap = await sessionDocRef.get();
+        const sessionData = sessionSnap.exists ? sessionSnap.data() : null;
+
+        if (
+            !sessionData ||
+            sessionData.uid !== uid ||
+            !(typeof sessionData.expiresAtMs === "number" && sessionData.expiresAtMs > Date.now())
+        ) {
+            throw new HttpsError("permission-denied", "Schikko session is invalid or has expired.");
+        }
+
         if (!action || typeof action !== "string") {
             throw new HttpsError("invalid-argument", "Missing or invalid 'action'.");
         }

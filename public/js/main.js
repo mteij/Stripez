@@ -164,6 +164,8 @@ async function handleLogout() {
     const confirmed = await showConfirm("Are you sure you want to log out as Schikko? This will end your administrative session.", "Confirm Logout");
     if (confirmed) {
         showLoading('Logging out...');
+        // Clear persisted Schikko session
+        sessionStorage.removeItem('schikkoSessionId');
         isSchikkoSessionActive = false;
         updateGuestUI();
         updateAppFooter();
@@ -238,7 +240,9 @@ async function confirmSchikko() {
         const result = await loginSchikko({ password });
         hideLoading();
         
-        if (result.data.success) {
+        if (result?.data?.success && result?.data?.sessionId) {
+            // Persist session for protected calls
+            sessionStorage.setItem('schikkoSessionId', result.data.sessionId);
             isSchikkoSessionActive = true;
             await showAlert("Password accepted. You are the Schikko.", "Login Successful");
             updateGuestUI();
