@@ -753,10 +753,10 @@ function renderNicatCountdown(nicatData, isSchikko) {
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        countdownContainer.innerHTML = `Next NICAT in: 
-            <span class="font-bold">${days}d</span> 
-            <span class="font-bold">${hours}h</span> 
-            <span class="font-bold">${minutes}m</span> 
+        countdownContainer.innerHTML = `<span class="hidden sm:inline">Next NICAT in:</span>
+            <span class="font-bold">${days}d</span>
+            <span class="font-bold">${hours}h</span>
+            <span class="font-bold">${minutes}m</span>
             <span class="font-bold">${seconds}s</span>`;
     }, 1000);
 }
