@@ -478,7 +478,7 @@ exports.schikkoAction = onCall(
                 const windowMs = 60 * 1000;
                 const cutoff = now - windowMs;
                 const recent = attempts.filter((t) => typeof t === "number" && t > cutoff);
-                if (recent.length >= 10) {
+                if (recent.length >= 60) {
                     throw new HttpsError("resource-exhausted", "Too many actions. Please try again later.");
                 }
                 recent.push(now);
