@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schikko-rules-cache-v4';
+const CACHE_NAME = 'schikko-rules-cache-v5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -30,18 +30,30 @@ self.addEventListener('install', event => {
 
 // Cache only same-origin requests to respect CSP; let browser handle cross-origin (e.g., Google Fonts)
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) {
-    // Do not call respondWith so the request bypasses the SW and follows CSP type directives (style-src, font-src, etc.)
-    return;
-  }
+    const url = new URL(event.request.url);
+    if (url.origin !== self.location.origin) {
+        return;
+    }
 
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      if (response) return response;
-      return fetch(event.request);
-    })
-  );
+    event.respondWith(
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.match(event.request).then(response => {
+                const fetchPromise = fetch(event.request).then(networkResponse => {
+                    // If the request is successful, update the cache
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                }).catch(err => {
+                    console.error('Fetch failed', err);
+                    // Optionally, return a fallback page if offline
+                });
+
+                // Return cached response if available, otherwise wait for the network
+                return response || fetchPromise;
+            });
+        })
+    );
 });
 
 // Update a service worker
