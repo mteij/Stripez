@@ -413,7 +413,7 @@ function renderLedger(viewData, term, isSchikko) {
         
         let buttonsHTML = `<div class="flex items-center gap-2 flex-shrink-0">`;
         if (isSchikko) {
-            buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-sm sm:text-base font-bold py-2 px-4 rounded-md">Add Stripe</button>`;
+            buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-2xl font-bold w-12 h-12 flex items-center justify-center rounded-md">+</button>`;
         }
         buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-beer" title="Pour Liquid">
                             <span class="hidden sm:inline">Drink</span><span>🍺</span>
