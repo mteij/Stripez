@@ -32,7 +32,7 @@ const activityLogCollectionRef = collection(db, 'activity_log');
 const functionsClient = getFunctions(undefined, "europe-west4");
 const schikkoActionCallable = httpsCallable(functionsClient, 'schikkoAction');
 export const callSchikkoAction = async (action, data = {}) => {
-  const sessionId = sessionStorage.getItem('schikkoSessionId');
+  const sessionId = localStorage.getItem('schikkoSessionId');
   console.log("Session ID:", sessionId); // Add this line
   if (!sessionId) {
     throw new Error("Schikko session ID is required.");
