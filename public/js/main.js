@@ -122,6 +122,13 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUserId = user.uid;
         checkSchikkoStatus().then(() => {
+            // New: Check for a persisted session on load
+            const persistedSessionId = localStorage.getItem('schikkoSessionId');
+            if (persistedSessionId) {
+                // Here you might want to add a function to validate the session server-side
+                // For now, we'll optimistically assume it's valid
+                isSchikkoSessionActive = true;
+            }
             updateGuestUI();
             updateAppFooter();
         });
@@ -165,7 +172,7 @@ async function handleLogout() {
     if (confirmed) {
         showLoading('Logging out...');
         // Clear persisted Schikko session
-        sessionStorage.removeItem('schikkoSessionId');
+        localStorage.removeItem('schikkoSessionId');
         isSchikkoSessionActive = false;
         updateGuestUI();
         updateAppFooter();
@@ -184,6 +191,7 @@ function updateGuestUI() {
     if (editRulesBtn) editRulesBtn.style.display = isGuest ? 'none' : 'inline-flex';
     if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'flex';
     if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
+    if (editCalendarBtn) editCalendarBtn.style.display = isGuest ? 'none' : 'inline-flex';
     
     if (schikkoLoginBtn) {
         schikkoLoginBtn.textContent = isSchikkoSessionActive ? 'Schikko Logout' : 'Schikko Login';
@@ -242,7 +250,7 @@ async function confirmSchikko() {
         
         if (result?.data?.success && result?.data?.sessionId) {
             // Persist session for protected calls
-            sessionStorage.setItem('schikkoSessionId', result.data.sessionId);
+            localStorage.setItem('schikkoSessionId', result.data.sessionId);
             isSchikkoSessionActive = true;
             await showAlert("Password accepted. You are the Schikko.", "Login Successful");
             updateGuestUI();

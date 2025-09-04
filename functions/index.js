@@ -59,10 +59,10 @@ exports.getCalendarDataProxy = onRequest(
 
             // Block private IPv4 ranges and link-local via pattern
             const ipv4Private =
-                /^10\./.test(lower) ||
-                /^192\.168\./.test(lower) ||
-                /^172\.(1[6-9]|2\d|3[0-1])\./.test(lower) ||
-                /^169\.254\./.test(lower);
+                /^(10\.([0-9]{1,3}\.){2}[0-9]{1,3})$/.test(lower) ||
+                /^(192\.168\.[0-9]{1,3}\.[0-9]{1,3})$/.test(lower) ||
+                /^(172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]{1,3}\.[0-9]{1,3})$/.test(lower) ||
+                /^(169\.254\.[0-9]{1,3}\.[0-9]{1,3})$/.test(lower);
 
             // Block IPv6 unique-local/link-local (fd00::/8, fe80::/10)
             const ipv6Private = lower.startsWith("fd") || lower.startsWith("fe80");
@@ -167,6 +167,8 @@ exports.getOracleJudgement = onCall(
       if (!promptText) {
         throw new HttpsError("invalid-argument", "The function must be called with a 'promptText' argument.");
       }
+      
+      const sanitizedPrompt = promptText.replace(/`/g, "'");
 
       try {
         const genAI = new GoogleGenerativeAI(geminiApiKey);
@@ -196,7 +198,7 @@ ${rulesText}
 ---
 A user has described the following transgression:
 ---
-"${promptText}"
+"${sanitizedPrompt}"
 ---`;
         
         const result = await model.generateContent(fullPrompt);
@@ -463,6 +465,28 @@ exports.schikkoAction = onCall(
             !(typeof sessionData.expiresAtMs === "number" && sessionData.expiresAtMs > Date.now())
         ) {
             throw new HttpsError("permission-denied", "Schikko session is invalid or has expired.");
+        }
+
+        // Rate limit Schikko actions to 10 per minute
+        const throttleRef = adminDb.collection("config").doc(`schikko_action_throttle_${uid}`);
+        const now = Date.now();
+        try {
+            await adminDb.runTransaction(async (tx) => {
+                const snap = await tx.get(throttleRef);
+                const data = snap.exists ? snap.data() : {};
+                const attempts = Array.isArray(data.attempts) ? data.attempts : [];
+                const windowMs = 60 * 1000;
+                const cutoff = now - windowMs;
+                const recent = attempts.filter((t) => typeof t === "number" && t > cutoff);
+                if (recent.length >= 10) {
+                    throw new HttpsError("resource-exhausted", "Too many actions. Please try again later.");
+                }
+                recent.push(now);
+                tx.set(throttleRef, { attempts: recent }, { merge: true });
+            });
+        } catch (e) {
+            if (e instanceof HttpsError) throw e;
+            logger.warn("Schikko action throttle transaction failed:", e);
         }
 
         if (!action || typeof action !== "string") {
