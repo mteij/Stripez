@@ -328,3 +328,45 @@ body {
     border: 1px solid #5c3d2e;
     box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.loading-box {
+    background: #fdf8e9;
+    border: 3px solid #8c6b52;
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid #e9e2d7;
+    border-top-color: #c0392b;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: #5c3d2e;
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}

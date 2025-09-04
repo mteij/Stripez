@@ -25,7 +25,22 @@ function escapeHTML(str) {
         .replace(/'/g, '&#39;');
 }
  
-// --- GENERIC MODAL UI FUNCTIONS ---
+ // --- GLOBAL LOADING OVERLAY HELPERS ---
+ function showLoading(message = 'Working...') {
+     const overlay = document.getElementById('loading-overlay');
+     if (!overlay) return;
+     const textEl = document.getElementById('loading-text');
+     if (textEl && typeof message === 'string') textEl.textContent = message;
+     overlay.classList.remove('hidden');
+ }
+ 
+ function hideLoading() {
+     const overlay = document.getElementById('loading-overlay');
+     if (!overlay) return;
+     overlay.classList.add('hidden');
+ }
+ 
+ // --- GENERIC MODAL UI FUNCTIONS ---
 
 /**
  * Shows a themed alert modal.
@@ -897,4 +912,4 @@ function showRuleEditModal(currentText, currentTags = [], allRules = []) {
 }
 
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook, renderLogbookChart };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading };

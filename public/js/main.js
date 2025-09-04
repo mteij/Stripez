@@ -14,12 +14,12 @@ import {
     saveNicatDate,
     logActivity
 } from './firebase.js';
-import { 
-    renderLedger, showStatsModal, closeMenus, renderRules, 
+import {
+    renderLedger, showStatsModal, closeMenus, renderRules,
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
-    showAlert, showConfirm, showPrompt, showSchikkoLoginModal, 
+    showAlert, showConfirm, showPrompt, showSchikkoLoginModal,
     showSetSchikkoModal, showRuleEditModal, renderNicatCountdown,
-    showLogbookModal, renderLogbook, renderLogbookChart
+    showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -163,10 +163,13 @@ async function handleLogin() {
 async function handleLogout() {
     const confirmed = await showConfirm("Are you sure you want to log out as Schikko? This will end your administrative session.", "Confirm Logout");
     if (confirmed) {
+        showLoading('Logging out...');
         isSchikkoSessionActive = false;
         updateGuestUI();
         updateAppFooter();
-        showAlert("You have logged out.", "Logout Successful");
+        await new Promise(r => setTimeout(r, 300));
+        hideLoading();
+        await showAlert("You have logged out.", "Logout Successful");
     }
 }
 
@@ -225,13 +228,15 @@ async function confirmSchikko() {
 
     const password = await showSchikkoLoginModal();
     if (!password) {
-        return false; // User cancelled the modal
+        return false;
     }
     
     try {
+        showLoading('Authenticating...');
         const functions = getFunctions(undefined, "europe-west4");
         const loginSchikko = httpsCallable(functions, 'loginSchikko');
         const result = await loginSchikko({ password });
+        hideLoading();
         
         if (result.data.success) {
             isSchikkoSessionActive = true;
@@ -244,6 +249,7 @@ async function confirmSchikko() {
             return false;
         }
     } catch (error) {
+        hideLoading();
         console.error("Error during Schikko login:", error);
         await showAlert(`An error occurred: ${error.message}`, "Login Error");
         return false;
@@ -695,8 +701,13 @@ async function handleAddName() {
         await showAlert(`"${name}" is already on the ledger.`, 'Duplicate Name');
         return;
     }
-    await addNameToLedger(name, currentUserId);
-    await logActivity('ADD_PERSON', 'Schikko', `Inscribed "${name}" onto the ledger.`);
+    showLoading('Saving to ledger...');
+    try {
+        await addNameToLedger(name, currentUserId);
+        await logActivity('ADD_PERSON', 'Schikko', `Inscribed "${name}" onto the ledger.`);
+    } finally {
+        hideLoading();
+    }
     mainInput.value = '';
     currentSearchTerm = '';
 }
@@ -707,8 +718,13 @@ async function handleRename(docId) {
     const newName = await showPrompt("Enter the new name for " + person.name, person.name, "Rename Transgressor");
     if (newName && newName.trim() !== "" && newName.trim() !== person.name) {
         const oldName = person.name;
-        await renamePersonOnLedger(docId, newName);
-        await logActivity('RENAME_PERSON', 'Schikko', `Renamed "${oldName}" to "${newName.trim()}".`);
+        showLoading('Renaming...');
+        try {
+            await renamePersonOnLedger(docId, newName);
+            await logActivity('RENAME_PERSON', 'Schikko', `Renamed "${oldName}" to "${newName.trim()}".`);
+        } finally {
+            hideLoading();
+        }
     }
 }
 
@@ -717,13 +733,19 @@ async function handleDeletePerson(docId) {
     if (!person) return;
     const confirmed = await showConfirm(`Are you sure you want to remove "${person.name}" from the ledger? This action cannot be undone.`, "Confirm Deletion");
     if (confirmed) {
-        await deletePersonFromLedger(docId);
-        await logActivity('DELETE_PERSON', 'Schikko', `Erased "${person.name}" from the ledger.`);
+        showLoading('Deleting...');
+        try {
+            await deletePersonFromLedger(docId);
+            await logActivity('DELETE_PERSON', 'Schikko', `Erased "${person.name}" from the ledger.`);
+        } finally {
+            hideLoading();
+        }
     }
 }
 
 async function handleRemoveStripe(docId) {
     const person = ledgerDataCache.find(p => p.id === docId);
+    if (!person) return;
     await removeLastStripeFromPerson(person);
 }
 
@@ -737,8 +759,13 @@ async function handleAddRule() {
         return;
     }
     const maxOrder = rulesDataCache.reduce((max, rule) => Math.max(max, rule.order), 0);
-    await addRuleToFirestore(text, maxOrder + 1);
-    await logActivity('ADD_RULE', 'Schikko', `Added a new decree: "${text}"`);
+    showLoading('Saving decree...');
+    try {
+        await addRuleToFirestore(text, maxOrder + 1);
+        await logActivity('ADD_RULE', 'Schikko', `Added a new decree: "${text}"`);
+    } finally {
+        hideLoading();
+    }
     ruleSearchInput.value = '';
     currentRuleSearchTerm = '';
     handleRenderRules();
@@ -753,8 +780,13 @@ async function handleEditRule(docId) {
     if (result) {
         const { text, tags } = result;
         if (text.trim() !== "") {
-            await updateRuleInFirestore(docId, text, tags);
-            await logActivity('EDIT_RULE', 'Schikko', `Updated decree: "${text}"`);
+            showLoading('Updating decree...');
+            try {
+                await updateRuleInFirestore(docId, text, tags);
+                await logActivity('EDIT_RULE', 'Schikko', `Updated decree: "${text}"`);
+            } finally {
+                hideLoading();
+            }
         }
     }
 }
@@ -803,12 +835,17 @@ punishmentListDiv.addEventListener('click', async (e) => {
         case 'toggle-menu': 
             if(isSchikkoSessionActive) document.getElementById(`menu-${id}`)?.classList.toggle('hidden');
             break;
-        case 'add-stripe': 
+        case 'add-stripe':
             if (await confirmSchikko()) {
                 const person = ledgerDataCache.find(p => p.id === id);
-                if(person) {
-                    addStripeToPerson(id); 
-                    logActivity('ADD_STRIPE', actor, `Added 1 stripe to ${person.name}.`);
+                if (person) {
+                    showLoading('Saving stripe...');
+                    try {
+                        await addStripeToPerson(id);
+                        await logActivity('ADD_STRIPE', actor, `Added 1 stripe to ${person.name}.`);
+                    } finally {
+                        hideLoading();
+                    }
                 }
             }
             break;
@@ -864,17 +901,27 @@ punishmentListDiv.addEventListener('click', async (e) => {
             if (await confirmSchikko()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
-                    handleRemoveStripe(id);
-                    logActivity('REMOVE_STRIPE', actor, `Removed the last stripe from ${person.name}.`);
+                    showLoading('Reverting...');
+                    try {
+                        await removeLastStripeFromPerson(person);
+                        await logActivity('REMOVE_STRIPE', actor, `Removed the last stripe from ${person.name}.`);
+                    } finally {
+                        hideLoading();
+                    }
                 }
             }
             break;
-        case 'remove-drunk-stripe': 
+        case 'remove-drunk-stripe':
             if (await confirmSchikko()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
-                    removeLastDrunkStripeFromPerson(person);
-                    logActivity('REMOVE_DRUNK_STRIPE', actor, `Reverted a drunk stripe for ${person.name}.`);
+                    showLoading('Reverting...');
+                    try {
+                        await removeLastDrunkStripeFromPerson(person);
+                        await logActivity('REMOVE_DRUNK_STRIPE', actor, `Reverted a drunk stripe for ${person.name}.`);
+                    } finally {
+                        hideLoading();
+                    }
                 }
             }
             break;
@@ -912,21 +959,36 @@ rulesListOl?.addEventListener('click', async (e) => {
     if (ruleIndex === -1) return;
     const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
     switch (action) {
-        case 'delete': 
+        case 'delete':
             const ruleToDelete = rulesDataCache[ruleIndex];
-            await deleteRuleFromFirestore(id); 
-            await logActivity('DELETE_RULE', actor, `Deleted decree: "${ruleToDelete.text}"`);
-            break;
-        case 'move-up': 
-            if (ruleIndex > 0) {
-                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex - 1]);
-                await logActivity('MOVE_RULE', actor, `Moved decree up: "${rulesDataCache[ruleIndex].text}"`);
+            showLoading('Deleting decree...');
+            try {
+                await deleteRuleFromFirestore(id);
+                await logActivity('DELETE_RULE', actor, `Deleted decree: "${ruleToDelete.text}"`);
+            } finally {
+                hideLoading();
             }
             break;
-        case 'move-down': 
+        case 'move-up':
+            if (ruleIndex > 0) {
+                showLoading('Reordering...');
+                try {
+                    await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex - 1]);
+                    await logActivity('MOVE_RULE', actor, `Moved decree up: "${rulesDataCache[ruleIndex].text}"`);
+                } finally {
+                    hideLoading();
+                }
+            }
+            break;
+        case 'move-down':
             if (ruleIndex < rulesDataCache.length - 1) {
-                await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]); 
-                await logActivity('MOVE_RULE', actor, `Moved decree down: "${rulesDataCache[ruleIndex].text}"`);
+                showLoading('Reordering...');
+                try {
+                    await updateRuleOrderInFirestore(rulesDataCache[ruleIndex], rulesDataCache[ruleIndex + 1]);
+                    await logActivity('MOVE_RULE', actor, `Moved decree down: "${rulesDataCache[ruleIndex].text}"`);
+                } finally {
+                    hideLoading();
+                }
             }
             break;
         case 'edit': await handleEditRule(id); break;
@@ -1014,11 +1076,11 @@ decrementBeersBtn.addEventListener('click', () => {
     }
 });
 
-confirmDrunkStripesBtn.addEventListener('click', async () => { 
-    if (currentPersonIdForDrunkStripes) { 
+confirmDrunkStripesBtn.addEventListener('click', async () => {
+    if (currentPersonIdForDrunkStripes) {
         const count = parseInt(howManyBeersInput.value);
-        const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes); 
-        const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0); 
+        const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
+        const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
         
         if (count > availablePenaltiesToFulfill) {
             await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
@@ -1027,11 +1089,16 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
 
         if (count > 0) {
             const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
-            await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count); 
-            await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person.name}.`);
+            showLoading('Recording draughts...');
+            try {
+                await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count);
+                await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person.name}.`);
+            } finally {
+                hideLoading();
+            }
         }
-        drunkStripesModal.classList.add('hidden'); 
-        currentPersonIdForDrunkStripes = null; 
+        drunkStripesModal.classList.add('hidden');
+        currentPersonIdForDrunkStripes = null;
     }
 });
 
@@ -1040,8 +1107,13 @@ editCalendarBtn.addEventListener('click', async () => {
     const config = await getCalendarConfig();
     const newUrl = await showPrompt('Enter the public iCal URL for the calendar:', config.url || '', 'Update Calendar');
     if (newUrl) {
-        await saveCalendarUrl(newUrl);
-        loadCalendarData();
+        showLoading('Updating calendar...');
+        try {
+            await saveCalendarUrl(newUrl);
+            await loadCalendarData();
+        } finally {
+            hideLoading();
+        }
     }
 });
 
@@ -1052,16 +1124,21 @@ editNicatBtn.addEventListener('click', async () => {
     const currentDate = nicatData.date ? nicatData.date.toDate().toISOString().split('T')[0] : '';
     
     const newDateStr = await showPrompt(
-        'Enter the date for the next NICAT.', 
-        currentDate, 
+        'Enter the date for the next NICAT.',
+        currentDate,
         'Decree NICAT Date (YYYY-MM-DD)'
     );
 
     if (newDateStr) {
         if (/^\d{4}-\d{2}-\d{2}$/.test(newDateStr)) {
-            await saveNicatDate(newDateStr);
+            showLoading('Saving NICAT date...');
+            try {
+                await saveNicatDate(newDateStr);
+            } finally {
+                hideLoading();
+            }
             await showAlert("The date for the NICAT has been decreed!", "Success");
-            loadAndRenderNicatCountdown();
+            await loadAndRenderNicatCountdown();
         } else {
             await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
         }
@@ -1088,9 +1165,11 @@ setSchikkoBtn.addEventListener('click', async () => {
     }
 
     try {
+        showLoading('Setting Schikko...');
         const functions = getFunctions(undefined, "europe-west4");
         const setSchikko = httpsCallable(functions, 'setSchikko');
         const result = await setSchikko({ email });
+        hideLoading();
         
         if(result.data.success && result.data.password) {
             await showAlert(`You have claimed the title! Your sacred password is: ${result.data.password}. Guard it with your life, it will not be shown again.`, "Title Claimed!");
@@ -1100,6 +1179,7 @@ setSchikkoBtn.addEventListener('click', async () => {
         }
 
     } catch (error) {
+        hideLoading();
         console.error("Error setting Schikko:", error);
         await showAlert(`An error occurred: ${error.message}`, "Error Claiming Title");
     }
