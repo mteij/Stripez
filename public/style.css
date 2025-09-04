@@ -56,6 +56,11 @@ body {
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
+/* New button style for Minnie button */
+.btn-minnie {
+    background-color: #f57f20;
+}
+
 /* New subtle button style for "Schikko's Decrees" button */
 .btn-subtle-decree {
     background-color: #e9e2d7; /* Lighter paper-like background */
