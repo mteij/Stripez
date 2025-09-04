@@ -367,14 +367,13 @@ function renderLedger(viewData, term, isSchikko) {
             for (let i = 0; i < stripesToDisplay; i++) {
                 const isCurrentStripeDrunk = i < drunkStripesCount;
                 const isFifthInSequence = (i + 1) % 5 === 0;
-                const isLastStripeOverall = (i + 1) === normalStripesCount;
 
                 let stripeClasses = 'punishment-stripe';
                 if (isCurrentStripeDrunk) {
                     stripeClasses += ' punishment-stripe-drunk';
                 }
 
-                const applySpecialFormatting = isFifthInSequence && !isLastStripeOverall;
+                const applySpecialFormatting = isFifthInSequence;
 
                 if (applySpecialFormatting) {
                     if (isCurrentStripeDrunk) {
