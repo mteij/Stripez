@@ -33,6 +33,10 @@ const functionsClient = getFunctions(undefined, "europe-west4");
 const schikkoActionCallable = httpsCallable(functionsClient, 'schikkoAction');
 export const callSchikkoAction = async (action, data = {}) => {
   const sessionId = sessionStorage.getItem('schikkoSessionId');
+  console.log("Session ID:", sessionId); // Add this line
+  if (!sessionId) {
+    throw new Error("Schikko session ID is required.");
+  }
   const res = await schikkoActionCallable({ action, sessionId, ...data });
   return res.data;
 };
