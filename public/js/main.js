@@ -115,6 +115,11 @@ const logbookFilterSelect = document.getElementById('logbook-filter-select');
 const logbookSortSelect = document.getElementById('logbook-sort-select');
 const logbookContentDiv = document.getElementById('logbook-content');
 
+// Matrix Modal Elements
+const matrixModal = document.getElementById('matrix-modal');
+const closeMatrixModalBtn = document.getElementById('close-matrix-modal');
+const matrixNameEl = document.getElementById('matrix-name');
+
 
 let currentPersonIdForDrunkStripes = null;
 
@@ -811,6 +816,12 @@ async function handleGeminiSubmit() {
     }
 }
 
+function showMatrixModal(name) {
+    matrixNameEl.textContent = name;
+    matrixNameEl.setAttribute('data-text', name);
+    matrixModal.classList.remove('hidden');
+}
+
 
 // --- EVENT HANDLERS ---
 async function handleAddName() {
@@ -1223,7 +1234,7 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         const count = parseInt(howManyBeersInput.value);
         const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
         const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
-        
+
         if (count > availablePenaltiesToFulfill) {
             await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
             return;
@@ -1239,8 +1250,15 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
                 hideLoading();
             }
         }
+        const personId = currentPersonIdForDrunkStripes;
         drunkStripesModal.classList.add('hidden');
         currentPersonIdForDrunkStripes = null;
+
+        // Check if all beers completed
+        const updatedPerson = ledgerDataCache.find(p => p.id === personId);
+        if (updatedPerson && updatedPerson.stripes.length === updatedPerson.drunkStripes.length && updatedPerson.stripes.length > 0) {
+            showMatrixModal(updatedPerson.name);
+        }
     }
 });
 
@@ -1333,4 +1351,8 @@ schikkoLoginBtn.addEventListener('click', async () => {
     } else {
         await handleLogin();
     }
+});
+
+closeMatrixModalBtn.addEventListener('click', () => {
+    matrixModal.classList.add('hidden');
 });
