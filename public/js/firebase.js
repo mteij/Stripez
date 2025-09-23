@@ -146,6 +146,10 @@ const deleteRuleFromFirestore = async (docId) => {
     await callSchikkoAction('deleteRule', { docId });
 };
 
+const deleteLogFromFirestore = async (docId) => {
+    await callSchikkoAction('deleteLog', { docId });
+};
+
 const updateRuleOrderInFirestore = async (rule1, rule2) => {
     await callSchikkoAction('updateRuleOrder', { rule1, rule2 });
 };
@@ -200,7 +204,8 @@ export {
     deleteRuleFromFirestore,
     updateRuleOrderInFirestore,
     updateRuleInFirestore,
-    addDrunkStripeToPerson, 
+    deleteLogFromFirestore,
+    addDrunkStripeToPerson,
     removeLastDrunkStripeFromPerson,
     getCalendarConfig,
     saveCalendarUrl,

@@ -649,6 +649,14 @@ exports.schikkoAction = onCall(
                     return { ok: true };
                 }
 
+                // Activity log
+                case "deleteLog": {
+                    const { docId } = data;
+                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
+                    await adminDb.collection("activity_log").doc(docId).delete();
+                    return { ok: true };
+                }
+
                 default:
                     throw new HttpsError("invalid-argument", `Unknown action: ${action}`);
             }

@@ -6,6 +6,7 @@ import {
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleInFirestore,
+    deleteLogFromFirestore,
     addDrunkStripeToPerson,
     removeLastDrunkStripeFromPerson,
     getCalendarConfig,
@@ -112,6 +113,7 @@ const closeLogbookModalBtn = document.getElementById('close-logbook-modal');
 const logbookSearchInput = document.getElementById('logbook-search-input');
 const logbookFilterSelect = document.getElementById('logbook-filter-select');
 const logbookSortSelect = document.getElementById('logbook-sort-select');
+const logbookContentDiv = document.getElementById('logbook-content');
 
 
 let currentPersonIdForDrunkStripes = null;
@@ -538,7 +540,7 @@ function handleRenderLogbook() {
     });
 
     // Render the sorted list
-    renderLogbook(listData);
+    renderLogbook(listData, isSchikkoSessionActive);
 }
 
 async function updateAppFooter() {
@@ -1126,6 +1128,26 @@ closeLogbookModalBtn?.addEventListener('click', () => showLogbookModal(false));
 logbookSearchInput?.addEventListener('input', () => { currentLogbookSearchTerm = logbookSearchInput.value; handleRenderLogbook(); });
 logbookFilterSelect?.addEventListener('change', (e) => { currentLogbookFilter = e.target.value; handleRenderLogbook(); });
 logbookSortSelect?.addEventListener('change', (e) => { currentLogbookSort = e.target.value; handleRenderLogbook(); });
+
+logbookContentDiv?.addEventListener('click', async (e) => {
+    const target = e.target.closest('[data-log-action]');
+    if (!target) return;
+    const action = target.dataset.logAction;
+    const id = target.dataset.logId;
+    if (action === 'delete') {
+        if (await confirmSchikko()) {
+            const confirmed = await showConfirm(`Are you sure you want to delete this log entry? This action cannot be undone.`, "Confirm Log Deletion");
+            if (confirmed) {
+                showLoading('Deleting log entry...');
+                try {
+                    await deleteLogFromFirestore(id);
+                } finally {
+                    hideLoading();
+                }
+            }
+        }
+    }
+});
 
 
 openRandomizerHubBtn?.addEventListener('click', (e) => {

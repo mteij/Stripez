@@ -205,7 +205,7 @@ function showLogbookModal(show) {
     }
 }
 
-function renderLogbook(logData) {
+function renderLogbook(logData, isSchikko = false) {
     const logContentDiv = document.getElementById('logbook-content');
     if (!logContentDiv) return;
     logContentDiv.innerHTML = '';
@@ -242,6 +242,11 @@ function renderLogbook(logData) {
 
         const timestamp = log.timestamp ? log.timestamp.toDate().toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'}) : 'Just now';
 
+        let deleteButtonHTML = '';
+        if (isSchikko) {
+            deleteButtonHTML = `<button data-log-action="delete" data-log-id="${log.id}" class="btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md ml-2 flex-shrink-0" title="Delete Log Entry">&times;</button>`;
+        }
+
         logEntryDiv.innerHTML = `
             <div class="text-2xl flex-shrink-0 pt-1">${icon}</div>
             <div class="flex-grow">
@@ -250,6 +255,7 @@ function renderLogbook(logData) {
                     <span class="${actorColor} font-bold">${escapeHTML(log.actor || '')}</span> at ${escapeHTML(timestamp)}
                 </p>
             </div>
+            ${deleteButtonHTML}
         `;
         logContentDiv.appendChild(logEntryDiv);
     });
