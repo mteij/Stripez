@@ -441,7 +441,16 @@ function renderLedger(viewData, term, isSchikko) {
 
         const isCompleted = normalStripesCount === drunkStripesCount && normalStripesCount > 0;
         const nameHtml = isCompleted
-            ? `<h1 class="matrix-text" data-text="${escapeHTML(person.name)}">${escapeHTML(person.name)}</h1>`
+            ? `<div class="aurora-content">
+                <h1 class="aurora-title">${escapeHTML(person.name)}
+                  <div class="aurora">
+                    <div class="aurora__item"></div>
+                    <div class="aurora__item"></div>
+                    <div class="aurora__item"></div>
+                    <div class="aurora__item"></div>
+                  </div>
+                </h1>
+              </div>`
             : `<p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>`;
 
         personDiv.innerHTML = `
