@@ -7,7 +7,13 @@ function rand(min, max) {
 
 // --- List Randomizer Logic ---
 let shuffleListBtn, pickRandomItemBtn, listOutput;
+let listPunishmentAssignContainer, listAssignAmountInput, listAssignStripesBtn;
 let availableNames = [];
+let _isSchikkoList = false;
+let _addStripeToPersonListFn = null;
+let _showAlertListFn = null;
+let _ledgerDataList = [];
+let selectedPersonForList = null;
 
 function shuffleArray(array) {
     let currentIndex = array.length, randomIndex;
@@ -48,6 +54,28 @@ function handleShuffleList() {
     }
     const shuffledNames = shuffleArray([...availableNames]);
     renderListOutput(shuffledNames, true);
+    if (listPunishmentAssignContainer) listPunishmentAssignContainer.classList.add('hidden');
+}
+
+function handleListAssignStripes() {
+    if (!selectedPersonForList || !_addStripeToPersonListFn || !_showAlertListFn) return;
+
+    const stripesToAdd = parseInt(listAssignAmountInput.value) || 1;
+
+    if (stripesToAdd < 1) {
+        _showAlertListFn('Please enter a valid number of stripes.', 'Invalid Input');
+        return;
+    }
+
+    // Add stripes
+    for (let i = 0; i < stripesToAdd; i++) {
+        _addStripeToPersonListFn(selectedPersonForList.id);
+    }
+
+    _showAlertListFn(`${stripesToAdd} stripes assigned to ${selectedPersonForList.name}!`, 'Success!');
+
+    // Hide the modal
+    document.getElementById('list-randomizer-modal').classList.add('hidden');
 }
 
 function handlePickRandomItem() {
@@ -58,13 +86,21 @@ function handlePickRandomItem() {
     }
     const randomIndex = rand(0, availableNames.length - 1);
     const selectedName = availableNames[randomIndex];
+    selectedPersonForList = _ledgerDataList.find(p => p.name === selectedName);
     renderListOutput([selectedName], false);
+
+    if (_isSchikkoList && listPunishmentAssignContainer) {
+        listPunishmentAssignContainer.classList.remove('hidden');
+    }
 }
 
-export function initListRandomizer(ledgerData) {
+export function initListRandomizer(ledgerData, isSchikko = false, addStripeToPersonFn = null, showAlertFn = null) {
     shuffleListBtn = document.getElementById('shuffle-list-btn');
     pickRandomItemBtn = document.getElementById('pick-random-item-btn');
     listOutput = document.getElementById('list-output');
+    listPunishmentAssignContainer = document.getElementById('list-punishment-assign-container');
+    listAssignAmountInput = document.getElementById('list-assign-amount-input');
+    listAssignStripesBtn = document.getElementById('list-assign-stripes-btn');
 
     if (!shuffleListBtn || !pickRandomItemBtn || !listOutput) {
         console.error("Name randomizer elements not found! Check IDs in index.html.");
@@ -72,11 +108,19 @@ export function initListRandomizer(ledgerData) {
     }
 
     availableNames = ledgerData.map(person => person.name);
+    _ledgerDataList = ledgerData;
+    _isSchikkoList = isSchikko;
+    _addStripeToPersonListFn = addStripeToPersonFn;
+    _showAlertListFn = showAlertFn;
     listOutput.classList.add('hidden');
     listOutput.innerHTML = '';
+    if (listPunishmentAssignContainer) listPunishmentAssignContainer.classList.add('hidden');
 
     shuffleListBtn.onclick = handleShuffleList;
     pickRandomItemBtn.onclick = handlePickRandomItem;
+    if (listAssignStripesBtn) {
+        listAssignStripesBtn.onclick = handleListAssignStripes;
+    }
 }
 
 
@@ -87,6 +131,7 @@ let dicePunishmentAssignContainer, assignPersonSelect, assignStripesBtn;
 let _addStripeToPersonFn = null;
 let _ledgerData = [];
 let _showAlertFn = null;
+let _isSchikko = false;
 
 /**
  * Updates the entire dice UI based on the current state of the DOM.
@@ -180,7 +225,9 @@ function handleDiceSpin() {
     resultDiv.textContent = totalResult;
     diceResultsContainer.appendChild(resultDiv);
 
-    dicePunishmentAssignContainer.classList.remove('hidden');
+    if (_isSchikko) {
+        dicePunishmentAssignContainer.classList.remove('hidden');
+    }
 
     const currentSelection = assignPersonSelect.value;
     assignPersonSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
@@ -225,8 +272,9 @@ function handleDiceSpin() {
  * @param {Array} ledgerData - The current ledger data.
  * @param {Function} addStripeToPersonFn - Callback function to add stripes.
  * @param {Function} showAlertFn - Callback function to show alerts.
+ * @param {boolean} isSchikko - Whether the user is logged in as Schikko.
  */
-export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, showAlertFn = null) {
+export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, showAlertFn = null, isSchikko = false) {
     // Get all DOM elements
     diceSpinBtn = document.getElementById('dice-spin-btn');
     diceResultsContainer = document.getElementById('dice-roulette-results');
@@ -240,6 +288,7 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
     _ledgerData = ledgerData;
     _addStripeToPersonFn = addStripeToPersonFn;
     _showAlertFn = showAlertFn;
+    _isSchikko = isSchikko;
 
     // Check if all elements were found
     if (!diceSpinBtn || !diceListContainer) {
@@ -268,13 +317,14 @@ export function initDiceRandomizer(ledgerData = [], addStripeToPersonFn = null, 
  * @param {Function} addStripeFn - Callback function to add stripes.
  * @param {Array} ledgerData - The current ledger data.
  * @param {Function} showAlertFn - Callback function to show alerts.
+ * @param {boolean} isSchikko - Whether the user is logged in as Schikko.
  */
-export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, ledgerData, showAlertFn) {
+export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, ledgerData, showAlertFn, isSchikko = false) {
     // The alert has been removed from here as per your request.
     const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
     if (diceRandomizerModal) {
         // Initialize the dice roller with a clean slate
-        initDiceRandomizer(ledgerData, addStripeFn, showAlertFn);
+        initDiceRandomizer(ledgerData, addStripeFn, showAlertFn, isSchikko);
 
         // Then customize it based on the Oracle's decree
         const diceListContainer = document.getElementById('dice-list-container');

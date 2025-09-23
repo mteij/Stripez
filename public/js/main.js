@@ -592,7 +592,7 @@ function createActionButtons(parsedJudgement) {
             logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed ${totalStripes} stripe(s) to ${person.name}.`);
             // Then open the pre-filled dice roller
             logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle also decreed a dice roll for ${person.name}.`);
-            rollDiceAndAssign(diceRolls, person, addStripeToPerson, ledgerDataCache, showAlert);
+            rollDiceAndAssign(diceRolls, person, addStripeToPerson, ledgerDataCache, showAlert, isSchikkoSessionActive);
             geminiModal.classList.add('hidden');
         };
         geminiActionButtonsContainer.appendChild(combinedBtn);
@@ -1036,14 +1036,14 @@ closeRandomizerHubModalBtn?.addEventListener('click', () => randomizerHubModal.c
 openListRandomizerFromHubBtn?.addEventListener('click', () => {
     randomizerHubModal.classList.add('hidden');
     listRandomizerModal.classList.remove('hidden');
-    initListRandomizer(ledgerDataCache);
+    initListRandomizer(ledgerDataCache, isSchikkoSessionActive, addStripeToPerson, showAlert);
 });
 
 openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
-    initDiceRandomizer(ledgerDataCache, addStripeToPerson, showAlert); 
+    initDiceRandomizer(ledgerDataCache, addStripeToPerson, showAlert, isSchikkoSessionActive);
 });
 
 closeDiceRandomizerModalBtn?.addEventListener('click', (e) => {
