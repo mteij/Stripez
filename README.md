@@ -30,7 +30,6 @@
 
 ---
 
-Screenshots:
+Screenshot:
 
 ![Desktop](public/assets/screenshot-desktop.png)
-![Mobile](public/assets/screenshot-mobile.png)
