@@ -439,9 +439,14 @@ function renderLedger(viewData, term, isSchikko) {
         }
         buttonsHTML += `</div>`;
 
+        const isCompleted = normalStripesCount === drunkStripesCount && normalStripesCount > 0;
+        const nameHtml = isCompleted
+            ? `<h1 class="matrix-text" data-text="${escapeHTML(person.name)}">${escapeHTML(person.name)}</h1>`
+            : `<p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>`;
+
         personDiv.innerHTML = `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
-                <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>
+                ${nameHtml}
                 <div class="flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             ${buttonsHTML}`;
