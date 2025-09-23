@@ -495,6 +495,9 @@ function handleRenderLogbook() {
         return false; // Hide person-related logs that don't mention current people
     });
 
+    // Ensure all logs have an id for deletion
+    filteredData = filteredData.filter(log => log.id);
+
     // Group consecutive similar logs within 10 minutes
     const groupableActions = new Set(['ADD_STRIPE', 'REMOVE_STRIPE', 'ADD_DRUNK_STRIPE', 'REMOVE_DRUNK_STRIPE']);
     filteredData.sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
@@ -1134,6 +1137,7 @@ logbookContentDiv?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-log-action]');
     if (!target) return;
     const action = target.dataset.logAction;
+    if (!target.dataset.logIds) return;
     const ids = JSON.parse(target.dataset.logIds);
     if (action === 'delete') {
         if (await confirmSchikko()) {
