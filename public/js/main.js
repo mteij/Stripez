@@ -394,6 +394,57 @@ function handleRenderRules() {
     renderRules(filteredRules, isSchikkoSessionActive);
 }
 
+function extractPersonFromLog(log) {
+    const details = log.details;
+    if (log.action === 'ADD_STRIPE') {
+        const match = details.match(/to (.+)\.$/);
+        return match ? match[1] : null;
+    } else if (log.action === 'REMOVE_STRIPE') {
+        const match = details.match(/from (.+)\.$/);
+        return match ? match[1] : null;
+    } else if (log.action === 'ADD_DRUNK_STRIPE' || log.action === 'REMOVE_DRUNK_STRIPE') {
+        const match = details.match(/for (.+)\.$/);
+        return match ? match[1] : null;
+    } else if (log.action === 'RENAME_PERSON') {
+        return null;
+    } else if (log.action === 'DELETE_PERSON') {
+        const match = details.match(/"(.+)" from the ledger\.$/);
+        return match ? match[1] : null;
+    } else if (log.action === 'ADD_PERSON') {
+        const match = details.match(/"(.+)" onto the ledger\.$/);
+        return match ? match[1] : null;
+    } else if (log.action === 'ORACLE_JUDGEMENT') {
+        const match = details.match(/for (.+):/);
+        return match ? match[1] : null;
+    }
+    return null;
+}
+
+function finalizeGroup(group) {
+    if (group.length === 1) {
+        return group;
+    }
+    const firstLog = group[0];
+    const count = group.length;
+    const person = extractPersonFromLog(firstLog);
+    let newDetails = '';
+    if (firstLog.action === 'ADD_STRIPE') {
+        newDetails = `Added ${count} stripe${count > 1 ? 's' : ''} to ${person}.`;
+    } else if (firstLog.action === 'REMOVE_STRIPE') {
+        newDetails = `Removed ${count} stripe${count > 1 ? 's' : ''} from ${person}.`;
+    } else if (firstLog.action === 'ADD_DRUNK_STRIPE') {
+        newDetails = `Recorded ${count} consumed draught${count > 1 ? 's' : ''} for ${person}.`;
+    } else if (firstLog.action === 'REMOVE_DRUNK_STRIPE') {
+        newDetails = `Reverted ${count} drunk stripe${count > 1 ? 's' : ''} for ${person}.`;
+    }
+    const newLog = {
+        ...firstLog,
+        details: newDetails,
+        timestamp: group[group.length - 1].timestamp // use the last timestamp
+    };
+    return [newLog];
+}
+
 function handleRenderLogbook() {
     let filteredData = [...logbookDataCache];
 
@@ -425,11 +476,62 @@ function handleRenderLogbook() {
         }
     }
 
-    // Render the chart with the filtered data
-    renderLogbookChart(filteredData, categoryFilter);
+    // Filter out logs for people not in the current ledger
+    const personActions = new Set(['ADD_STRIPE', 'REMOVE_STRIPE', 'ADD_DRUNK_STRIPE', 'REMOVE_DRUNK_STRIPE', 'RENAME_PERSON', 'DELETE_PERSON', 'ADD_PERSON', 'ORACLE_JUDGEMENT']);
+    const currentNames = new Set(ledgerDataCache.map(p => p.name.toLowerCase()));
+    filteredData = filteredData.filter(log => {
+        if (!personActions.has(log.action)) {
+            return true; // Show non-person related logs
+        }
+        const details = log.details.toLowerCase();
+        for (const name of currentNames) {
+            if (details.includes(name)) {
+                return true; // Show if mentions a current person
+            }
+        }
+        return false; // Hide person-related logs that don't mention current people
+    });
 
-    // Now, sort the filtered data for the list view
-    const listData = [...filteredData].sort((a, b) => {
+    // Group consecutive similar logs within 10 minutes
+    const groupableActions = new Set(['ADD_STRIPE', 'REMOVE_STRIPE', 'ADD_DRUNK_STRIPE', 'REMOVE_DRUNK_STRIPE']);
+    filteredData.sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+    const groupedData = [];
+    let currentGroup = null;
+    filteredData.forEach(log => {
+        const person = extractPersonFromLog(log);
+        const isGroupable = groupableActions.has(log.action) && person;
+        if (!isGroupable) {
+            if (currentGroup) {
+                groupedData.push(...finalizeGroup(currentGroup));
+                currentGroup = null;
+            }
+            groupedData.push(log);
+            return;
+        }
+        if (!currentGroup) {
+            currentGroup = [log];
+        } else {
+            const lastLog = currentGroup[currentGroup.length - 1];
+            const timeDiff = log.timestamp.toMillis() - lastLog.timestamp.toMillis();
+            const sameAction = log.action === lastLog.action;
+            const samePerson = person === extractPersonFromLog(lastLog);
+            if (sameAction && samePerson && timeDiff <= 10 * 60 * 1000) {
+                currentGroup.push(log);
+            } else {
+                groupedData.push(...finalizeGroup(currentGroup));
+                currentGroup = [log];
+            }
+        }
+    });
+    if (currentGroup) {
+        groupedData.push(...finalizeGroup(currentGroup));
+    }
+
+    // Render the chart with the grouped data
+    renderLogbookChart(groupedData, categoryFilter);
+
+    // Now, sort the grouped data for the list view
+    const listData = [...groupedData].sort((a, b) => {
         const timeA = a.timestamp?.toMillis() || 0;
         const timeB = b.timestamp?.toMillis() || 0;
         return currentLogbookSort === 'newest' ? timeB - timeA : timeA - timeB;
