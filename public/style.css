@@ -379,3 +379,12 @@ body {
 #logbook-content {
     -webkit-overflow-scrolling: touch;
 }
+
+/* Modal z-index fixes */
+#logbook-modal {
+    z-index: 1000;
+}
+
+#generic-confirm-modal {
+    z-index: 1100;
+}
