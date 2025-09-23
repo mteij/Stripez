@@ -1246,6 +1246,13 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
             try {
                 await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count);
                 await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person.name}.`);
+                // Update cache locally
+                const personIndex = ledgerDataCache.findIndex(p => p.id === currentPersonIdForDrunkStripes);
+                if (personIndex !== -1) {
+                    for (let i = 0; i < count; i++) {
+                        ledgerDataCache[personIndex].drunkStripes.push(new Date());
+                    }
+                }
             } finally {
                 hideLoading();
             }
