@@ -1139,13 +1139,7 @@ logbookContentDiv?.addEventListener('click', async (e) => {
     const action = target.dataset.logAction;
     const idsStr = target.dataset.logIds;
     if (!idsStr) return;
-    let ids;
-    try {
-        ids = JSON.parse(idsStr);
-    } catch (error) {
-        console.error('Invalid log ids JSON:', idsStr, error);
-        return;
-    }
+    const ids = idsStr.split(',').filter(id => id);
     if (action === 'delete') {
         if (await confirmSchikko()) {
             const confirmed = await showConfirm(`Are you sure you want to delete this log entry? This action cannot be undone.`, "Confirm Log Deletion");

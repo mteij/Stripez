@@ -245,7 +245,7 @@ function renderLogbook(logData, isSchikko = false) {
         let deleteButtonHTML = '';
         if (isSchikko) {
             const ids = log.ids || [log.id];
-            deleteButtonHTML = `<button data-log-action="delete" data-log-ids="${JSON.stringify(ids)}" class="btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md ml-2 flex-shrink-0" title="Delete Log Entry">&times;</button>`;
+            deleteButtonHTML = `<button data-log-action="delete" data-log-ids="${ids.join(',')}" class="btn-ancient text-red-300 hover:text-red-100 text-base font-bold w-[44px] h-[44px] flex items-center justify-center rounded-md ml-2 flex-shrink-0" title="Delete Log Entry">&times;</button>`;
         }
 
         logEntryDiv.innerHTML = `
