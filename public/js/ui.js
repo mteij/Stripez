@@ -415,9 +415,29 @@ function renderLedger(viewData, term, isSchikko) {
             }
         }
 
+        const isCompleted = normalStripesCount === drunkStripesCount && normalStripesCount > 0;
+        const auroraBorderHtml = isCompleted ? `<div class="aurora aurora-border">
+            <div class="aurora__item"></div>
+            <div class="aurora__item"></div>
+            <div class="aurora__item"></div>
+            <div class="aurora__item"></div>
+        </div>` : '';
+        const nameHtml = isCompleted
+            ? `<div class="aurora-content">
+                <h1 class="aurora-title">${escapeHTML(person.name)}
+                  <div class="aurora">
+                    <div class="aurora__item"></div>
+                    <div class="aurora__item"></div>
+                    <div class="aurora__item"></div>
+                    <div class="aurora__item"></div>
+                  </div>
+                </h1>
+              </div>`
+            : `<p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>`;
+
         const personDiv = document.createElement('div');
         personDiv.className = 'flex items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]' + (isCompleted ? ' relative' : '');
-        
+
         let buttonsHTML = `<div class="flex items-center gap-2 flex-shrink-0">`;
         if (isSchikko) {
             buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-2xl font-bold w-12 h-12 flex items-center justify-center rounded-md">+</button>`;
@@ -438,26 +458,6 @@ function renderLedger(viewData, term, isSchikko) {
                 </div>`;
         }
         buttonsHTML += `</div>`;
-
-        const isCompleted = normalStripesCount === drunkStripesCount && normalStripesCount > 0;
-        const auroraBorderHtml = isCompleted ? `<div class="aurora aurora-border">
-            <div class="aurora__item"></div>
-            <div class="aurora__item"></div>
-            <div class="aurora__item"></div>
-            <div class="aurora__item"></div>
-        </div>` : '';
-        const nameHtml = isCompleted
-            ? `<div class="aurora-content">
-                <h1 class="aurora-title">${escapeHTML(person.name)}
-                  <div class="aurora">
-                    <div class="aurora__item"></div>
-                    <div class="aurora__item"></div>
-                    <div class="aurora__item"></div>
-                    <div class="aurora__item"></div>
-                  </div>
-                </h1>
-              </div>`
-            : `<p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>`;
 
         personDiv.innerHTML = auroraBorderHtml + `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
