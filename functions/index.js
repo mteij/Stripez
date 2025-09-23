@@ -651,9 +651,14 @@ exports.schikkoAction = onCall(
 
                 // Activity log
                 case "deleteLog": {
-                    const { docId } = data;
-                    if (!docId) throw new HttpsError("invalid-argument", "docId required.");
-                    await adminDb.collection("activity_log").doc(docId).delete();
+                    const { docIds } = data;
+                    if (!docIds) throw new HttpsError("invalid-argument", "docIds required.");
+                    const ids = Array.isArray(docIds) ? docIds : [docIds];
+                    const batch = adminDb.batch();
+                    ids.forEach(id => {
+                        batch.delete(adminDb.collection("activity_log").doc(id));
+                    });
+                    await batch.commit();
                     return { ok: true };
                 }
 

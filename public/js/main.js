@@ -442,7 +442,8 @@ function finalizeGroup(group) {
     const newLog = {
         ...firstLog,
         details: newDetails,
-        timestamp: group[group.length - 1].timestamp // use the last timestamp
+        timestamp: group[group.length - 1].timestamp, // use the last timestamp
+        ids: group.map(log => log.id) // store all ids
     };
     return [newLog];
 }
@@ -1133,14 +1134,14 @@ logbookContentDiv?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-log-action]');
     if (!target) return;
     const action = target.dataset.logAction;
-    const id = target.dataset.logId;
+    const ids = JSON.parse(target.dataset.logIds);
     if (action === 'delete') {
         if (await confirmSchikko()) {
             const confirmed = await showConfirm(`Are you sure you want to delete this log entry? This action cannot be undone.`, "Confirm Log Deletion");
             if (confirmed) {
                 showLoading('Deleting log entry...');
                 try {
-                    await deleteLogFromFirestore(id);
+                    await deleteLogFromFirestore(ids);
                 } finally {
                     hideLoading();
                 }

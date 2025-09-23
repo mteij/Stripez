@@ -146,8 +146,8 @@ const deleteRuleFromFirestore = async (docId) => {
     await callSchikkoAction('deleteRule', { docId });
 };
 
-const deleteLogFromFirestore = async (docId) => {
-    await callSchikkoAction('deleteLog', { docId });
+const deleteLogFromFirestore = async (docIds) => {
+    await callSchikkoAction('deleteLog', { docIds });
 };
 
 const updateRuleOrderInFirestore = async (rule1, rule2) => {
