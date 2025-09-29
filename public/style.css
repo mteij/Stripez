@@ -502,3 +502,10 @@ body {
     0%, 100% { filter: brightness(1); }
     50% { filter: brightness(1.08); }
 }
+
+/* Stripe‑o‑meter visual tweaks: stronger beer color, remove dots */
+.stripe-meter-fill {
+    /* Match .btn-beer color palette */
+    background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%) !important;
+    background-image: none !important; /* remove bubble/dot overlay */
+}
