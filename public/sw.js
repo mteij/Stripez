@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schikko-rules-cache-v5';
+const CACHE_NAME = 'schikko-rules-cache-v6';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -60,14 +60,21 @@ self.addEventListener('fetch', event => {
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheWhitelist.indexOf(cacheName) === -1) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then(clients => {
+        // Notify all open pages to reload so new assets are applied immediately
+        clients.forEach(client => client.postMessage({ type: 'reload' }));
+      })
   );
 });

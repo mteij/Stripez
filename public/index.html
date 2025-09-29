@@ -150,7 +150,7 @@
                 <div class="flex-shrink-0 relative btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">
                     <span id="sort-button-text">Sort: A-Z</span>
                     <select id="sort-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                        <option value="default">Default (Role → Stripes → A–Z)</option>
+                        <option value="default">Default</option>
                         <option value="asc">A-Z</option>
                         <option value="desc">Z-A</option>
                         <option value="stripes_desc">Most Stripes</option>
@@ -423,15 +423,33 @@
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        }, err => {
-            console.log('ServiceWorker registration failed: ', err);
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                // Proactively check for an updated service worker on load
+                try { registration.update(); } catch (e) {}
+            }, err => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
         });
+    
+        // Reload the page when the service worker tells us to
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'reload') {
+                window.location.reload();
+            }
+        });
+    
+        // Fallback: reload once when the controller changes to the new SW
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
         });
     }
     </script>
 
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="js/main.js?v=1.2" type="module"></script>
     <!-- Global Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Loading">

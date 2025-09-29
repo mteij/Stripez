@@ -77,7 +77,7 @@ currentSortOrder = 'default';
 if (sortSelect) {
     sortSelect.value = 'default';
     if (sortButtonText) {
-        sortButtonText.textContent = 'Sort: Default (Role → Stripes → A–Z)';
+        sortButtonText.textContent = 'Sort: Default';
     }
 }
 

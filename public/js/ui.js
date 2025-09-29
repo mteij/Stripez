@@ -3,6 +3,29 @@
 let stripeChart = null;
 let logbookChart = null;
 let nicatCountdownInterval = null;
+let nicatConfettiShown = false;
+
+// Launch NICAT confetti once per page load (or per NICAT period)
+function launchNicatConfetti() {
+    if (typeof window !== 'undefined' && typeof window.confetti === 'function') {
+        var count = 200;
+        var defaults = {
+          origin: { y: 0.7 }
+        };
+        function fire(particleRatio, opts) {
+            window.confetti({
+                ...defaults,
+                ...opts,
+                particleCount: Math.floor(count * particleRatio)
+            });
+        }
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2, { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+        fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+        fire(0.1, { spread: 120, startVelocity: 45 });
+    }
+}
 
 // --- UTILITY FUNCTIONS ---
 function hashCode(str) {
@@ -758,6 +781,13 @@ function renderNicatCountdown(nicatData, isSchikko) {
     const NICAT_DURATION_DAYS = 3;
     const endDate = new Date(startDate.getTime() + NICAT_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
+    // Fire confetti immediately on page load if NICAT is currently happening (once per load)
+    const nowInitial = Date.now();
+    if (nowInitial >= startDate.getTime() && nowInitial < endDate.getTime() && !nicatConfettiShown) {
+        nicatConfettiShown = true;
+        launchNicatConfetti();
+    }
+
     nicatCountdownInterval = setInterval(() => {
         const nowMs = Date.now();
 
@@ -784,6 +814,12 @@ function renderNicatCountdown(nicatData, isSchikko) {
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            // Ensure we trigger confetti once when NICAT is in progress
+            if (!nicatConfettiShown) {
+                nicatConfettiShown = true;
+                launchNicatConfetti();
+            }
 
             countdownContainer.innerHTML = `<span class="hidden sm:inline">NICAT in progress — Ends in:</span>
                 <span class="font-bold">${days}d</span>
