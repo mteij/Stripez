@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schikko Rules</title>
+    <title>NICAT</title>
+    <meta name="application-name" content="NICAT">
+    <meta name="apple-mobile-web-app-title" content="NICAT">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -77,9 +79,11 @@
         <div class="absolute bottom-2 right-2 w-12 h-12 border-b-2 border-r-2 border-[#a58467]"></div>
 
         <header class="text-center mb-4 pb-4">
-            <h1 class="font-cinzel-decorative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">The Rules of Schikko</h1>
-            <p class="text-lg text-[#6f4e37] mt-2">As Decreed by the Ancients</p>
-            
+            <h1 id="main-title" class="font-cinzel-decorative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">
+                <span id="main-title-text">NICAT</span>
+                <span id="nicat-live-badge" class="live-badge hidden"><span class="live-dot"></span> LIVE</span>
+            </h1>
+            <p class="text-lg text-[#6f4e37] mt-2">Schikko Rules as Decreed by the Ancients</p>
             <div id="nicat-countdown-container" class="mt-4 flex justify-center items-center gap-2">
                 <span id="nicat-countdown" class="font-cinzel-decorative text-xl text-red-700"></span>
                 <button id="edit-nicat-btn" class="btn-calendar-icon hidden" title="Edit NICAT Date">&#x270E;</button>

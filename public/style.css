@@ -403,3 +403,32 @@ body {
 #generic-confirm-modal {
     z-index: 1100;
 }
+
+/* NICAT title LIVE badge */
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+    font-size: 0.8rem; /* small text */
+    letter-spacing: 0.5px;
+    color: #c0392b; /* red text to match theme */
+    font-weight: 800;
+    vertical-align: middle;
+}
+
+.live-badge .live-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #c0392b; /* red dot */
+    border-radius: 9999px;
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.6);
+    animation: live-pulse 1.5s ease-out infinite;
+}
+
+@keyframes live-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.6); }
+    70%  { box-shadow: 0 0 0 8px rgba(192, 57, 43, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0); }
+}

@@ -761,6 +761,8 @@ function renderRules(rulesData, isSchikko) {
 function renderNicatCountdown(nicatData, isSchikko) {
     const countdownContainer = document.getElementById('nicat-countdown');
     const editBtn = document.getElementById('edit-nicat-btn');
+    const titleTextEl = document.getElementById('main-title-text');
+    const liveBadgeEl = document.getElementById('nicat-live-badge');
     
     if (isSchikko) {
         editBtn.classList.remove('hidden');
@@ -770,7 +772,11 @@ function renderNicatCountdown(nicatData, isSchikko) {
 
     if (nicatCountdownInterval) clearInterval(nicatCountdownInterval);
 
+    // If no NICAT date is set, default title to current year and hide LIVE
     if (!nicatData || !nicatData.date) {
+        if (titleTextEl) titleTextEl.textContent = `NICAT ${new Date().getFullYear()}`;
+        if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
+        document.title = `NICAT ${new Date().getFullYear()}`;
         countdownContainer.textContent = 'Date for the next NICAT is not yet decreed.';
         return;
     }
@@ -781,15 +787,35 @@ function renderNicatCountdown(nicatData, isSchikko) {
     const NICAT_DURATION_DAYS = 3;
     const endDate = new Date(startDate.getTime() + NICAT_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
+    // Update dynamic title to NICAT {YEAR}
+    if (titleTextEl) titleTextEl.textContent = `NICAT ${startDate.getFullYear()}`;
+
     // Fire confetti immediately on page load if NICAT is currently happening (once per load)
     const nowInitial = Date.now();
-    if (nowInitial >= startDate.getTime() && nowInitial < endDate.getTime() && !nicatConfettiShown) {
+    const isLiveNow = nowInitial >= startDate.getTime() && nowInitial < endDate.getTime();
+    const baseTitle = `NICAT ${startDate.getFullYear()}`;
+    document.title = isLiveNow ? `${baseTitle} • LIVE` : baseTitle;
+    if (liveBadgeEl) {
+        if (isLiveNow) liveBadgeEl.classList.remove('hidden'); else liveBadgeEl.classList.add('hidden');
+    }
+    if (isLiveNow && !nicatConfettiShown) {
         nicatConfettiShown = true;
         launchNicatConfetti();
     }
 
     nicatCountdownInterval = setInterval(() => {
         const nowMs = Date.now();
+
+        // Toggle LIVE badge visibility and update page title
+        const nowLive = nowMs >= startDate.getTime() && nowMs < endDate.getTime();
+        if (liveBadgeEl) {
+            if (nowLive) {
+                liveBadgeEl.classList.remove('hidden');
+            } else {
+                liveBadgeEl.classList.add('hidden');
+            }
+        }
+        document.title = nowLive ? `${baseTitle} • LIVE` : baseTitle;
 
         if (nowMs < startDate.getTime()) {
             // Countdown to NICAT start
@@ -831,6 +857,8 @@ function renderNicatCountdown(nicatData, isSchikko) {
 
         clearInterval(nicatCountdownInterval);
         countdownContainer.textContent = "The NICAT has passed! Awaiting the next decree...";
+        if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
+        document.title = baseTitle;
     }, 1000);
 }
 
