@@ -428,10 +428,16 @@ function renderLedger(viewData, term, isSchikko) {
         if (isSchikko) {
             buttonsHTML += `<div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
-                    <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-52 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
+                    <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
                         <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Remove Last Stripe</a>
                         <a href="#" data-action="remove-drunk-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Revert Drunk Stripe</a>
                         <a href="#" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
+                        <div class="border-t border-[#b9987e] my-1"></div>
+                        <div class="px-4 py-2 text-sm text-[#6f4e37] opacity-70">Set Role</div>
+                        <a href="#" data-action="set-role" data-role="NICAT" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">NICAT</a>
+                        <a href="#" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>
+                        <a href="#" data-action="set-role" data-role="Activist" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Activist</a>
+                        <a href="#" data-action="set-role" data-role="" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Clear Role</a>
                         <div class="border-t border-[#b9987e] my-1"></div>
                         <a href="#" data-action="delete" data-id="${person.id}" class="block px-4 py-2 text-md text-red-700 hover:bg-[#f5eeda] hover:text-red-800 font-bold">Delete Person</a>
                     </div>
@@ -439,9 +445,12 @@ function renderLedger(viewData, term, isSchikko) {
         }
         buttonsHTML += `</div>`;
 
+        const roleText = person.role ? String(person.role) : '';
+        const roleTagHtml = roleText ? `<span class="role-tag">${escapeHTML(roleText)}</span>` : '';
+
         personDiv.innerHTML = `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
-                <p class="text-xl md:text-2xl font-bold text-[#5c3d2e]">${escapeHTML(person.name)}</p>
+                <p class="text-xl md:text-2xl font-bold text-[#5c3d2e] flex items-center gap-2">${escapeHTML(person.name)} ${roleTagHtml}</p>
                 <div class="flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             ${buttonsHTML}`;

@@ -333,6 +333,21 @@ body {
     border: 1px solid #5c3d2e;
     box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
+ 
+/* Subtle role tag shown next to names (NICAT / Board / Activist) */
+.role-tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0.05rem 0.4rem; /* very subtle */
+    font-size: 0.75rem;
+    line-height: 1;
+    color: #6f4e37;
+    background-color: #efe8db; /* subtle paper tint */
+    border: 1px solid #d8c6b4; /* light border */
+    border-radius: 9999px; /* pill */
+    vertical-align: middle;
+}
+ 
 /* Loading overlay */
 .loading-overlay {
     position: fixed;

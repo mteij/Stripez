@@ -4,7 +4,7 @@ module.exports = {
     node: true,
   },
   parserOptions: {
-    "ecmaVersion": 2018,
+    "ecmaVersion": 2020,
   },
   extends: [
     "eslint:recommended",
@@ -16,6 +16,7 @@ module.exports = {
     // "quotes": ["error", "double", {"allowTemplateLiterals": true}], // Original rule commented out
     "quotes": "off", // **IMPORTANT: Turn off the quotes rule to bypass persistent issues.**
     // BEGIN ESLINT RULES FOR FLEXIBILITY / BYPASSING
+    "linebreak-style": "off", // Allow CRLF on Windows
     "max-len": ["error", {
       "code": 120, // Relax maximum line length to 120 characters
       "ignoreComments": true, // Ignore comments from max-len check

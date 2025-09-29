@@ -13,6 +13,7 @@ import {
     saveCalendarUrl,
     getNicatDate,
     saveNicatDate,
+    setPersonRole,
     logActivity
 } from './firebase.js';
 import {
@@ -32,7 +33,7 @@ let ledgerDataCache = [];
 let rulesDataCache = []; // Full, unfiltered rules data
 let logbookDataCache = [];
 let calendarEventsCache = [];
-let currentSortOrder = 'asc';
+let currentSortOrder = 'default';
 let currentSearchTerm = ''; // For ledger search
 let currentRuleSearchTerm = ''; // New: For rules inconsistencies search
 let currentTagFilter = 'all'; // For tag filtering
@@ -70,6 +71,15 @@ const setSchikkoBtn = document.getElementById('set-schikko-btn');
 const schikkoLoginContainer = document.getElementById('schikko-login-container');
 const schikkoLoginBtn = document.getElementById('schikko-login-btn');
 const editNicatBtn = document.getElementById('edit-nicat-btn');
+
+// Initialize default sorting UI (Role → Stripes → A–Z)
+currentSortOrder = 'default';
+if (sortSelect) {
+    sortSelect.value = 'default';
+    if (sortButtonText) {
+        sortButtonText.textContent = 'Sort: Default (Role → Stripes → A–Z)';
+    }
+}
 
 
 // Dice randomizer modal and buttons
@@ -377,6 +387,24 @@ function handleRender() {
             if (!aStartsWith && bStartsWith) return 1;
         }
         switch (currentSortOrder) {
+            case 'default': {
+                const roleRank = (p) => {
+                    const r = (p.role || '').toLowerCase();
+                    if (r === 'nicat') return 0;
+                    if (r === 'board') return 1;
+                    if (r === 'activist') return 2;
+                    return 3;
+                };
+                const rankA = roleRank(a);
+                const rankB = roleRank(b);
+                if (rankA !== rankB) return rankA - rankB;
+
+                const stripesA = a.stripes?.length || 0;
+                const stripesB = b.stripes?.length || 0;
+                if (stripesA !== stripesB) return stripesB - stripesA;
+
+                return nameA.localeCompare(nameB);
+            }
             case 'stripes_desc': return (b.stripes?.length || 0) - (a.stripes?.length || 0);
             case 'stripes_asc': return (a.stripes?.length || 0) - (b.stripes?.length || 0);
             case 'desc': return nameB.localeCompare(nameA);
@@ -1051,7 +1079,7 @@ punishmentListDiv.addEventListener('click', async (e) => {
                 }
             }
             break;
-        case 'rename': 
+        case 'rename':
              if (await confirmSchikko()) {
                 handleRename(id);
              }
@@ -1060,6 +1088,22 @@ punishmentListDiv.addEventListener('click', async (e) => {
              if (await confirmSchikko()) {
                 handleDeletePerson(id);
              }
+            break;
+        case 'set-role':
+            if (await confirmSchikko()) {
+                const role = target.dataset.role || '';
+                const person = ledgerDataCache.find(p => p.id === id);
+                showLoading('Updating role...');
+                try {
+                    await setPersonRole(id, role);
+                    if (person) {
+                        const actionText = role ? `Set role "${role}" for ${person.name}.` : `Cleared role for ${person.name}.`;
+                        await logActivity('SET_ROLE', 'Schikko', actionText);
+                    }
+                } finally {
+                    hideLoading();
+                }
+            }
             break;
         case 'show-stats':
             const personToShowStats = ledgerDataCache.find(p => p.id === id);

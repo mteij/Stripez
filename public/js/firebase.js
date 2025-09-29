@@ -150,6 +150,11 @@ const deleteLogFromFirestore = async (docIds) => {
     await callSchikkoAction('deleteLog', { docIds });
 };
 
+const setPersonRole = async (docId, role) => {
+    // role can be "NICAT" | "Board" | "Activist" | "" (to clear)
+    await callSchikkoAction('setPersonRole', { docId, role });
+};
+
 const updateRuleOrderInFirestore = async (rule1, rule2) => {
     await callSchikkoAction('updateRuleOrder', { rule1, rule2 });
 };
@@ -210,5 +215,6 @@ export {
     getCalendarConfig,
     saveCalendarUrl,
     getNicatDate,
-    saveNicatDate
+    saveNicatDate,
+    setPersonRole
 };
