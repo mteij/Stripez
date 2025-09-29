@@ -432,3 +432,73 @@ body {
     70%  { box-shadow: 0 0 0 8px rgba(192, 57, 43, 0); }
     100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0); }
 }
+
+/* Stripe‑o‑meter (beer‑themed) */
+.stripe-meter {
+    width: 100%;
+    height: 22px;
+    background: #efe8db; /* subtle paper tint matches theme */
+    border: 2px solid #b9987e;
+    border-radius: 9999px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.12);
+    position: relative;
+}
+
+/* Barrel/glass rim accents */
+.stripe-meter::before,
+.stripe-meter::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    pointer-events: none;
+    opacity: 0.35;
+}
+.stripe-meter::before { left: 0; background: linear-gradient(90deg, rgba(92,61,46,0.25), transparent); }
+.stripe-meter::after { right: 0; background: linear-gradient(270deg, rgba(92,61,46,0.25), transparent); }
+
+.stripe-meter-fill {
+    height: 100%;
+    width: 0%;
+    /* Amber beer gradient */
+    background: linear-gradient(180deg, #f6c453 0%, #f39c12 55%, #d35400 100%);
+    position: relative;
+    transition: width 600ms ease;
+    /* Bubbles overlay */
+    background-image:
+        radial-gradient(rgba(255,255,255,0.25) 1px, transparent 2px),
+        linear-gradient(180deg, rgba(255,255,255,0.15), rgba(0,0,0,0) 40%);
+    background-size: 10px 10px, 100% 100%;
+    background-position: 0 0, 0 0;
+}
+
+/* Foam head */
+.stripe-meter-fill::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -3px;
+    height: 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.65) 70%, rgba(255,255,255,0));
+    border-top-left-radius: 9999px;
+    border-top-right-radius: 9999px;
+}
+
+/* Counts and labels near the meter */
+#stripe-meter-counts,
+#stripe-meter-left {
+    font-family: 'Cinzel Decorative', serif;
+    color: #5c3d2e;
+}
+
+/* Slight pulse when LIVE to emphasize progress updates */
+.live-badge ~ #stripe-o-meter .stripe-meter-fill {
+    animation: stripe-fill-pulse 2.5s ease-in-out infinite;
+}
+@keyframes stripe-fill-pulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.08); }
+}

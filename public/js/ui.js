@@ -4,6 +4,8 @@ let stripeChart = null;
 let logbookChart = null;
 let nicatCountdownInterval = null;
 let nicatConfettiShown = false;
+let stripeTotals = { total: 0, drunk: 0 };
+let nicatLiveNow = false;
 
 // Launch NICAT confetti once per page load (or per NICAT period)
 function launchNicatConfetti() {
@@ -778,6 +780,8 @@ function renderNicatCountdown(nicatData, isSchikko) {
         if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
         document.title = `NICAT ${new Date().getFullYear()}`;
         countdownContainer.textContent = 'Date for the next NICAT is not yet decreed.';
+        nicatLiveNow = false;
+        updateStripeOMeterUI(false);
         return;
     }
 
@@ -798,6 +802,8 @@ function renderNicatCountdown(nicatData, isSchikko) {
     if (liveBadgeEl) {
         if (isLiveNow) liveBadgeEl.classList.remove('hidden'); else liveBadgeEl.classList.add('hidden');
     }
+    nicatLiveNow = isLiveNow;
+    updateStripeOMeterUI(nicatLiveNow);
     if (isLiveNow && !nicatConfettiShown) {
         nicatConfettiShown = true;
         launchNicatConfetti();
@@ -816,6 +822,8 @@ function renderNicatCountdown(nicatData, isSchikko) {
             }
         }
         document.title = nowLive ? `${baseTitle} • LIVE` : baseTitle;
+        nicatLiveNow = nowLive;
+        updateStripeOMeterUI(nicatLiveNow);
 
         if (nowMs < startDate.getTime()) {
             // Countdown to NICAT start
@@ -859,6 +867,8 @@ function renderNicatCountdown(nicatData, isSchikko) {
         countdownContainer.textContent = "The NICAT has passed! Awaiting the next decree...";
         if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
         document.title = baseTitle;
+        nicatLiveNow = false;
+        updateStripeOMeterUI(false);
     }, 1000);
 }
 
@@ -1013,4 +1023,41 @@ function showRuleEditModal(currentText, currentTags = [], allRules = []) {
 }
 
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading };
+function updateStripeOMeterUI(isLive) {
+    const meter = document.getElementById('stripe-o-meter');
+    const fill = document.getElementById('stripe-meter-fill');
+    const leftEl = document.getElementById('stripe-meter-left');
+    const countsEl = document.getElementById('stripe-meter-counts');
+    const countdownWrap = document.getElementById('nicat-countdown-container');
+    const calendarSection = document.getElementById('calendar-section');
+
+    if (!meter) return;
+
+    if (isLive) {
+        meter.classList.remove('hidden');
+        if (countdownWrap) countdownWrap.classList.add('hidden');
+        if (calendarSection) calendarSection.classList.add('hidden');
+
+        const total = Math.max(0, stripeTotals.total || 0);
+        const drunk = Math.max(0, stripeTotals.drunk || 0);
+        const left = Math.max(0, total - drunk);
+        const percent = total > 0 ? Math.round((drunk / total) * 100) : 0;
+
+        if (fill) fill.style.width = `${percent}%`;
+        if (leftEl) leftEl.textContent = `Stripes left: ${left}`;
+        if (countsEl) countsEl.textContent = `Drunk ${drunk} / Total ${total}`;
+    } else {
+        meter.classList.add('hidden');
+        if (countdownWrap) countdownWrap.classList.remove('hidden');
+        if (calendarSection) calendarSection.classList.remove('hidden');
+    }
+}
+
+function setStripeTotals(total, drunk) {
+    stripeTotals.total = Math.max(0, Number(total) || 0);
+    stripeTotals.drunk = Math.max(0, Number(drunk) || 0);
+    // Refresh UI if we're currently live
+    updateStripeOMeterUI(nicatLiveNow === true);
+}
+
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };

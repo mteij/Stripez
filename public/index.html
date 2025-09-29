@@ -89,6 +89,21 @@
                 <button id="edit-nicat-btn" class="btn-calendar-icon hidden" title="Edit NICAT Date">&#x270E;</button>
             </div>
 
+            <!-- Stripe‑o‑meter (visible only during NICAT) -->
+            <div id="stripe-o-meter" class="hidden mt-4">
+                <div class="flex items-center justify-center gap-2 mb-1">
+                    <span class="text-[#6f4e37] font-cinzel-decorative text-sm uppercase tracking-wider">Stripe‑o‑meter</span>
+                    <span class="text-xl">🍺</span>
+                </div>
+                <div class="stripe-meter">
+                    <div id="stripe-meter-fill" class="stripe-meter-fill"></div>
+                </div>
+                <div class="flex items-center justify-between mt-1 text-sm text-[#6f4e37]">
+                    <span id="stripe-meter-counts" class="font-bold"></span>
+                    <span id="stripe-meter-left" class="font-bold"></span>
+                </div>
+            </div>
+
             <div id="calendar-section" class="calendar-container">
                 <div id="upcoming-event" class="upcoming-event-text">Loading upcoming activities...</div>
                 <button id="full-agenda-btn" class="btn-calendar-icon" title="View Full Agenda">&#x1F4C5;</button> 

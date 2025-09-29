@@ -21,7 +21,8 @@ import {
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
     showAlert, showConfirm, showPrompt, showSchikkoLoginModal,
     showSetSchikkoModal, showRuleEditModal, renderNicatCountdown,
-    showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading
+    showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading,
+    setStripeTotals
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -150,6 +151,19 @@ onAuthStateChanged(auth, (user) => {
         setupRealtimeListener('punishments', (data) => {
             loadingState.style.display = 'none';
             ledgerDataCache = data;
+
+            // Update Stripe‑o‑meter totals (sum across ledger)
+            try {
+                const totals = data.reduce((acc, p) => {
+                    acc.total += (p?.stripes?.length || 0);
+                    acc.drunk += (p?.drunkStripes?.length || 0);
+                    return acc;
+                }, { total: 0, drunk: 0 });
+                setStripeTotals(totals.total, totals.drunk);
+            } catch (e) {
+                // ignore computation errors
+            }
+
             handleRender();
             updateDatalist();
         });
