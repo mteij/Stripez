@@ -743,28 +743,49 @@ function renderNicatCountdown(nicatData, isSchikko) {
         return;
     }
 
-    const targetDate = nicatData.date.toDate();
+    // Treat NICAT as a 3-day period starting on the selected date (local midnight)
+    const startDateRaw = nicatData.date.toDate();
+    const startDate = new Date(startDateRaw.getFullYear(), startDateRaw.getMonth(), startDateRaw.getDate());
+    const NICAT_DURATION_DAYS = 3;
+    const endDate = new Date(startDate.getTime() + NICAT_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
     nicatCountdownInterval = setInterval(() => {
-        const now = new Date().getTime();
-        const distance = targetDate - now;
+        const nowMs = Date.now();
 
-        if (distance < 0) {
-            clearInterval(nicatCountdownInterval);
-            countdownContainer.textContent = "The NICAT has passed! Awaiting the next decree...";
+        if (nowMs < startDate.getTime()) {
+            // Countdown to NICAT start
+            const distance = startDate.getTime() - nowMs;
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            countdownContainer.innerHTML = `<span class="hidden sm:inline">Next NICAT in:</span>
+                <span class="font-bold">${days}d</span>
+                <span class="font-bold">${hours}h</span>
+                <span class="font-bold">${minutes}m</span>
+                <span class="font-bold">${seconds}s</span>`;
             return;
         }
 
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        if (nowMs < endDate.getTime()) {
+            // NICAT is currently happening — countdown to end
+            const distance = endDate.getTime() - nowMs;
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        countdownContainer.innerHTML = `<span class="hidden sm:inline">Next NICAT in:</span>
-            <span class="font-bold">${days}d</span>
-            <span class="font-bold">${hours}h</span>
-            <span class="font-bold">${minutes}m</span>
-            <span class="font-bold">${seconds}s</span>`;
+            countdownContainer.innerHTML = `<span class="hidden sm:inline">NICAT in progress — Ends in:</span>
+                <span class="font-bold">${days}d</span>
+                <span class="font-bold">${hours}h</span>
+                <span class="font-bold">${minutes}m</span>
+                <span class="font-bold">${seconds}s</span>`;
+            return;
+        }
+
+        clearInterval(nicatCountdownInterval);
+        countdownContainer.textContent = "The NICAT has passed! Awaiting the next decree...";
     }, 1000);
 }
 

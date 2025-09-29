@@ -292,10 +292,14 @@ async function loadCalendarData() {
                     let next;
                     const occurrences = [];
                     while ((next = iterator.next()) && occurrences.length < 100) {
+                        const startJs = next.toJSDate();
+                        const t = ICAL.Time.fromJSDate(startJs);
+                        t.addDuration(event.duration);
+                        const endJs = t.toJSDate();
                         occurrences.push({
                             summary: event.summary,
-                            startDate: next.toDate(),
-                            endDate: new ICAL.Time.fromJSDate(next.toDate()).add(event.duration).toJSDate(),
+                            startDate: startJs,
+                            endDate: endJs,
                             location: event.location,
                             description: event.description,
                         });
