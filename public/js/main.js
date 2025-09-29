@@ -404,7 +404,7 @@ function handleRender() {
             case 'default': {
                 const roleRank = (p) => {
                     const r = (p.role || '').toLowerCase();
-                    if (r === 'nicat') return 0;
+                    if (r === 'schikko' || r === 'nicat') return 0;
                     if (r === 'board') return 1;
                     if (r === 'activist') return 2;
                     return 3;

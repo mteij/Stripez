@@ -582,14 +582,14 @@ exports.schikkoAction = onCall(
                     const {docId, role} = data;
                     if (!docId) throw new HttpsError("invalid-argument", "docId required.");
                     // Allowed roles (case-insensitive input, stored canonical-cased)
-                    const allowed = ["NICAT", "Board", "Activist"];
+                    const allowed = ["Schikko", "NICAT", "Board", "Activist"];
                     let value = null;
 
                     if (typeof role === "string" && role.trim() !== "") {
                         const normalized = role.trim().toLowerCase();
                         const match = allowed.find((r) => r.toLowerCase() === normalized);
                         if (!match) {
-                            throw new HttpsError("invalid-argument", "Invalid role. Must be one of: NICAT, Board, Activist.");
+                            throw new HttpsError("invalid-argument", "Invalid role. Must be one of: Schikko, NICAT, Board, Activist.");
                         }
                         value = match;
                     }

@@ -6,6 +6,7 @@ let nicatCountdownInterval = null;
 let nicatConfettiShown = false;
 let stripeTotals = { total: 0, drunk: 0 };
 let nicatLiveNow = false;
+let schikkoLoggedIn = false;
 
 // Launch NICAT confetti once per page load (or per NICAT period)
 function launchNicatConfetti() {
@@ -779,6 +780,9 @@ function renderNicatCountdown(nicatData, isSchikko) {
     const titleTextEl = document.getElementById('main-title-text');
     const liveBadgeEl = document.getElementById('nicat-live-badge');
     
+    // Track Schikko login state inside UI module so other helpers can adapt
+    schikkoLoggedIn = !!isSchikko;
+
     if (isSchikko) {
         editBtn.classList.remove('hidden');
     } else {
@@ -1047,9 +1051,19 @@ function updateStripeOMeterUI(isLive) {
     if (!meter) return;
 
     if (isLive) {
+        // Always show the meter when live
         meter.classList.remove('hidden');
-        if (countdownWrap) countdownWrap.classList.add('hidden');
-        if (calendarSection) calendarSection.classList.add('hidden');
+
+        // Only hide countdown and calendar for non‑Schikko users
+        const hideForGuests = !schikkoLoggedIn;
+        if (countdownWrap) {
+            if (hideForGuests) countdownWrap.classList.add('hidden');
+            else countdownWrap.classList.remove('hidden');
+        }
+        if (calendarSection) {
+            if (hideForGuests) calendarSection.classList.add('hidden');
+            else calendarSection.classList.remove('hidden');
+        }
 
         const total = Math.max(0, stripeTotals.total || 0);
         const drunk = Math.max(0, stripeTotals.drunk || 0);
@@ -1060,6 +1074,7 @@ function updateStripeOMeterUI(isLive) {
         if (leftEl) leftEl.textContent = `Stripes left: ${left}`;
         if (countsEl) countsEl.textContent = `Drunk ${drunk} / Total ${total}`;
     } else {
+        // When not live, show countdown and calendar for everyone, hide meter
         meter.classList.add('hidden');
         if (countdownWrap) countdownWrap.classList.remove('hidden');
         if (calendarSection) calendarSection.classList.remove('hidden');

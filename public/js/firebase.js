@@ -151,7 +151,7 @@ const deleteLogFromFirestore = async (docIds) => {
 };
 
 const setPersonRole = async (docId, role) => {
-    // role can be "NICAT" | "Board" | "Activist" | "" (to clear)
+    // role can be "Schikko" | "NICAT" | "Board" | "Activist" | "" (to clear)
     await callSchikkoAction('setPersonRole', { docId, role });
 };
 
