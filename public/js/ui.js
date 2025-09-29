@@ -466,7 +466,7 @@ function renderLedger(viewData, term, isSchikko) {
                                 <span>Roles</span>
                                 <span class="ml-2 text-[#6f4e37]">›</span>
                             </div>
-                            <div class="kebab-submenu hidden absolute left-full top-0 ml-1 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-20">
+                            <div class="kebab-submenu hidden absolute left-full top-0 ml-0 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-20">
                                 <a href="#" data-action="set-role" data-role="Schikko" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Schikko</a>
                                 <a href="#" data-action="set-role" data-role="NICAT" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">NICAT</a>
                                 <a href="#" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>

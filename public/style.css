@@ -357,8 +357,9 @@ body {
 }
 
 /* Flyout submenu for Roles inside kebab (3-dots) menu */
+/* Ensure no hover gap between trigger and submenu by overlapping slightly */
 .kebab-submenu-item { position: relative; }
-.kebab-submenu { display: none; }
+.kebab-submenu { display: none; margin-left: -2px; }
 .kebab-submenu-item:hover .kebab-submenu { display: block; }
  
 /* Loading overlay */
