@@ -4,7 +4,7 @@ const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {logger} = require("firebase-functions");
 const {initializeApp} = require("firebase-admin/app");
-const {getFirestore, FieldValue, Timestamp} = require("firebase-admin/firestore");
+const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 const {request: gaxiosRequest} = require("gaxios");
 const crypto = require("crypto");
@@ -527,7 +527,6 @@ exports.schikkoAction = onCall(
                     if (!snap.exists) return {ok: true};
                     const person = snap.data() || {};
                     const stripes = Array.isArray(person.stripes) ? person.stripes : [];
-                    const drunk = Array.isArray(person.drunkStripes) ? person.drunkStripes : [];
                     if (stripes.length === 0) return {ok: true};
 
                     // Remove latest normal stripe
