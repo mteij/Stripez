@@ -172,7 +172,9 @@ exports.getOracleJudgement = onCall(
 
       try {
         const genAI = new GoogleGenerativeAI(geminiApiKey);
-        const model = genAI.getGenerativeModel({model: "gemini-1.5-flash-latest"});
+        // Prefer Gemini 2.5 Flash by default; allow override via environment variable GEMINI_MODEL
+        let modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+        let model = genAI.getGenerativeModel({model: modelName});
         const rulesText = rules.map((rule, index) => `${index + 1}. ${rule.text}`).join("\n");
         const fullPrompt = `You are an ancient, wise, and slightly dramatic Oracle for a game called "Schikko Rules". Your task is to pass judgement on a transgression described by a user. You must determine the broken rules and their individual penalties. You will output your judgement as a JSON string, wrapped in a markdown code block (e.g., \`\`\`json { ... } \`\`\`). Do NOT output anything else outside the code block.
 
@@ -201,7 +203,19 @@ A user has described the following transgression:
 "${sanitizedPrompt}"
 ---`;
         
-        const result = await model.generateContent(fullPrompt);
+        let result;
+        try {
+          result = await model.generateContent(fullPrompt);
+        } catch (primaryError) {
+          logger.warn(`Primary model "${modelName}" failed, attempting fallback.`, {error: primaryError?.message});
+          if (modelName !== "gemini-1.5-flash-latest") {
+            modelName = "gemini-1.5-flash-latest";
+            model = genAI.getGenerativeModel({model: modelName});
+            result = await model.generateContent(fullPrompt);
+          } else {
+            throw primaryError;
+          }
+        }
         const judgementText = result.response.text().trim();
         const jsonMatch = judgementText.match(/```json\n(.*?)```/s);
         const jsonString = (jsonMatch && jsonMatch[1]) ? jsonMatch[1].trim() : judgementText;
