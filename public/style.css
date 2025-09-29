@@ -347,6 +347,19 @@ body {
     border-radius: 9999px; /* pill */
     vertical-align: middle;
 }
+
+/* Prominent badge for Schikko (red background, white text) */
+.role-tag-schikko {
+    color: #fdf8e9;
+    background-color: #c0392b;
+    border: 1px solid #7f2219;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Flyout submenu for Roles inside kebab (3-dots) menu */
+.kebab-submenu-item { position: relative; }
+.kebab-submenu { display: none; }
+.kebab-submenu-item:hover .kebab-submenu { display: block; }
  
 /* Loading overlay */
 .loading-overlay {

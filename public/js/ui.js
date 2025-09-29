@@ -458,11 +458,22 @@ function renderLedger(viewData, term, isSchikko) {
                         <a href="#" data-action="remove-drunk-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Revert Drunk Stripe</a>
                         <a href="#" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
                         <div class="border-t border-[#b9987e] my-1"></div>
-                        <div class="px-4 py-2 text-sm text-[#6f4e37] opacity-70">Set Role</div>
-                        <a href="#" data-action="set-role" data-role="NICAT" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">NICAT</a>
-                        <a href="#" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>
-                        <a href="#" data-action="set-role" data-role="Activist" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Activist</a>
-                        <a href="#" data-action="set-role" data-role="" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Clear Role</a>
+
+                        <!-- Flyout Roles submenu -->
+                        <div class="kebab-submenu-item">
+                            <div class="kebab-submenu-trigger block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center justify-between">
+                                <span>Roles</span>
+                                <span class="ml-2 text-[#6f4e37]">›</span>
+                            </div>
+                            <div class="kebab-submenu hidden absolute right-full top-0 mr-1 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-20">
+                                <a href="#" data-action="set-role" data-role="Schikko" data-id="${person.id}" class="block px-4 py-2 text-md text-[#fdf8e9] bg-[#c0392b] hover:bg-[#e74c3c]">Schikko</a>
+                                <a href="#" data-action="set-role" data-role="NICAT" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">NICAT</a>
+                                <a href="#" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>
+                                <a href="#" data-action="set-role" data-role="Activist" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Activist</a>
+                                <a href="#" data-action="set-role" data-role="" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Clear Role</a>
+                            </div>
+                        </div>
+
                         <div class="border-t border-[#b9987e] my-1"></div>
                         <a href="#" data-action="delete" data-id="${person.id}" class="block px-4 py-2 text-md text-red-700 hover:bg-[#f5eeda] hover:text-red-800 font-bold">Delete Person</a>
                     </div>
@@ -471,7 +482,9 @@ function renderLedger(viewData, term, isSchikko) {
         buttonsHTML += `</div>`;
 
         const roleText = person.role ? String(person.role) : '';
-        const roleTagHtml = roleText ? `<span class="role-tag">${escapeHTML(roleText)}</span>` : '';
+        const roleLower = roleText.toLowerCase();
+        const roleTagClass = roleLower === 'schikko' ? ' role-tag-schikko' : '';
+        const roleTagHtml = roleText ? `<span class="role-tag${roleTagClass}">${escapeHTML(roleText)}</span>` : '';
 
         personDiv.innerHTML = `
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
