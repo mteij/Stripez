@@ -19,7 +19,7 @@
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.4.0",
     "gaxios": "^6.7.1",
-    "nodemailer": "^6.9.14"
+    "nodemailer": "^7.0.7"
   },
   "devDependencies": {
     "eslint": "^8.15.0",
