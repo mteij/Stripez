@@ -15,11 +15,5 @@ yarn.lock
 .env.*
 !.env.example
 
-# Build context noise
-OLD/
+# Data directory
 data/
-
-# Legacy Firebase (kept in OLD/)
-firebase.json
-.firebaserc
-functions/
