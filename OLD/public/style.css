@@ -1,0 +1,525 @@
+/* Custom font classes */
+.font-cinzel-decorative { font-family: 'Cinzel Decorative', serif; }
+.font-medieval-sharp { font-family: 'MedievalSharp', cursive; }
+
+/* Styling for the page background to look like old paper */
+body {
+    background-color: #f5eeda;
+    background-image:
+        linear-gradient(rgba(169, 141, 107, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(169, 141, 107, 0.15) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Custom styling for the ordered list to have Roman numerals */
+.roman-list {
+    list-style: none;
+    counter-reset: roman-counter;
+    padding-left: 2.5rem; /* Space for the numeral */
+}
+
+.roman-list > li {
+    counter-increment: roman-counter;
+    position: relative;
+    margin-bottom: 1.25rem; /* Spacing between rules */
+}
+
+.roman-list > li::before {
+    content: counter(roman-counter, upper-roman) ".";
+    position: absolute;
+    left: -2.5rem;
+    top: 0;
+    font-weight: bold;
+    color: #5c3d2e; /* A dark, earthy brown */
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.125rem;
+}
+
+/* Specific style to remove roman numeral for certain list items */
+.roman-list > li.no-roman-numeral::before {
+    content: none; /* Remove the generated content */
+}
+
+
+/* Custom button styling */
+.btn-ancient {
+    background-color: #8c6b52;
+    color: #fdf8e9;
+    border: 2px solid #5c3d2e;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-ancient:hover {
+    background-color: #a58467;
+    color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* New button style for Minnie button */
+.btn-minnie {
+    background-color: #f57f20;
+}
+
+/* New subtle button style for "Schikko's Decrees" button */
+.btn-subtle-decree {
+    background-color: #e9e2d7; /* Lighter paper-like background */
+    color: #5c3d2e; /* Dark, earthy brown text */
+    border: 2px solid #b9987e; /* Thematic border */
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
+}
+
+.btn-subtle-decree:hover {
+    background-color: #dcd3c4; /* Slightly lighter on hover */
+    color: #4a3024; /* Slightly darker text on hover */
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15); /* Slightly more prominent shadow on hover */
+}
+
+/* Flexible Beer Button */
+.btn-beer {
+    background-color: #f39c12; /* Beer color */
+    color: white;
+    border: 2px solid #e67e22; /* Darker border */
+    padding: 0.5rem 0.75rem; /* py-2 px-3 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 1rem; /* Base font size */
+    line-height: 1.5rem; /* Ensure vertical alignment of text and emoji */
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    flex-shrink: 0; /* Prevent it from shrinking */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-beer:hover {
+    background-color: #e67e22; /* Darker beer color on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* New button style for punishment suggestions */
+.btn-punishment {
+    background-color: #c0392b; /* A prominent red */
+    color: #fdf8e9; /* Light text */
+    border: 2px solid #7f2219; /* Darker red border */
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* Stronger shadow */
+    display: block; /* Make it a block element to use margin-left/right auto */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-punishment:hover {
+    background-color: #e74c3c; /* Lighter red on hover */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+}
+
+
+/* Styling for the punishment stripes */
+.punishment-stripe {
+    display: inline-block;
+    width: 5px;
+    height: 20px;
+    background-color: #c0392b; /* Red stripe */
+    margin-right: 3px;
+    border-left: 1px solid #7f2219;
+    transform: skew(-15deg);
+}
+
+/* New styling for black punishment stripes */
+.punishment-stripe-black {
+    background-color: #2c3e50; /* Dark black/blue color for the 5th stripe */
+    border-left: 1px solid #1a242f;
+}
+
+/* New styling for drunken punishment stripes */
+.punishment-stripe-drunk {
+    display: inline-block;
+    width: 5px;
+    height: 20px;
+    background-color: #f39c12; /* A beer-like orange/yellow color */
+    margin-right: 3px;
+    border-left: 1px solid #e67e22; /* Darker border for contrast */
+    transform: skew(-15deg);
+}
+
+/* New styling for 5th drunken punishment stripes - now gold */
+.punishment-stripe-drunk-fifth {
+    background-color: #FFD700; /* Gold */
+    border-left: 1px solid #DAA520; /* Goldenrod for border */
+}
+
+
+/* Set a readable text color for the dropdown options */
+#sort-select option {
+    color: black;
+    background: white;
+}
+
+/* Subtle arrow for "Schikko's Decrees" button */
+.decree-arrow {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #5c3d2e; /* Matches new subtle button text color */
+    margin-top: 2px; /* Slight adjustment for vertical alignment */
+    transition: transform 0.3s ease;
+}
+
+/* Rotate the arrow when decrees are expanded */
+#show-decrees-btn[data-state="expanded"] .decree-arrow {
+    transform: rotate(180deg);
+}
+
+
+/* New: Main section divider style */
+.section-divider {
+    margin-top: 3rem; /* Same as my-12 */
+    margin-bottom: 3rem; /* Same as my-12 */
+    border-top: 4px dotted #b9987e; /* Consistent with main divider */
+}
+
+/* New Calendar Styles */
+.calendar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem; /* 12px */
+    margin-top: 1.5rem; /* 24px */
+    padding: 0.5rem;
+    border-top: 1px dotted #b9987e;
+    border-bottom: 1px dotted #b9987e;
+}
+
+.upcoming-event-text {
+    font-size: 0.95rem; /* Slightly smaller font */
+    color: #6f4e37; /* A more subtle, earthy brown */
+    flex-grow: 1;
+    text-align: center;
+}
+
+.btn-calendar-icon {
+    background-color: transparent;
+    color: #8c6b52; /* Thematic icon color */
+    border: 1px solid transparent;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px; /* Rounded corners */
+    font-size: 1.25rem; /* Larger icon/emoji */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.btn-calendar-icon:hover {
+    background-color: #e9e2d7; /* Lighter paper-like background on hover */
+    color: #5c3d2e;
+    border-color: #b9987e;
+}
+
+/* --- New Themed Oracle Styles ---  */
+
+/* Style for the button on the homepage that opens the Oracle */
+.btn-oracle-invoke {
+    background-color: #2c3e50; /* Dark slate */
+    color: #fdf8e9; /* Light text */
+    border: 2px solid #1a242f; /* Darker border */
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 0 10px rgba(0,0,0,0.2);
+}
+
+.btn-oracle-invoke:hover {
+    background-color: #34495e;
+    color: #fff;
+    border-color: #c0392b; /* A flash of red on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4), 0 0 15px rgba(192, 57, 43, 0.5); /* Glow effect */
+}
+
+/* Overriding the default modal styles for the Gemini modal */
+#gemini-modal .bg-\[\#fdf8e9\] {
+    background: radial-gradient(ellipse at center, #34495e 0%, #1a242f 100%); /* Dark gradient */
+    border-color: #5c3d2e;
+}
+
+/* Styling the title inside the Oracle modal */
+#gemini-modal h2 {
+    color: #f39c12; /* Golden/Amber color */
+    text-shadow: 0 0 8px rgba(243, 156, 18, 0.7);
+}
+
+/* Styling the instructional paragraph inside the modal */
+#gemini-modal p {
+    color: #bdc3c7; /* Lighter grey text */
+}
+
+/* Styling the textarea for a more thematic look */
+#gemini-modal #gemini-input {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: #5c3d2e;
+    color: #fdf8e9;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.4);
+}
+
+#gemini-modal #gemini-input::placeholder {
+    color: #7f8c8d;
+}
+
+/* Styling the "Consult" button inside the modal */
+#gemini-modal #gemini-submit-btn {
+    background-color: #c0392b; /* Prominent Red */
+    color: #fdf8e9;
+    border: 2px solid #7f2219;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+#gemini-modal #gemini-submit-btn:hover {
+    background-color: #e74c3c;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4), 0 0 20px rgba(231, 76, 60, 0.6);
+}
+
+/* Styling the Oracle's response text */
+#gemini-modal #gemini-output {
+    font-family: 'Cinzel Decorative', serif;
+    color: #f1c40f; /* Gold */
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px dashed #f1c40f;
+    border-radius: 8px;
+    text-shadow: 0 0 5px rgba(241, 196, 15, 0.5);
+}
+
+/* New styles for numbered stripes */
+.stripe-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: top; /* Aligns wrappers with regular stripes */
+}
+
+.stripe-number {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #5c3d2e;
+    font-family: 'Cinzel Decorative', serif;
+    pointer-events: none;
+}
+
+/* New styles for rule tags */
+.rule-tags-container {
+    display: flex;
+    gap: 0.5rem; /* 8px */
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.rule-tag {
+    background-color: #a58467;
+    color: #fdf8e9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px; /* pill shape */
+    font-size: 0.8rem;
+    font-family: 'MedievalSharp', cursive;
+    border: 1px solid #5c3d2e;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+ 
+/* Subtle role tag shown next to names (Schikko / NICAT / Board / Activist) */
+.role-tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0.05rem 0.4rem; /* very subtle */
+    font-size: 0.75rem;
+    line-height: 1;
+    color: #6f4e37;
+    background-color: #efe8db; /* subtle paper tint */
+    border: 1px solid #d8c6b4; /* light border */
+    border-radius: 9999px; /* pill */
+    vertical-align: middle;
+}
+
+/* Prominent badge for Schikko (red background, white text) */
+.role-tag-schikko {
+    color: #ffffff;
+    background-color: #c0392b;
+    border: 1px solid #7f2219;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Flyout submenu for Roles inside kebab (3-dots) menu */
+/* Ensure no hover gap between trigger and submenu by overlapping slightly */
+.kebab-submenu-item { position: relative; }
+.kebab-submenu { display: none; margin-left: -2px; }
+.kebab-submenu-item:hover .kebab-submenu { display: block; }
+ 
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.loading-box {
+    background: #fdf8e9;
+    border: 3px solid #8c6b52;
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid #e9e2d7;
+    border-top-color: #c0392b;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: #5c3d2e;
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+#logbook-content {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Modal z-index fixes */
+#logbook-modal {
+    z-index: 1000;
+}
+
+#generic-confirm-modal {
+    z-index: 1100;
+}
+
+/* NICAT title LIVE badge */
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+    font-size: 0.8rem; /* small text */
+    letter-spacing: 0.5px;
+    color: #c0392b; /* red text to match theme */
+    font-weight: 800;
+    vertical-align: middle;
+}
+
+.live-badge .live-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #c0392b; /* red dot */
+    border-radius: 9999px;
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.6);
+    animation: live-pulse 1.5s ease-out infinite;
+}
+
+@keyframes live-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.6); }
+    70%  { box-shadow: 0 0 0 8px rgba(192, 57, 43, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0); }
+}
+
+/* Stripe‑o‑meter (beer‑themed) */
+.stripe-meter {
+    width: 100%;
+    height: 22px;
+    background: #efe8db; /* subtle paper tint matches theme */
+    border: 2px solid #b9987e;
+    border-radius: 9999px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.12);
+    position: relative;
+}
+
+/* Barrel/glass rim accents */
+.stripe-meter::before,
+.stripe-meter::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    pointer-events: none;
+    opacity: 0.35;
+}
+.stripe-meter::before { left: 0; background: linear-gradient(90deg, rgba(92,61,46,0.25), transparent); }
+.stripe-meter::after { right: 0; background: linear-gradient(270deg, rgba(92,61,46,0.25), transparent); }
+
+.stripe-meter-fill {
+    height: 100%;
+    width: 0%;
+    /* Amber beer gradient */
+    background: linear-gradient(180deg, #f6c453 0%, #f39c12 55%, #d35400 100%);
+    position: relative;
+    transition: width 600ms ease;
+    /* Bubbles overlay */
+    background-image:
+        radial-gradient(rgba(255,255,255,0.25) 1px, transparent 2px),
+        linear-gradient(180deg, rgba(255,255,255,0.15), rgba(0,0,0,0) 40%);
+    background-size: 10px 10px, 100% 100%;
+    background-position: 0 0, 0 0;
+}
+
+/* Foam head */
+.stripe-meter-fill::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -3px;
+    height: 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.65) 70%, rgba(255,255,255,0));
+    border-top-left-radius: 9999px;
+    border-top-right-radius: 9999px;
+}
+
+/* Counts and labels near the meter */
+#stripe-meter-counts,
+#stripe-meter-left {
+    font-family: 'Cinzel Decorative', serif;
+    color: #5c3d2e;
+}
+
+/* Slight pulse when LIVE to emphasize progress updates */
+.live-badge ~ #stripe-o-meter .stripe-meter-fill {
+    animation: stripe-fill-pulse 2.5s ease-in-out infinite;
+}
+@keyframes stripe-fill-pulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.08); }
+}
+
+/* Stripe‑o‑meter visual tweaks: stronger beer color */
+.stripe-meter-fill {
+    /* Match .btn-beer color palette */
+    background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%) !important;
+    /* Keep gradient; do not nullify background-image, as gradients are background-images */
+}

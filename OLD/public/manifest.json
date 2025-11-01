@@ -1,0 +1,37 @@
+{
+  "name": "NICAT",
+  "short_name": "NICAT",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#fdf8e9",
+  "theme_color": "#8c6b52",
+  "description": "The official ledger for the Rules of Schikko.",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "The Ledger of Punishments on Desktop"
+    },
+    {
+      "src": "/assets/screenshot-mobile.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "The Ledger of Punishments on Mobile"
+    }
+  ]
+}

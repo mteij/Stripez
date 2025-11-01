@@ -1,0 +1,24 @@
+# VCS and CI
+.git
+.github
+
+# Local dev and logs
+node_modules
+*.log
+npm-debug.log*
+pnpm-lock.yaml
+yarn.lock
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Firebase legacy
+firebase.json
+.firebaserc
+functions/
+OLD/
+
+# Docker/Compose artifacts (not needed inside image)
+!docker-compose.yml

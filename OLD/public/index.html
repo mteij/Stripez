@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NICAT</title>
+    <meta name="application-name" content="NICAT">
+    <meta name="apple-mobile-web-app-title" content="NICAT">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" integrity="sha384-cVMg8E3QFwTvGCDuK+ET4PD341jF3W8nO1auiXfuZNQkzbUUiBGLsIQUE+b1mxws" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js" integrity="sha512-0izBc1upGYnrS1u1MX7QR+sjFIxZWxLVdNI7cUoHHCutDr5ENjuQRZuS+v+3NFNGfwHSrPoHzBzED0rV651tGw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="style.css?v=1.0">
+    <link rel="stylesheet" href="randomizer/randomizer.css">
+    <style>
+        /* Prevents the default arrow from showing on the details summary */
+        summary::-webkit-details-marker {
+            display: none;
+        }
+        summary {
+            list-style-type: none;
+        }
+        /* CSS to control edit mode visibility */
+        .rule-actions {
+            display: none;
+        }
+        .rules-list-editing .rule-actions {
+            display: flex;
+        }
+        /* Style to make edit mode more visible */
+        #rules-list.rules-list-editing {
+            background-color: rgba(185, 152, 126, 0.1);
+            border: 2px dashed rgba(185, 152, 126, 0.5);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        /* Style for the range slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none; /* Added for compatibility */
+            background: transparent;
+            width: 100%;
+            margin: 10px 0;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 16px;
+            border-radius: 3px;
+            background: #8c6b52;
+            cursor: pointer;
+            margin-top: -8px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+            border: 2px solid #5c3d2e;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #b9987e;
+            border-radius: 5px;
+        }
+
+    </style>
+</head>
+<body class="font-medieval-sharp text-gray-800 flex flex-col min-h-screen p-4 sm:p-6 lg:p-8">
+
+    <div class="w-full max-w-4xl bg-[#fdf8e9] shadow-2xl rounded-lg border-4 border-[#8c6b52] border-opacity-60 p-8 md:p-12 lg:p-16 relative flex-grow mx-auto">
+        
+        <div class="absolute top-2 left-2 w-12 h-12 border-t-2 border-l-2 border-[#a58467]"></div>
+        <a href="https://webapps.astatine.utwente.nl/minnie/" target="_blank" rel="noopener noreferrer" class="absolute top-4 left-4 btn-ancient btn-minnie text-xs font-bold py-1 px-2 rounded-md">Minnie</a>
+        <div class="absolute top-2 right-2 w-12 h-12 border-t-2 border-r-2 border-[#a58467]"></div>
+        <div class="absolute bottom-2 left-2 w-12 h-12 border-b-2 border-l-2 border-[#a58467]"></div>
+        <div class="absolute bottom-2 right-2 w-12 h-12 border-b-2 border-r-2 border-[#a58467]"></div>
+
+        <header class="text-center mb-4 pb-4">
+            <h1 id="main-title" class="font-cinzel-decorative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">
+                <span id="main-title-text">NICAT</span>
+                <span id="nicat-live-badge" class="live-badge hidden"><span class="live-dot"></span> LIVE</span>
+            </h1>
+            <p class="text-lg text-[#6f4e37] mt-2">Schikko Rules as Decreed by the Ancients</p>
+            <div id="nicat-countdown-container" class="mt-4 flex justify-center items-center gap-2">
+                <span id="nicat-countdown" class="font-cinzel-decorative text-xl text-red-700"></span>
+                <button id="edit-nicat-btn" class="btn-calendar-icon hidden" title="Edit NICAT Date">&#x270E;</button>
+            </div>
+
+            <!-- Stripe‑o‑meter (visible only during NICAT) -->
+            <div id="stripe-o-meter" class="hidden mt-4">
+                <div class="flex items-center justify-center gap-2 mb-1">
+                    <span class="text-[#6f4e37] font-cinzel-decorative text-sm uppercase tracking-wider">Stripe‑o‑meter</span>
+                    <span class="text-xl">🍺</span>
+                </div>
+                <div class="stripe-meter">
+                    <div id="stripe-meter-fill" class="stripe-meter-fill"></div>
+                </div>
+                <div class="flex items-center justify-between mt-1 text-sm text-[#6f4e37]">
+                    <span id="stripe-meter-counts" class="font-bold"></span>
+                    <span id="stripe-meter-left" class="font-bold"></span>
+                </div>
+            </div>
+
+            <div id="calendar-section" class="calendar-container">
+                <div id="upcoming-event" class="upcoming-event-text">Loading upcoming activities...</div>
+                <button id="full-agenda-btn" class="btn-calendar-icon" title="View Full Agenda">&#x1F4C5;</button> 
+                <button id="edit-calendar-btn" class="btn-calendar-icon" title="Edit Calendar Link">&#x270E;</button> 
+            </div>
+        </header>
+
+        <main>
+            <ol class="roman-list text-base sm:text-lg md:text-xl leading-snug sm:leading-relaxed text-[#4a3024]">
+                <li>The Schikko is chosen by sacred overbidding, each soul raising the burden until one alone dares bear it.</li>
+                <li>All must obey the Schikko’s decrees, for his word is law within the circle.</li>
+                <li>He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the NICAT until penance is made.</li>
+            </ol>
+            
+            <div id="show-decrees-container" class="flex justify-center items-center gap-4 mt-8">
+                <button id="show-decrees-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base cursor-pointer focus:outline-none flex items-center justify-center space-x-2" data-state="collapsed">
+                    <span>Schikko's Decrees</span>
+                    <span class="decree-arrow"></span>
+                </button>
+                <button id="open-gemini-from-hub-btn" class="btn-oracle-invoke font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base">
+                    Oracle's Judgement
+                </button>
+                <button id="set-schikko-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-4 rounded-md text-base hidden">Set Schikko</button>
+            </div>
+
+            <div id="decrees-content" class="hidden mt-6">
+                <div class="pt-4 border-t-4 border-dotted border-[#b9987e]">
+                    <div class="flex flex-col sm:flex-row items-center justify-end gap-2 mb-4">
+                        <input type="text" id="rule-search-input" placeholder="Search decrees..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 h-11 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                        <select id="rule-tag-filter" class="bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 h-11 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]"></select>
+                        <button id="add-decree-btn" class="btn-ancient w-[44px] h-[44px] flex items-center justify-center rounded-md text-2xl font-bold hidden" title="Add Decree">
+                            +
+                        </button>
+                        <button id="edit-rules-btn" class="btn-ancient text-md h-11 px-3 rounded-md hidden">Edit Decrees</button>
+                    </div>
+
+                    <ol id="rules-list" class="roman-list text-lg md:text-xl leading-relaxed text-[#4a3024] space-y-5" start="4">
+                        </ol>
+                </div>
+            </div>
+        </main>
+        
+        <div class="section-divider"></div>
+
+        <section id="punishment-ledger">
+            <header class="text-center mb-8">
+                <h2 class="font-cinzel-decorative text-3xl md:text-4xl font-bold text-[#5c3d2e]">The Ledger of Punishments</h2>
+                <p class="text-md text-[#6f4e37] mt-1">A Record of Transgressions</p>
+            </header>
+
+            <div class="flex flex-wrap sm:flex-nowrap gap-4 mb-8">
+                 <button id="open-logbook-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Logbook">
+                    📖
+                </button>
+                <button id="open-randomizer-hub-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Randomizers">
+                    👑
+                </button>
+                <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]" list="ledger-names">
+                <datalist id="ledger-names"></datalist>
+                <button id="add-btn" class="btn-ancient w-[56px] h-[56px] flex items-center justify-center rounded-md text-3xl font-bold hidden" title="Inscribe Name">
+                    +
+                </button>
+                <div class="flex-shrink-0 relative btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">
+                    <span id="sort-button-text">Sort: A-Z</span>
+                    <select id="sort-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <option value="default">Default</option>
+                        <option value="asc">A-Z</option>
+                        <option value="desc">Z-A</option>
+                        <option value="stripes_desc">Most Stripes</option>
+                        <option value="stripes_asc">Least Stripes</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="punishment-list" class="space-y-4">
+                <div id="loading-state" class="text-center text-xl text-[#6f4e37]">Loading the sacred ledger...</div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <footer class="text-center mt-12 pt-6">
+             <div id="schikko-login-container" class="mb-4 hidden">
+                <button id="schikko-login-btn" class="text-[#6f4e37] hover:text-[#5c3d2e] transition-colors duration-300 font-bold underline">Schikko Login</button>
+            </div>
+             <div id="app-info-footer" class="text-base text-[#4a3024] mt-4">
+                </div>
+            
+             <div class="mt-6 flex justify-center">
+                <a href="https://github.com/MichielEijpe/schikko-rules" target="_blank" rel="noopener noreferrer" class="text-[#6f4e37] hover:text-[#5c3d2e] transition-colors duration-300" title="View on GitHub">
+                    <svg aria-hidden="true" class="octicon octicon-mark-github" height="24" version="1.1" viewBox="0 0 16 16" width="24"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-2.01-.23-4.12-1-4.12-4.44 0-.98.35-1.78.92-2.42-.1-.23-.4-.96.09-2.42 0 0 .8-.24 2.64.92.76-.21 1.56-.31 2.36-.31.8 0 1.59.1 2.36.31 1.84-1.16 2.64-.92 2.64-.92.49 1.46.19 2.19.09 2.42.57.64.92 1.43.92 2.42 0 3.46-2.11 4.21-4.12 4.44.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.15.46.55.38C13.71 14.53 16 11.54 16 8c0-4.42-3.58-8-8-8z"></path></svg>
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <div id="agenda-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-3xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-agenda-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Full Agenda</h2>
+            <div id="agenda-content" class="space-y-4 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-3xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-stats-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 id="stats-name" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Statistics for...</h2>
+            <div id="stats-filters" class="flex flex-col items-center gap-2 mb-4 font-cinzel-decorative text-[#5c3d2e]">
+                <label>
+                    <select id="stripe-filter-select" class="bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                        <option value="total">Total Stripes</option>
+                        <option value="drunk">Drunk Stripes</option>
+                        <option value="left">Stripes Left</option>
+                    </select>
+                </label>
+                <p id="remaining-stripes-display" class="font-bold text-lg text-[#c0392b] mt-2"></p>
+            </div>
+            <div class="w-full h-80">
+                <canvas id="stripe-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div id="dice-randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-dice-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Dice Roller</h2>
+            
+            <div id="dice-list-container" class="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2">
+                </div>
+
+            <div class="flex items-center justify-center gap-4 mt-2 mb-4">
+                <button id="dice-spin-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg flex-grow">Roll All Dice</button>
+                <button id="add-dice-btn" class="btn-ancient w-14 h-14 flex-shrink-0 flex items-center justify-center rounded-md text-3xl font-bold" title="Add Die">+</button>
+            </div>
+
+            <div id="dice-roulette-results" class="mt-4 text-center">
+            </div>
+
+            <div id="dice-punishment-assign-container" class="mt-6 pt-4 border-t-2 border-dotted border-[#b9987e] hidden">
+                <p class="font-cinzel-decorative text-lg text-[#6f4e37] mb-2 text-center">Assign Rolled Stripes:</p>
+                <label for="assign-person-select" class="sr-only">Select Person</label>
+                <select id="assign-person-select" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4"></select>
+                <button id="assign-stripes-btn" class="btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg w-full">Assign Stripes</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="list-randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-list-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Name Selector/Shuffler</h2>
+            
+            <p class="block text-lg font-cinzel-decorative text-[#5c3d2e] mb-2 text-center">Names are loaded from the Ledger of Punishments.</p>
+
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <button id="shuffle-list-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Shuffle Names</button>
+                <button id="pick-random-item-btn" class="btn-ancient flex-grow font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Pick Random Name</button>
+            </div>
+
+            <div>
+                <div id="list-output" class="bg-[#e9e2d7] border-2 border-[#b9987e] rounded-md p-4 min-h-[60px] text-lg text-[#4a3024] whitespace-pre-wrap hidden">
+                    </div>
+            </div>
+
+            <div id="list-punishment-assign-container" class="mt-6 pt-4 border-t-2 border-dotted border-[#b9987e] hidden">
+                <p class="font-cinzel-decorative text-lg text-[#6f4e37] mb-2 text-center">Assign Stripes to Selected Name:</p>
+                <div class="flex items-center justify-center gap-2">
+                    <label for="list-assign-amount-input" class="sr-only">Number of Stripes</label>
+                    <input type="number" id="list-assign-amount-input" value="1" min="1" class="w-24 text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                    <button id="list-assign-stripes-btn" class="btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Assign Stripes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="randomizer-hub-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-randomizer-hub-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Choose Randomizer</h2>
+            
+            <div class="flex flex-col gap-4">
+                <button id="open-list-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Name Randomizer</button>
+                <button id="open-dice-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Dice Roller</button>
+                </div>
+        </div>
+    </div>
+
+    <div id="gemini-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-gemini-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Seek the Oracle's Judgement</h2>
+            
+            <p class="block text-lg text-[#5c3d2e] mb-4 text-center">Describe the transgression below, and the Oracle shall decree the consequence.</p>
+            
+            <textarea id="gemini-input" rows="4" placeholder="e.g., 'Noud spoke ill of the Schikko during the sacred feast...'" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]"></textarea>
+
+            <div class="text-center mt-4">
+                <button id="gemini-submit-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Consult the Oracle</button>
+            </div>
+
+            <div id="gemini-output" class="mt-6 p-4 min-h-[60px] text-lg text-center font-bold text-[#c0392b] whitespace-pre-wrap hidden">
+                </div>
+        </div>
+    </div>
+
+    <div id="drunk-stripes-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-sm p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-drunk-stripes-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Pour the Golden Liquid</h2>
+            
+            <p class="block text-lg text-[#5c3d2e] mb-2 text-center">How many draughts were consumed?</p>
+            <p id="available-stripes-display" class="text-sm text-[#6f4e37] text-center mb-4"></p>
+            
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <button id="decrement-beers-btn" class="btn-ancient text-2xl font-bold px-4 py-2 rounded-md">-</button>
+                <input type="number" id="how-many-beers-input" value="1" min="1" class="w-24 text-center bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                <button id="increment-beers-btn" class="btn-ancient text-2xl font-bold px-4 py-2 rounded-md">+</button>
+            </div>
+
+            <div class="text-center">
+                <button id="confirm-drunk-stripes-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Confirm Draughts</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="generic-alert-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
+            <h2 id="alert-title" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">A Declaration!</h2>
+            <p id="alert-message" class="text-lg text-[#4a3024] mb-6">Message from the scribes.</p>
+            <button id="alert-ok-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Acknowledge</button>
+        </div>
+    </div>
+
+    <div id="generic-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-60">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
+            <h2 id="confirm-title" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">A Query!</h2>
+            <p id="confirm-message" class="text-lg text-[#4a3024] mb-6">The Oracle requires a decision.</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-yes-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Aye</button>
+                <button id="confirm-no-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Nay</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="generic-prompt-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
+            <h2 id="prompt-title" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">An Inquiry!</h2>
+            <p id="prompt-message" class="text-lg text-[#4a3024] mb-4">Speak thy mind.</p>
+            <input type="text" id="prompt-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6">
+            <div class="flex justify-center gap-4">
+                <button id="prompt-ok-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Inscribe</button>
+                <button id="prompt-cancel-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="schikko-login-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">Schikko Authentication</h2>
+            <p class="text-lg text-[#4a3024] mb-4">Inscribe the sacred password.</p>
+            <input type="password" id="schikko-password-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6" placeholder="Password...">
+            <div class="flex justify-center gap-4">
+                <button id="schikko-login-submit-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Enter</button>
+                <button id="schikko-login-cancel-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="set-schikko-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">Claim the Title of Schikko</h2>
+            <p class="text-lg text-[#4a3024] mb-4">Enter thy email to receive the sacred password. It will be revealed only once.</p>
+            <input type="email" id="set-schikko-email-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6" placeholder="thy-email@domain.com">
+            <div class="flex justify-center gap-4">
+                <button id="set-schikko-submit-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Claim Title</button>
+                <button id="set-schikko-cancel-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-rule-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
+            <h2 id="edit-rule-title" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">Edit Decree</h2>
+            <div class="text-left">
+                <label for="edit-rule-text-input" class="block text-lg text-[#4a3024] mb-2">Decree Text:</label>
+                <textarea id="edit-rule-text-input" rows="4" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4"></textarea>
+                
+                <label for="edit-rule-tags-input" class="block text-lg text-[#4a3024] mb-2">Tags (comma-separated):</label>
+                <input type="text" id="edit-rule-tags-input" placeholder="e.g., NICAT, Meeting" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4">
+
+                <div id="existing-tags-container" class="mb-6"></div>
+            </div>
+            <div class="flex justify-center gap-4">
+                <button id="edit-rule-ok-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Update</button>
+                <button id="edit-rule-cancel-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="logbook-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-4xl h-[90vh] rounded-lg border-4 border-[#8c6b52] relative flex flex-col overflow-y-auto">
+            <div class="p-8">
+                <button id="close-logbook-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+                <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4 flex-shrink-0">The Scribe's Logbook</h2>
+                <p class="text-center text-md text-[#6f4e37] mb-6 flex-shrink-0">A record of all deeds from the past 30 days.</p>
+
+                <div class="flex flex-col md:flex-row gap-4 mb-4 flex-shrink-0">
+                    <input type="text" id="logbook-search-input" placeholder="Search logs..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                    <select id="logbook-filter-select" class="bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                        <option value="all">All Actions</option>
+                        <option value="punishment">Punishments</option>
+                        <option value="rules">Decree Changes</option>
+                        <option value="ledger">Ledger Changes</option>
+                        <option value="schikko">Schikko Actions</option>
+                        <option value="guest">Guest Actions</option>
+                    </select>
+                    <select id="logbook-sort-select" class="bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                </div>
+                
+                <div class="w-full h-64 mb-4 flex-shrink-0">
+                    <canvas id="logbook-chart"></canvas>
+                </div>
+
+                <div id="logbook-content" class="flex-grow space-y-2 pr-2">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                // Proactively check for an updated service worker on load
+                try { registration.update(); } catch (e) {}
+            }, err => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+    
+        // Reload the page when the service worker tells us to
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'reload') {
+                window.location.reload();
+            }
+        });
+    
+        // Fallback: reload once when the controller changes to the new SW
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+        });
+    }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/main.js?v=1.2" type="module"></script>
+    <!-- Global Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Loading">
+        <div class="loading-box">
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <div id="loading-text" class="loading-text">Loading...</div>
+        </div>
+    </div>
+</body>
+</html>
