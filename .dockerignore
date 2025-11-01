@@ -2,9 +2,10 @@
 .git
 .github
 
-# Local dev and logs
+# Dependencies and logs
 node_modules
 *.log
+bun.lock*
 npm-debug.log*
 pnpm-lock.yaml
 yarn.lock
@@ -14,11 +15,11 @@ yarn.lock
 .env.*
 !.env.example
 
-# Firebase legacy
+# Build context noise
+OLD/
+data/
+
+# Legacy Firebase (kept in OLD/)
 firebase.json
 .firebaserc
 functions/
-OLD/
-
-# Docker/Compose artifacts (not needed inside image)
-!docker-compose.yml

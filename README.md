@@ -1,173 +1,76 @@
 # Stripez
 
-A Bun.js API + static web app that replaces Firebase (Hosting, Functions, Auth) with a self‑hosted stack (PostgreSQL + Docker). The UI and behavior remain equivalent.
+Bun.js API + static web app using SQLite, containerized with Docker Compose. Original Firebase project preserved in ./OLD.
 
-- Backend: Bun + Hono, PostgreSQL, cron jobs
-- Frontend: existing static files in ./public (PWA unchanged)
-- Image: ghcr.io/<owner>/stripez:latest (see CI)
+- API server: [src/server.ts](src/server.ts)
+- DB helpers and migrations: [src/db.ts](src/db.ts)
+- Static frontend: [public/index.html](public/index.html), [public/js/api.js](public/js/api.js), [public/js/main.js](public/js/main.js)
+- Docker: [Dockerfile](Dockerfile), [docker-compose.yml](docker-compose.yml)
 
 ---
 
 ## Quick start (Docker Compose)
 
-- Copy env template, adjust values:
+1) Copy env
 ```bash
-# bash
 cp .env.example .env
 ```
 
-- Build and run:
+2) Build and run
 ```bash
-# bash
 docker compose up -d --build
 ```
 
-- App: http://localhost:8080
+App: http://localhost:8080
 
-Services
-- stripez-app: Bun server serving API + static files
-- postgres: PostgreSQL with volume pgdata
+Data persists in ./data (mapped to /app/data). Override DB path with DB_FILE.
 
 ---
 
-## Development (local Bun)
+## Local development (Bun)
 
-Prereqs: Bun >= 1.1, Docker (for DB) or local Postgres.
-
-- Start DB:
 ```bash
-# bash
-docker compose up -d postgres
-```
-
-- Install deps and run:
-```bash
-# bash
 bun install
 bun run src/server.ts
 ```
 
-Server runs migrations on boot.
+Server reads env from shell; default DB at ./data/stripez.sqlite.
 
 ---
 
 ## Environment
 
-See [.env.example](.env.example)
-
-- PORT: default 8080
+- PORT: listen port (default 8080)
 - SESSION_SECRET: cookie signing secret
-- CORS_ORIGINS: comma-separated allowed origins (keep current domains + http://localhost:8080)
-- GEMINI_KEY: Google Generative AI key
-- ORACLE_MODEL: gemini-2.5-flash (fallback to gemini-1.5-flash-latest)
-- DATABASE_URL: e.g. postgres://stripez:stripez@postgres:5432/stripez
+- CORS_ORIGINS: comma-separated allowed origins
+- GEMINI_KEY: Google Generative AI API key
+- ORACLE_MODEL: model name (default gemini-2.5-flash)
+- DB_FILE: SQLite database file path (default ./data/stripez.sqlite)
+
+See [.env.example](.env.example).
 
 ---
 
 ## API
 
-Anonymous identity
-- POST /api/auth/anon → sets uid cookie
-
-Schikko
+- POST /api/auth/anon
 - GET /api/schikko/status
 - GET /api/schikko/info
 - POST /api/schikko/set { email }
-- POST /api/schikko/login { password } → { success, sessionId }
-
-Config
-- GET /api/config/calendar
-- POST /api/config/calendar { url }
-- GET /api/config/nicat
-- POST /api/config/nicat { dateString }
-
-Reads
-- GET /api/punishments → [{ id, name, role, stripes[], drunkStripes[] }]
-- GET /api/rules → [{ id, text, order, tags[], createdAt, updatedAt }]
+- POST /api/schikko/login { password }
+- GET /api/punishments
+- GET /api/rules
 - GET /api/activity?sinceDays=30
-
-Mutations (require sessionId)
 - POST /api/schikko/action { action, sessionId, ... }
-  - addPerson { name }
-  - addStripe { docId, count? }
-  - addDrunkStripe { docId, count? }
-  - removeLastStripe { docId }
-  - removeLastDrunkStripe { docId }
-  - renamePerson { docId, newName }
-  - deletePerson { docId }
-  - setPersonRole { docId, role }
-  - addRule { text, order }
-  - deleteRule { docId }
-  - updateRuleOrder { rule1, rule2 }
-  - updateRule { docId, text, tags }
-  - saveCalendarUrl { url }
-  - saveNicatDate { dateString }
-  - deleteLog { docIds }
-
-Oracle + iCal
-- POST /api/oracle/judgement { promptText, rules[], ledgerNames[] }
-- POST /api/calendar/proxy { url } (SSRF hardened)
-
-Activity log (client writes)
-- POST /api/activity { action, actor, details }
-
----
-
-## Frontend
-
-- Static served from ./public
-- Client uses REST module:
-  - API module: [public/js/api.js](public/js/api.js)
-  - Main uses REST API: [public/js/main.js](public/js/main.js:4)
-
-Realtime
-- Emulated via polling in client. Timestamps expose toDate()/toMillis().
-
-PWA
-- Service worker and manifest unchanged: [public/sw.js](public/sw.js), [public/manifest.json](public/manifest.json)
-
----
-
-## Security
-
-- CORS limited by CORS_ORIGINS
-- Security headers (CSP, HSTS, XFO, XCTO, Referrer-Policy, Permissions-Policy) applied in server: [hono middleware](src/server.ts:51)
-- SSRF safeguards in iCal proxy: [isPrivateOrDisallowedHost](src/server.ts:316)
-
----
-
-## Database
-
-Migrations run on boot: [migrate()](src/db.ts:12)
-
-Schema (idempotent):
-- people(id, name, role)
-- stripes(id, person_id, ts, kind normal|drunk)
-- rules(id, text, order, tags[], created_at, updated_at)
-- activity_log(id, action, actor, details, timestamp)
-- config(key, data jsonb, updated_at)
-- sessions(id, uid, created_at, expires_at)
-- throttles(key, attempts timestamptz[])
-
----
-
-## Scheduling
-
-- Annual reset Jan 1st: [cron.schedule](src/server.ts:672)
-- Daily log cleanup: [cron.schedule](src/server.ts:680)
-Timezone: Europe/Amsterdam
-
----
-
-## CI (Docker image)
-
-GitHub Actions builds/pushes multi-arch to GHCR:
-- Workflow: [.github/workflows/docker.yml](.github/workflows/docker.yml)
-- Tags: ghcr.io/<owner>/stripez:latest and :<sha>
+- GET/POST /api/config/{calendar|nicat}
+- POST /api/oracle/judgement
+- POST /api/activity
+- POST /api/calendar/proxy
 
 ---
 
 ## Notes
 
-- Original Firebase project copied to ./OLD
-- Project name: Stripez
+- Security headers and CORS configured in server.
+- SQLite WAL mode enabled. Migrations run on boot.
+- Service worker and manifest intact: [public/sw.js](public/sw.js), [public/manifest.json](public/manifest.json).

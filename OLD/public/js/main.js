@@ -2,20 +2,15 @@
 
 // --- MODULE IMPORTS ---
 import {
-    auth, onAuthStateChanged, signInAnonymously, setupRealtimeListener,
+    ensureAnon, setupRealtimeListener,
     addNameToLedger, addStripeToPerson, removeLastStripeFromPerson,
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleInFirestore,
-    deleteLogFromFirestore,
-    addDrunkStripeToPerson,
-    removeLastDrunkStripeFromPerson,
-    getCalendarConfig,
-    saveCalendarUrl,
-    getNicatDate,
-    saveNicatDate,
-    setPersonRole,
-    logActivity
-} from './firebase.js';
+    deleteLogFromFirestore, addDrunkStripeToPerson, removeLastDrunkStripeFromPerson,
+    getCalendarConfig, saveCalendarUrl, getNicatDate, saveNicatDate,
+    setPersonRole, logActivity, getSchikkoStatus, getSchikkoInfo,
+    setSchikko, loginSchikko, getCalendarDataProxy, getOracleJudgement
+} from './api.js';
 import {
     renderLedger, showStatsModal, closeMenus, renderRules,
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
@@ -25,7 +20,6 @@ import {
     setStripeTotals
 } from './ui.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 
 // --- STATE VARIABLES ---
@@ -132,55 +126,52 @@ let currentPersonIdForDrunkStripes = null;
 
 
 // --- AUTHENTICATION & INITIALIZATION ---
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        currentUserId = user.uid;
-        checkSchikkoStatus().then(() => {
-            // New: Check for a persisted session on load
-            const persistedSessionId = localStorage.getItem('schikkoSessionId');
-            if (persistedSessionId) {
-                // Here you might want to add a function to validate the session server-side
-                // For now, we'll optimistically assume it's valid
-                isSchikkoSessionActive = true;
-            }
-            updateGuestUI();
-            updateAppFooter();
-        });
-        loadCalendarData();
-        loadAndRenderNicatCountdown();
-        setupRealtimeListener('punishments', (data) => {
-            loadingState.style.display = 'none';
-            ledgerDataCache = data;
+(async function init() {
+   try {
+       await ensureAnon();
 
-            // Update Stripe‑o‑meter totals (sum across ledger)
-            try {
-                const totals = data.reduce((acc, p) => {
-                    acc.total += (p?.stripes?.length || 0);
-                    acc.drunk += (p?.drunkStripes?.length || 0);
-                    return acc;
-                }, { total: 0, drunk: 0 });
-                setStripeTotals(totals.total, totals.drunk);
-            } catch (e) {
-                // ignore computation errors
-            }
+       await checkSchikkoStatus().then(() => {
+           const persistedSessionId = localStorage.getItem('schikkoSessionId');
+           if (persistedSessionId) {
+               isSchikkoSessionActive = true;
+           }
+           updateGuestUI();
+           updateAppFooter();
+       });
 
-            handleRender();
-            updateDatalist();
-        });
-        setupRealtimeListener('rules', (data) => {
-            rulesDataCache = data.sort((a, b) => a.order - b.order);
-            handleRenderRules();
-            updateTagFilterDropdown();
-            updateAppFooter();
-        });
-        setupRealtimeListener('activity_log', (data) => {
-            logbookDataCache = data;
-            handleRenderLogbook();
-        });
-    } else {
-        signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
-    }
-});
+       loadCalendarData();
+       loadAndRenderNicatCountdown();
+
+       setupRealtimeListener('punishments', (data) => {
+           loadingState.style.display = 'none';
+           ledgerDataCache = data;
+           try {
+               const totals = data.reduce((acc, p) => {
+                   acc.total += (p?.stripes?.length || 0);
+                   acc.drunk += (p?.drunkStripes?.length || 0);
+                   return acc;
+               }, { total: 0, drunk: 0 });
+               setStripeTotals(totals.total, totals.drunk);
+           } catch (e) {}
+           handleRender();
+           updateDatalist();
+       });
+
+       setupRealtimeListener('rules', (data) => {
+           rulesDataCache = data.sort((a, b) => a.order - b.order);
+           handleRenderRules();
+           updateTagFilterDropdown();
+           updateAppFooter();
+       });
+
+       setupRealtimeListener('activity_log', (data) => {
+           logbookDataCache = data;
+           handleRenderLogbook();
+       });
+   } catch (err) {
+       console.error('Initialization failed:', err);
+   }
+})();
 
 // --- HELPER & NEW AUTH FUNCTIONS ---
 
@@ -234,12 +225,10 @@ function updateGuestUI() {
  */
 async function checkSchikkoStatus() {
     try {
-        const functions = getFunctions(undefined, "europe-west4");
-        const getSchikkoStatus = httpsCallable(functions, 'getSchikkoStatus');
         const result = await getSchikkoStatus();
-        const isSet = result.data.isSet;
+        const isSet = result.isSet;
 
-        isSchikkoSetForTheYear = isSet; // Set the state variable
+        isSchikkoSetForTheYear = isSet;
 
         if (isSet) {
             setSchikkoBtn.classList.add('hidden');
@@ -267,17 +256,14 @@ async function confirmSchikko() {
     if (!password) {
         return false;
     }
-    
+
     try {
         showLoading('Authenticating...');
-        const functions = getFunctions(undefined, "europe-west4");
-        const loginSchikko = httpsCallable(functions, 'loginSchikko');
-        const result = await loginSchikko({ password });
+        const result = await loginSchikko(password);
         hideLoading();
-        
-        if (result?.data?.success && result?.data?.sessionId) {
-            // Persist session for protected calls
-            localStorage.setItem('schikkoSessionId', result.data.sessionId);
+
+        if (result?.success && result?.sessionId) {
+            localStorage.setItem('schikkoSessionId', result.sessionId);
             isSchikkoSessionActive = true;
             await showAlert("Password accepted. You are the Schikko.", "Login Successful");
             updateGuestUI();
@@ -299,10 +285,8 @@ async function loadCalendarData() {
     const config = await getCalendarConfig();
     if (config && config.url) {
         try {
-            const functions = getFunctions(undefined, "europe-west4");
-            const getCalendarDataProxy = httpsCallable(functions, 'getCalendarDataProxy');
-            const result = await getCalendarDataProxy({ url: config.url });
-            const icalData = result.data.icalData;
+            const result = await getCalendarDataProxy(config.url);
+            const icalData = result.icalData;
 
             const jcalData = ICAL.parse(icalData);
             const vcalendar = new ICAL.Component(jcalData);
@@ -618,10 +602,7 @@ async function updateAppFooter() {
     let schikkoInfoText = 'No Schikko has been chosen for this year.';
     if (isSchikkoSetForTheYear) { // Use the correct state variable
         try {
-            const functions = getFunctions(undefined, "europe-west4");
-            const getSchikkoInfo = httpsCallable(functions, 'getSchikkoInfo');
-            const result = await getSchikkoInfo();
-            const info = result.data;
+            const info = await getSchikkoInfo();
             if (info.email) {
                 const expiryDate = new Date(info.expires);
                 const expiryString = expiryDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric'});
@@ -782,16 +763,13 @@ async function handleGeminiSubmit() {
     geminiOutput.classList.add('hidden');
 
     try {
-        const functions = getFunctions(undefined, "europe-west4");
-        const getOracleJudgement = httpsCallable(functions, 'getOracleJudgement');
+        const result = await getOracleJudgement(
+            inputText,
+            rulesDataCache,
+            ledgerDataCache.map(person => person.name)
+        );
 
-        const result = await getOracleJudgement({
-            promptText: inputText,
-            rules: rulesDataCache,
-            ledgerNames: ledgerDataCache.map(person => person.name)
-        });
-
-        const parsedJudgement = result.data.judgement; 
+        const parsedJudgement = result.judgement;
         
         let displayMessage = '';
         if (parsedJudgement.innocent) {
@@ -871,7 +849,7 @@ async function handleAddName() {
     }
     showLoading('Saving to ledger...');
     try {
-        await addNameToLedger(name, currentUserId);
+        await addNameToLedger(name);
         await logActivity('ADD_PERSON', 'Schikko', `Inscribed "${name}" onto the ledger.`);
     } finally {
         hideLoading();
@@ -1372,16 +1350,14 @@ setSchikkoBtn.addEventListener('click', async () => {
 
     try {
         showLoading('Setting Schikko...');
-        const functions = getFunctions(undefined, "europe-west4");
-        const setSchikko = httpsCallable(functions, 'setSchikko');
-        const result = await setSchikko({ email });
+        const result = await setSchikko(email);
         hideLoading();
         
-        if(result.data.success && result.data.password) {
-            await showAlert(`You have claimed the title! Your sacred password is: ${result.data.password}. Guard it with your life, it will not be shown again.`, "Title Claimed!");
+        if (result.success && result.password) {
+            await showAlert(`You have claimed the title! Your sacred password is: ${result.password}. Guard it with your life, it will not be shown again.`, "Title Claimed!");
             checkSchikkoStatus();
         } else {
-            throw new Error(result.data.message || "Password could not be retrieved.");
+            throw new Error(result.message || "Password could not be retrieved.");
         }
 
     } catch (error) {

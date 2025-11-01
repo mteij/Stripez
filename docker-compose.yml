@@ -13,30 +13,10 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://nicat.mteij.nl,https://schikko-rules.web.app,https://schikko-rules.firebaseapp.com,http://localhost:8080}
       ORACLE_MODEL: ${ORACLE_MODEL:-gemini-2.5-flash}
       GEMINI_KEY: ${GEMINI_KEY:-}
-      # Database
-      DATABASE_URL: ${DATABASE_URL:-postgres://stripez:stripez@postgres:5432/stripez}
+      # SQLite database file path inside container
+      DB_FILE: ${DB_FILE:-/app/data/stripez.sqlite}
+    volumes:
+      - ./data:/app/data
     ports:
       - "${PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: stripez-db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-stripez}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stripez}
-      POSTGRES_DB: ${POSTGRES_DB:-stripez}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stripez} -d ${POSTGRES_DB:-stripez}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
-
-volumes:
-  pgdata: {}

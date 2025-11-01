@@ -1,12 +1,13 @@
- // @ts-nocheck
+// @ts-nocheck
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
-import { sql, migrate, randomId } from "./db";
+import { db, migrate, randomId, all, get, run, nowIso } from "./db";
 import crypto from "crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { request as gaxiosRequest } from "gaxios";
 import net from "net";
+import cron from "node-cron";
 
 // ---- ENV ----
 const PORT = Number(process.env.PORT || 8080);
@@ -54,7 +55,10 @@ app.use("*", async (c, next) => {
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "DENY");
-  c.header("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()");
+  c.header(
+    "Permissions-Policy",
+    "accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+  );
   c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   await next();
 });
@@ -72,20 +76,14 @@ function getCookie(c: any, name: string): string | undefined {
 function setCookie(c: any, name: string, value: string, days = 365) {
   const expires = new Date(Date.now() + days * 86400000).toUTCString();
   const secure = c.req.url.startsWith("https:") ? " Secure;" : "";
-  c.header(
-    "Set-Cookie",
-    `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires};${secure}`
-  );
+  c.header("Set-Cookie", `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires};${secure}`);
 }
 
 function jsonDate(d: Date | string | number | null | undefined) {
   if (!d) return null;
+  if (typeof d === "string") return d;
   const dt = d instanceof Date ? d : new Date(d);
   return dt.toISOString();
-}
-
-function now() {
-  return new Date();
 }
 
 function yearKey(y = new Date().getFullYear()) {
@@ -111,13 +109,27 @@ function verifyPassword(password: string, salt: string, hash: string) {
 }
 
 async function pushThrottle(key: string, limit: number, windowMs: number): Promise<boolean> {
-  const cutoff = new Date(Date.now() - windowMs);
-  const { attempts } =
-    (await sql<{ attempts: Date[] }>`SELECT attempts FROM throttles WHERE key=${key}`)[0] || { attempts: [] as Date[] };
-  const recent = (attempts || []).filter((t) => new Date(t) > cutoff);
+  const cutoff = Date.now() - windowMs;
+  let attemptsJson = get<{ attempts: string }>("SELECT attempts FROM throttles WHERE key = ?", [key])?.attempts;
+  let attempts: string[] = [];
+  if (attemptsJson) {
+    try {
+      attempts = JSON.parse(attemptsJson);
+    } catch {
+      attempts = [];
+    }
+  }
+  const recent = attempts.filter((iso) => {
+    const t = Date.parse(iso);
+    return !Number.isNaN(t) && t > cutoff;
+  });
   if (recent.length >= limit) return false;
-  recent.push(now());
-  await sql`INSERT INTO throttles (key, attempts) VALUES (${key}, ${sql.array(recent)}) ON CONFLICT (key) DO UPDATE SET attempts = EXCLUDED.attempts`;
+  recent.push(nowIso());
+  run(
+    `INSERT INTO throttles (key, attempts) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET attempts=excluded.attempts`,
+    [key, JSON.stringify(recent)]
+  );
   return true;
 }
 
@@ -135,18 +147,19 @@ app.post("/api/auth/anon", async (c) => {
 app.get("/api/schikko/status", async (c) => {
   const y = new Date().getFullYear();
   const key = yearKey(y);
-  const row =
-    (await sql<{ data: any }>`SELECT data FROM config WHERE key=${key}`)[0] || null;
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
   return c.json({ isSet: !!row });
 });
 
 app.get("/api/schikko/info", async (c) => {
   const y = new Date().getFullYear();
   const key = yearKey(y);
-  const row =
-    (await sql<{ data: any }>`SELECT data FROM config WHERE key=${key}`)[0] || null;
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
   if (!row) return c.json({ email: null, expires: null });
-  const data = row.data || {};
+  let data: any = {};
+  try {
+    data = JSON.parse(row.data || "{}");
+  } catch {}
   const expiry = new Date(y, 11, 31, 23, 59, 59);
   return c.json({ email: data.email || null, expires: expiry.toISOString() });
 });
@@ -158,17 +171,16 @@ app.post("/api/schikko/set", async (c) => {
 
   const y = new Date().getFullYear();
   const key = yearKey(y);
-  const exists =
-    (await sql`SELECT 1 FROM config WHERE key=${key}`).length > 0;
+  const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
   if (exists) return c.json({ error: "already-exists", message: `A Schikko is already set for ${y}.` }, 409);
 
   const password = crypto.randomBytes(4).toString("hex");
   const { salt, hash } = hashPassword(password);
 
-  await sql`
-    INSERT INTO config (key, data, updated_at)
-    VALUES (${key}, ${sql.json({ email, passwordHash: hash, passwordSalt: salt })}, ${now()})
-  `;
+  run(
+    `INSERT INTO config (key, data, updated_at) VALUES (?, ?, ?)`,
+    [key, JSON.stringify({ email, passwordHash: hash, passwordSalt: salt }), nowIso()]
+  );
 
   return c.json({ success: true, password });
 });
@@ -186,25 +198,26 @@ app.post("/api/schikko/login", async (c) => {
 
   const y = new Date().getFullYear();
   const key = yearKey(y);
-  const row =
-    (await sql<{ data: any }>`SELECT data FROM config WHERE key=${key}`)[0] || null;
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
   if (!row) return c.json({ error: "not-found", message: `No Schikko set for ${y}.` }, 404);
 
-  const data = row.data || {};
-  let ok = false;
+  let data: any = {};
+  try {
+    data = JSON.parse(row.data || "{}");
+  } catch {}
 
+  let ok = false;
   if (data.passwordHash && data.passwordSalt) {
     ok = verifyPassword(password, data.passwordSalt, data.passwordHash);
   } else if (typeof data.password === "string") {
     ok = data.password === password;
     if (ok) {
       const { salt, hash } = hashPassword(password);
-      // Upgrade to salted hash
-      await sql`
-        UPDATE config
-        SET data=${sql.json({ ...data, passwordHash: hash, passwordSalt: salt, password: undefined })}, updated_at=${now()}
-        WHERE key=${key}
-      `;
+      run(`UPDATE config SET data = ?, updated_at = ? WHERE key = ?`, [
+        JSON.stringify({ ...data, passwordHash: hash, passwordSalt: salt, password: undefined }),
+        nowIso(),
+        key,
+      ]);
     }
   }
 
@@ -212,54 +225,71 @@ app.post("/api/schikko/login", async (c) => {
 
   const sessionId = randomId("s");
   const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
-  await sql`
-    INSERT INTO sessions (id, uid, created_at, expires_at)
-    VALUES (${sessionId}, ${uid}, ${now()}, ${expiresAt})
-  `;
+  run(`INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`, [
+    sessionId,
+    uid,
+    nowIso(),
+    expiresAt.toISOString(),
+  ]);
   return c.json({ success: true, sessionId, expiresAtMs: +expiresAt });
 });
 
 // ---- Config (calendar/nicat) ----
 app.get("/api/config/calendar", async (c) => {
-  const row =
-    (await sql<{ data: any }>`SELECT data FROM config WHERE key='calendar'`)[0] || null;
-  return c.json(row?.data || { url: null });
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key='calendar'") || null;
+  if (!row) return c.json({ url: null });
+  try {
+    const data = JSON.parse(row.data || "{}");
+    return c.json({ url: data.url || null });
+  } catch {
+    return c.json({ url: null });
+  }
 });
+
 app.post("/api/config/calendar", async (c) => {
   const { url } = await c.req.json();
   if (!url || typeof url !== "string") return c.json({ error: "invalid-argument" }, 400);
-  await sql`
-    INSERT INTO config (key, data, updated_at)
-    VALUES ('calendar', ${sql.json({ url })}, ${now()})
-    ON CONFLICT (key) DO UPDATE SET data=EXCLUDED.data, updated_at=EXCLUDED.updated_at
-  `;
+  run(
+    `INSERT INTO config (key, data, updated_at)
+     VALUES ('calendar', ?, ?)
+     ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
+    [JSON.stringify({ url }), nowIso()]
+  );
   return c.json({ ok: true });
 });
 
 app.get("/api/config/nicat", async (c) => {
-  const row =
-    (await sql<{ data: any }>`SELECT data FROM config WHERE key='nicat'`)[0] || null;
-  const d = row?.data?.date ? new Date(row.data.date) : null;
-  return c.json({ date: d ? d.toISOString() : null });
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key='nicat'") || null;
+  if (!row) return c.json({ date: null });
+  try {
+    const data = JSON.parse(row.data || "{}");
+    return c.json({ date: data.date || null });
+  } catch {
+    return c.json({ date: null });
+  }
 });
+
 app.post("/api/config/nicat", async (c) => {
   const { dateString } = await c.req.json();
   const d = new Date(String(dateString || ""));
   if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
-  await sql`
-    INSERT INTO config (key, data, updated_at)
-    VALUES ('nicat', ${sql.json({ date: d.toISOString() })}, ${now()})
-    ON CONFLICT (key) DO UPDATE SET data=EXCLUDED.data, updated_at=EXCLUDED.updated_at
-  `;
+  run(
+    `INSERT INTO config (key, data, updated_at)
+     VALUES ('nicat', ?, ?)
+     ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
+    [JSON.stringify({ date: d.toISOString() }), nowIso()]
+  );
   return c.json({ ok: true });
 });
 
 // ---- Data: Punishments / Rules / Activity (reads) ----
 app.get("/api/punishments", async (c) => {
-  const people = await sql<{ id: string; name: string; role: string | null }>`SELECT id, name, role FROM people ORDER BY LOWER(name) ASC`;
-  const stripes = await sql<{ person_id: string; ts: Date; kind: "normal" | "drunk" }>`
-    SELECT person_id, ts, kind FROM stripes
-  `;
+  const people = all<{ id: string; name: string; role: string | null }>(
+    `SELECT id, name, role FROM people ORDER BY LOWER(name) ASC`
+  );
+  const stripes = all<{ person_id: string; ts: string; kind: "normal" | "drunk" }>(
+    `SELECT person_id, ts, kind FROM stripes`
+  );
 
   const byId: Record<string, any> = {};
   for (const p of people) {
@@ -273,7 +303,6 @@ app.get("/api/punishments", async (c) => {
   }
 
   const list = Object.values(byId);
-  // sort timestamps for determinism
   for (const p of list) {
     p.stripes = p.stripes.sort();
     p.drunkStripes = p.drunkStripes.sort();
@@ -282,35 +311,39 @@ app.get("/api/punishments", async (c) => {
 });
 
 app.get("/api/rules", async (c) => {
-  const rules = await sql<{ id: string; text: string; order: number; tags: string[]; created_at: Date; updated_at: Date }>`
-    SELECT id, text, "order", tags, created_at, updated_at FROM rules ORDER BY "order" ASC
-  `;
+  const rows = all<{ id: string; text: string; order: number; tags: string; created_at: string; updated_at: string }>(
+    `SELECT id, text, "order", tags, created_at, updated_at FROM rules ORDER BY "order" ASC`
+  );
   return c.json(
-    rules.map((r) => ({
+    rows.map((r) => ({
       id: r.id,
       text: r.text,
       order: r.order,
-      tags: r.tags || [],
-      createdAt: jsonDate(r.created_at),
-      updatedAt: jsonDate(r.updated_at),
+      tags: (() => {
+        try {
+          return JSON.parse(r.tags || "[]");
+        } catch {
+          return [];
+        }
+      })(),
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
     }))
   );
 });
 
 app.get("/api/activity", async (c) => {
-  // last 30 days by default
   const sinceDays = Number(new URL(c.req.url).searchParams.get("sinceDays") || 30);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - (Number.isFinite(sinceDays) ? sinceDays : 30));
-  const logs = await sql<{ id: string; action: string; actor: string; details: string; timestamp: Date }>`
-    SELECT id, action, actor, details, timestamp
-    FROM activity_log
-    WHERE timestamp >= ${cutoff}
-    ORDER BY timestamp DESC
-  `;
-  return c.json(
-    logs.map((l) => ({ ...l, timestamp: jsonDate(l.timestamp) }))
+  const rows = all<{ id: string; action: string; actor: string; details: string; timestamp: string }>(
+    `SELECT id, action, actor, details, timestamp
+     FROM activity_log
+     WHERE timestamp >= ?
+     ORDER BY timestamp DESC`,
+    [cutoff.toISOString()]
   );
+  return c.json(rows);
 });
 
 // ---- Calendar Proxy (with SSRF hardening) ----
@@ -470,8 +503,9 @@ A user has described the following transgression:
 async function requireValidSession(c: any, sessionId: string) {
   const uid = getCookie(c, "uid");
   if (!uid) return { ok: false, code: 401, error: "unauthenticated" };
-  const row =
-    (await sql<{ id: string; uid: string; expires_at: Date }>`SELECT id, uid, expires_at FROM sessions WHERE id=${sessionId}`)[0] || null;
+  const row = get<{ id: string; uid: string; expires_at: string }>("SELECT id, uid, expires_at FROM sessions WHERE id = ?", [
+    sessionId,
+  ]);
   if (!row || row.uid !== uid || new Date(row.expires_at).getTime() <= Date.now())
     return { ok: false, code: 403, error: "permission-denied" };
   return { ok: true };
@@ -497,7 +531,7 @@ app.post("/api/schikko/action", async (c) => {
         const name = String(data.name || "").trim();
         if (!name) return c.json({ error: "invalid-argument" }, 400);
         const id = randomId("p");
-        await sql`INSERT INTO people (id, name) VALUES (${id}, ${name})`;
+        run(`INSERT INTO people (id, name) VALUES (?, ?)`, [id, name]);
         return c.json({ ok: true, id });
       }
       case "addStripe": {
@@ -505,8 +539,8 @@ app.post("/api/schikko/action", async (c) => {
         const count = Math.max(1, Number(data.count || 1));
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
         for (let i = 0; i < count; i++) {
-          const ts = new Date(Date.now() + i);
-          await sql`INSERT INTO stripes (person_id, ts, kind) VALUES (${docId}, ${ts}, 'normal')`;
+          const ts = new Date(Date.now() + i).toISOString();
+          run(`INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'normal')`, [docId, ts]);
         }
         return c.json({ ok: true });
       }
@@ -515,29 +549,33 @@ app.post("/api/schikko/action", async (c) => {
         const count = Math.max(1, Number(data.count || 1));
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
         for (let i = 0; i < count; i++) {
-          const ts = new Date(Date.now() + i);
-          await sql`INSERT INTO stripes (person_id, ts, kind) VALUES (${docId}, ${ts}, 'drunk')`;
+          const ts = new Date(Date.now() + i).toISOString();
+          run(`INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'drunk')`, [docId, ts]);
         }
         return c.json({ ok: true });
       }
       case "removeLastStripe": {
         const docId = String(data.docId || "");
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
-        const last =
-          (await sql<{ id: number; ts: Date }>`SELECT id, ts FROM stripes WHERE person_id=${docId} AND kind='normal' ORDER BY ts DESC LIMIT 1`)[0] ||
-          null;
-        if (last) await sql`DELETE FROM stripes WHERE id=${last.id}`;
+        const last = get<{ id: number; ts: string }>(
+          `SELECT id, ts FROM stripes WHERE person_id = ? AND kind = 'normal' ORDER BY ts DESC LIMIT 1`,
+          [docId]
+        );
+        if (last?.id) run(`DELETE FROM stripes WHERE id = ?`, [last.id]);
+
         // Ensure drunk <= normal
-        const counts =
-          (await sql<{ n: number; d: number }>`
-            SELECT
-              (SELECT COUNT(*) FROM stripes WHERE person_id=${docId} AND kind='normal') as n,
-              (SELECT COUNT(*) FROM stripes WHERE person_id=${docId} AND kind='drunk') as d
-          `)[0] || { n: 0, d: 0 };
-        if (counts.d > counts.n) {
-          // remove newest drunk extras
-          const toRemove = counts.d - counts.n;
-          await sql`DELETE FROM stripes WHERE person_id=${docId} AND kind='drunk' ORDER BY ts DESC LIMIT ${toRemove}`;
+        const n = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'normal'`, [docId])?.c || 0;
+        const d = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'drunk'`, [docId])?.c || 0;
+        if (d > n) {
+          const toRemove = d - n;
+          const rows = all<{ id: number }>(
+            `SELECT id FROM stripes WHERE person_id = ? AND kind = 'drunk' ORDER BY ts DESC LIMIT ?`,
+            [docId, toRemove]
+          );
+          if (rows.length) {
+            const qs = rows.map(() => "?").join(", ");
+            run(`DELETE FROM stripes WHERE id IN (${qs})`, rows.map((r) => r.id));
+          }
         }
         return c.json({ ok: true });
       }
@@ -545,26 +583,26 @@ app.post("/api/schikko/action", async (c) => {
         const docId = String(data.docId || "");
         const newName = String(data.newName || "").trim();
         if (!docId || !newName) return c.json({ error: "invalid-argument" }, 400);
-        await sql`UPDATE people SET name=${newName} WHERE id=${docId}`;
+        run(`UPDATE people SET name = ? WHERE id = ?`, [newName, docId]);
         return c.json({ ok: true });
       }
       case "deletePerson": {
         const docId = String(data.docId || "");
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
-        await sql`DELETE FROM people WHERE id=${docId}`;
+        run(`DELETE FROM people WHERE id = ?`, [docId]);
         return c.json({ ok: true });
       }
       case "setPersonRole": {
         const docId = String(data.docId || "");
         const role = typeof data.role === "string" ? String(data.role || "").trim() : "";
-        const allowed = ["Schikko", "NICAT", "Board", "Activist"];
+        const allowedRoles = ["Schikko", "NICAT", "Board", "Activist"];
         let value: string | null = null;
         if (role) {
-          const match = allowed.find((r) => r.toLowerCase() === role.toLowerCase());
+          const match = allowedRoles.find((r) => r.toLowerCase() === role.toLowerCase());
           if (!match) return c.json({ error: "invalid-argument", message: "Invalid role" }, 400);
           value = match;
         }
-        await sql`UPDATE people SET role=${value} WHERE id=${docId}`;
+        run(`UPDATE people SET role = ? WHERE id = ?`, [value, docId]);
         return c.json({ ok: true });
       }
 
@@ -574,25 +612,25 @@ app.post("/api/schikko/action", async (c) => {
         const order = Number(data.order);
         if (!text || !Number.isFinite(order)) return c.json({ error: "invalid-argument" }, 400);
         const id = randomId("r");
-        const nowTs = now();
-        await sql`
-          INSERT INTO rules (id, text, "order", tags, created_at, updated_at)
-          VALUES (${id}, ${text}, ${order}, ${sql.array([])}, ${nowTs}, ${nowTs})
-        `;
+        const ts = nowIso();
+        run(
+          `INSERT INTO rules (id, text, "order", tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          [id, text, order, JSON.stringify([]), ts, ts]
+        );
         return c.json({ ok: true, id });
       }
       case "deleteRule": {
         const docId = String(data.docId || "");
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
-        await sql`DELETE FROM rules WHERE id=${docId}`;
+        run(`DELETE FROM rules WHERE id = ?`, [docId]);
         return c.json({ ok: true });
       }
       case "updateRuleOrder": {
         const r1 = data.rule1;
         const r2 = data.rule2;
         if (!r1?.id || !r2?.id) return c.json({ error: "invalid-argument" }, 400);
-        await sql`UPDATE rules SET "order"=${r2.order}, updated_at=${now()} WHERE id=${r1.id}`;
-        await sql`UPDATE rules SET "order"=${r1.order}, updated_at=${now()} WHERE id=${r2.id}`;
+        run(`UPDATE rules SET "order" = ?, updated_at = ? WHERE id = ?`, [r2.order, nowIso(), r1.id]);
+        run(`UPDATE rules SET "order" = ?, updated_at = ? WHERE id = ?`, [r1.order, nowIso(), r2.id]);
         return c.json({ ok: true });
       }
       case "updateRule": {
@@ -600,7 +638,7 @@ app.post("/api/schikko/action", async (c) => {
         const text = String(data.text || "");
         const tags = Array.isArray(data.tags) ? data.tags.map((t: any) => String(t)) : [];
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
-        await sql`UPDATE rules SET text=${text}, tags=${sql.array(tags)}, updated_at=${now()} WHERE id=${docId}`;
+        run(`UPDATE rules SET text = ?, tags = ?, updated_at = ? WHERE id = ?`, [text, JSON.stringify(tags), nowIso(), docId]);
         return c.json({ ok: true });
       }
 
@@ -608,10 +646,11 @@ app.post("/api/schikko/action", async (c) => {
       case "removeLastDrunkStripe": {
         const docId = String(data.docId || "");
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
-        const last =
-          (await sql<{ id: number; ts: Date }>`SELECT id, ts FROM stripes WHERE person_id=${docId} AND kind='drunk' ORDER BY ts DESC LIMIT 1`)[0] ||
-          null;
-        if (last) await sql`DELETE FROM stripes WHERE id=${last.id}`;
+        const last = get<{ id: number; ts: string }>(
+          `SELECT id, ts FROM stripes WHERE person_id = ? AND kind = 'drunk' ORDER BY ts DESC LIMIT 1`,
+          [docId]
+        );
+        if (last?.id) run(`DELETE FROM stripes WHERE id = ?`, [last.id]);
         return c.json({ ok: true });
       }
 
@@ -619,22 +658,24 @@ app.post("/api/schikko/action", async (c) => {
       case "saveCalendarUrl": {
         const url = String(data.url || "");
         if (!url) return c.json({ error: "invalid-argument" }, 400);
-        await sql`
-          INSERT INTO config (key, data, updated_at)
-          VALUES ('calendar', ${sql.json({ url })}, ${now()})
-          ON CONFLICT (key) DO UPDATE SET data=EXCLUDED.data, updated_at=EXCLUDED.updated_at
-        `;
+        run(
+          `INSERT INTO config (key, data, updated_at)
+           VALUES ('calendar', ?, ?)
+           ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
+          [JSON.stringify({ url }), nowIso()]
+        );
         return c.json({ ok: true });
       }
       case "saveNicatDate": {
         const dateString = String(data.dateString || "");
         const d = new Date(dateString);
         if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
-        await sql`
-          INSERT INTO config (key, data, updated_at)
-          VALUES ('nicat', ${sql.json({ date: d.toISOString() })}, ${now()})
-          ON CONFLICT (key) DO UPDATE SET data=EXCLUDED.data, updated_at=EXCLUDED.updated_at
-        `;
+        run(
+          `INSERT INTO config (key, data, updated_at)
+           VALUES ('nicat', ?, ?)
+           ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
+          [JSON.stringify({ date: d.toISOString() }), nowIso()]
+        );
         return c.json({ ok: true });
       }
 
@@ -643,7 +684,8 @@ app.post("/api/schikko/action", async (c) => {
         const ids = Array.isArray(data.docIds) ? data.docIds : [data.docIds];
         const safeIds = ids.filter((s: any) => typeof s === "string" && s);
         if (safeIds.length) {
-          await sql`DELETE FROM activity_log WHERE id IN ${sql(safeIds)}`;
+          const qs = safeIds.map(() => "?").join(", ");
+          run(`DELETE FROM activity_log WHERE id IN (${qs})`, safeIds);
         }
         return c.json({ ok: true });
       }
@@ -661,10 +703,10 @@ app.post("/api/activity", async (c) => {
   const { action, actor, details } = await c.req.json();
   if (!action || !actor || !details) return c.json({ error: "invalid-argument" }, 400);
   const id = randomId("log");
-  await sql`
-    INSERT INTO activity_log (id, action, actor, details, timestamp)
-    VALUES (${id}, ${String(action)}, ${String(actor)}, ${String(details)}, ${now()})
-  `;
+  run(
+    `INSERT INTO activity_log (id, action, actor, details, timestamp) VALUES (?, ?, ?, ?, ?)`,
+    [id, String(action), String(actor), String(details), nowIso()]
+  );
   return c.json({ ok: true, id });
 });
 
@@ -678,24 +720,30 @@ app.get("/randomizer/*", serveStatic({ root: "./public" }));
 app.get("/", serveStatic({ path: "./public/index.html" }));
 
 // ---- Cron Jobs ----
-import cron from "node-cron";
-
 // Annual Schikko reset: 0 0 1 1 * (Jan 1st 00:00)
-cron.schedule("0 0 1 1 *", async () => {
-  const previousYear = new Date().getFullYear() - 1;
-  const key = yearKey(previousYear);
-  await sql`DELETE FROM config WHERE key=${key}`;
-}, { timezone: "Europe/Amsterdam" });
+cron.schedule(
+  "0 0 1 1 *",
+  async () => {
+    const previousYear = new Date().getFullYear() - 1;
+    const key = yearKey(previousYear);
+    run(`DELETE FROM config WHERE key = ?`, [key]);
+  },
+  { timezone: "Europe/Amsterdam" }
+);
 
 // Daily activity log cleanup (older than 30 days)
-cron.schedule("0 0 * * *", async () => {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 30);
-  await sql`DELETE FROM activity_log WHERE timestamp < ${cutoff}`;
-}, { timezone: "Europe/Amsterdam" });
+cron.schedule(
+  "0 0 * * *",
+  async () => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    run(`DELETE FROM activity_log WHERE timestamp < ?`, [cutoff.toISOString()]);
+  },
+  { timezone: "Europe/Amsterdam" }
+);
 
 // ---- Bootstrap & Serve ----
-await migrate();
+migrate();
 
 Bun.serve({
   port: PORT,

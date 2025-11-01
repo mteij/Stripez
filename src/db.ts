@@ -1,96 +1,128 @@
-import postgres, { Sql } from "postgres";
+// src/db.ts
+// Bun SQLite database setup and helpers
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgres://stripez:stripez@localhost:5432/stripez";
+/* @ts-nocheck */
+import { Database } from "bun:sqlite";
+import { mkdirSync, existsSync } from "node:fs";
+import { dirname } from "node:path";
 
-export const sql: Sql = postgres(DATABASE_URL, {
-  prepare: true,
-  max: 10,
-});
+// Determine DB path (persisted inside ./data)
+const DB_FILE = process.env.DB_FILE || "./data/stripez.sqlite";
 
-/**
- * Initialize database schema (idempotent)
- */
-export async function migrate() {
-  // Ensure extensions where helpful (safe if missing permissions)
-  try {
-    await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-  } catch (_) {}
+// Ensure data directory exists
+const dataDir = dirname(DB_FILE);
+if (!existsSync(dataDir)) {
+  mkdirSync(dataDir, { recursive: true });
+}
 
-  // People (ledger)
-  await sql`
+export const db = new Database(DB_FILE, { create: true });
+
+// Pragmas for reliability
+db.exec(`
+  PRAGMA journal_mode = wal;
+  PRAGMA synchronous = normal;
+  PRAGMA foreign_keys = ON;
+`);
+
+// Helpers
+export function all<T = any>(sql: string, params: any[] = []): T[] {
+  const stmt = db.prepare(sql);
+  return stmt.all(...params) as T[];
+}
+
+export function get<T = any>(sql: string, params: any[] = []): T | undefined {
+  const stmt = db.prepare(sql);
+  return stmt.get(...params) as T | undefined;
+}
+
+export function run(sql: string, params: any[] = []): void {
+  const stmt = db.prepare(sql);
+  stmt.run(...params);
+}
+
+export function nowIso(): string {
+  return new Date().toISOString();
+}
+
+export function randomId(prefix = ""): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return prefix ? `${prefix}_${hex}` : hex;
+}
+
+// Initialize database schema (idempotent)
+export function migrate() {
+  // people
+  db.exec(`
     CREATE TABLE IF NOT EXISTS people (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      role TEXT NULL
-    )
-  `;
+      role TEXT
+    );
+  `);
 
-  // Stripes (normal and drunk)
-  await sql`
+  // stripes (ts stored as ISO TEXT)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS stripes (
-      id BIGSERIAL PRIMARY KEY,
-      person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
-      ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      kind TEXT NOT NULL CHECK (kind IN ('normal','drunk'))
-    )
-  `;
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      person_id TEXT NOT NULL,
+      ts TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('normal','drunk')),
+      FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_stripes_person ON stripes(person_id);
+    CREATE INDEX IF NOT EXISTS idx_stripes_ts ON stripes(ts);
+  `);
 
-  // Rules
-  await sql`
+  // rules (tags stored as JSON TEXT, created_at/updated_at ISO TEXT)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS rules (
       id TEXT PRIMARY KEY,
       text TEXT NOT NULL,
       "order" INTEGER NOT NULL,
-      tags TEXT[] NOT NULL DEFAULT '{}',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
+      tags TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_rules_order ON rules("order");
+  `);
 
-  // Activity log
-  await sql`
+  // activity_log (timestamp ISO TEXT)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS activity_log (
       id TEXT PRIMARY KEY,
       action TEXT NOT NULL,
       actor TEXT NOT NULL,
       details TEXT NOT NULL,
-      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
+      timestamp TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_activity_ts ON activity_log(timestamp);
+  `);
 
-  // Config key/value (json)
-  await sql`
+  // config (data JSON TEXT, updated_at ISO TEXT)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS config (
       key TEXT PRIMARY KEY,
-      data JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
+      data TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
 
-  // Sessions (Schikko session)
-  await sql`
+  // sessions (created_at/expires_at ISO TEXT)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       uid TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      expires_at TIMESTAMPTZ NOT NULL
-    )
-  `;
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    );
+  `);
 
-  // Throttles (generic sliding window)
-  await sql`
+  // throttles (attempts stored as JSON array TEXT)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS throttles (
       key TEXT PRIMARY KEY,
-      attempts TIMESTAMPTZ[] NOT NULL DEFAULT '{}'
-    )
-  `;
-}
-
-/**
- * Helpers
- */
-export function randomId(prefix = ""): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-  return prefix ? `${prefix}_${hex}` : hex;
+      attempts TEXT NOT NULL DEFAULT '[]'
+    );
+  `);
 }

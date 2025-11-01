@@ -1,8 +1,8 @@
 {
   "name": "stripez",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Stripez - Bun.js API + static site replacing Firebase (Hosting, Functions, Auth) with Postgres & Docker",
+  "description": "Stripez - Bun.js API + static site with SQLite (Dockerized).",
   "type": "module",
   "scripts": {
     "dev": "bun run src/server.ts",
@@ -13,8 +13,7 @@
     "@google/generative-ai": "^0.24.1",
     "gaxios": "^6.7.1",
     "hono": "^4.10.4",
-    "node-cron": "^3.0.3",
-    "postgres": "^3.4.4"
+    "node-cron": "^3.0.3"
   },
   "engines": {
     "bun": ">=1.1.0"
