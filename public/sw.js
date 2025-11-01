@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schikko-rules-cache-v6';
+const CACHE_NAME = 'schikko-rules-cache-v7';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -28,32 +28,39 @@ self.addEventListener('install', event => {
   );
 });
 
-// Cache only same-origin requests to respect CSP; let browser handle cross-origin (e.g., Google Fonts)
+// Cache only same-origin GET requests; bypass caching for API and non-GET to avoid Cache.put POST errors
 self.addEventListener('fetch', event => {
-    const url = new URL(event.request.url);
-    if (url.origin !== self.location.origin) {
-        return;
-    }
+  const req = event.request;
+  const url = new URL(req.url);
 
-    event.respondWith(
-        caches.open(CACHE_NAME).then(cache => {
-            return cache.match(event.request).then(response => {
-                const fetchPromise = fetch(event.request).then(networkResponse => {
-                    // If the request is successful, update the cache
-                    if (networkResponse && networkResponse.status === 200) {
-                        cache.put(event.request, networkResponse.clone());
-                    }
-                    return networkResponse;
-                }).catch(err => {
-                    console.error('Fetch failed', err);
-                    // Optionally, return a fallback page if offline
-                });
+  // Let the browser handle cross-origin or non-GET requests
+  if (url.origin !== self.location.origin || req.method !== 'GET') {
+    return;
+  }
 
-                // Return cached response if available, otherwise wait for the network
-                return response || fetchPromise;
-            });
-        })
-    );
+  // Never cache API requests
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  event.respondWith(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.match(req).then(response => {
+        const fetchPromise = fetch(req).then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            // Only cache safe GET requests
+            cache.put(req, networkResponse.clone());
+          }
+          return networkResponse;
+        }).catch(err => {
+          console.error('Fetch failed', err);
+          // Fallback to cache if available
+          return response;
+        });
+        return response || fetchPromise;
+      });
+    })
+  );
 });
 
 // Update a service worker

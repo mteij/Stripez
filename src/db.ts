@@ -7,7 +7,7 @@ import { mkdirSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
 
 // Determine DB path (persisted inside ./data)
-const DB_FILE = process.env.DB_FILE || "./data/stripez.sqlite";
+const DB_FILE = process.env.DB_FILE || "../data/stripez.sqlite";
 
 // Ensure data directory exists
 const dataDir = dirname(DB_FILE);

@@ -7,7 +7,7 @@ import {
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleInFirestore,
     deleteLogFromFirestore, addDrunkStripeToPerson, removeLastDrunkStripeFromPerson,
-    getCalendarConfig, saveCalendarUrl, getNicatDate, saveNicatDate,
+    getCalendarConfig, getAppConfig, saveCalendarUrl, getNicatDate, saveNicatDate,
     setPersonRole, logActivity, getSchikkoStatus, getSchikkoInfo,
     setSchikko, loginSchikko, getCalendarDataProxy, getOracleJudgement
 } from './api.js';
@@ -37,6 +37,11 @@ let currentLogbookFilter = 'all';
 let currentLogbookSort = 'newest';
 let isSchikkoSessionActive = false; // Secure session state for Schikko
 let isSchikkoSetForTheYear = false; // NEW: Tracks if a schikko is set for the year
+
+// App branding/config (from server env)
+let appName = 'NICAT';
+let appYear = new Date().getFullYear();
+let hasOracle = false;
 
 // --- DOM ELEMENTS ---
 const loadingState = document.getElementById('loading-state');
@@ -129,6 +134,35 @@ let currentPersonIdForDrunkStripes = null;
 (async function init() {
    try {
        await ensureAnon();
+
+       // Load app config (branding + oracle availability)
+       try {
+           const cfg = await getAppConfig();
+           appName = cfg?.name || appName;
+           appYear = Number(cfg?.year) || appYear;
+           hasOracle = !!cfg?.hasOracle;
+
+           const displayTitle = appYear ? `${appName} ${appYear}` : appName;
+
+           // Update document/head branding
+           document.title = displayTitle;
+           const metaApp = document.querySelector('meta[name="application-name"]');
+           if (metaApp) metaApp.setAttribute('content', appName);
+           const metaApple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+           if (metaApple) metaApple.setAttribute('content', appName);
+
+           // Update visible header
+           const titleSpan = document.getElementById('main-title-text');
+           if (titleSpan) titleSpan.textContent = displayTitle;
+
+           // Hide Oracle if not available
+           if (!hasOracle) {
+               const oracleBtn = document.getElementById('open-gemini-from-hub-btn');
+               if (oracleBtn) oracleBtn.classList.add('hidden');
+           }
+       } catch (_) {
+           // keep defaults on failure
+       }
 
        await checkSchikkoStatus().then(() => {
            const persistedSessionId = localStorage.getItem('schikkoSessionId');

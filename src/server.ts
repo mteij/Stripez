@@ -8,17 +8,22 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { request as gaxiosRequest } from "gaxios";
 import net from "net";
 import cron from "node-cron";
+import path from "node:path";
 
 // ---- ENV ----
 const PORT = Number(process.env.PORT || 8080);
 const CORS_ORIGINS = (process.env.CORS_ORIGINS ||
-  "https://nicat.mteij.nl,https://schikko-rules.web.app,https://schikko-rules.firebaseapp.com,http://localhost:8080")
+  "*")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session-secret-change-me";
 const GEMINI_KEY = process.env.GEMINI_KEY || "";
 const ORACLE_MODEL = process.env.ORACLE_MODEL || "gemini-2.5-flash";
+
+// Branding
+const APP_NAME = process.env.APP_NAME || "NICAT";
+const APP_YEAR = Number(process.env.APP_YEAR || new Date().getFullYear());
 
 // ---- APP ----
 const app = new Hono();
@@ -42,7 +47,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com blob: data:",
   "frame-src 'self' https://apis.google.com https://schikko-rules.firebaseapp.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -282,6 +287,15 @@ app.post("/api/config/nicat", async (c) => {
   return c.json({ ok: true });
 });
 
+// ---- App config (branding + oracle availability) ----
+app.get("/api/config/app", async (c) => {
+  return c.json({
+    name: APP_NAME,
+    year: APP_YEAR,
+    hasOracle: Boolean(GEMINI_KEY),
+  });
+});
+
 // ---- Data: Punishments / Rules / Activity (reads) ----
 app.get("/api/punishments", async (c) => {
   const people = all<{ id: string; name: string; role: string | null }>(
@@ -467,9 +481,14 @@ A user has described the following transgression:
   }
 
   const judgementText = String(result.response.text()).trim();
-  const jsonMatch = judgementText.match(/```json\n(.*?)```/s);
-  const jsonString = jsonMatch?.[1]?.trim() || judgementText;
-  const parsed = JSON.parse(jsonString);
+  let parsed: any;
+  try {
+    const fenced = judgementText.match(/```json[\s\S]*?```/i) || judgementText.match(/```[\s\S]*?```/);
+    const jsonString = (fenced ? fenced[0].replace(/```json/i, '').replace(/```/g, '').trim() : judgementText);
+    parsed = JSON.parse(jsonString);
+  } catch (e) {
+    return c.json({ error: { status: "INVALID_ARGUMENT", message: "Oracle returned non-JSON judgement", judgement: judgementText } }, 400);
+  }
 
   // Levenshtein/light name snap
   function lev(a: string, b: string) {
@@ -711,13 +730,56 @@ app.post("/api/activity", async (c) => {
 });
 
 // ---- Static assets ----
-app.get("/sw.js", serveStatic({ path: "./public/sw.js" }));
-app.get("/manifest.json", serveStatic({ path: "./public/manifest.json" }));
-app.get("/style.css", serveStatic({ path: "./public/style.css" }));
-app.get("/assets/*", serveStatic({ root: "./public" }));
-app.get("/js/*", serveStatic({ root: "./public" }));
-app.get("/randomizer/*", serveStatic({ root: "./public" }));
-app.get("/", serveStatic({ path: "./public/index.html" }));
+const PUBLIC_DIR = path.join(import.meta.dir, "..", "public");
+app.get("/favicon.ico", (c) => c.redirect("/assets/favicon.png", 302));
+app.get("/sw.js", serveStatic({ path: path.join(PUBLIC_DIR, "sw.js") }));
+app.get("/manifest.json", async (c) => {
+  const name = `${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}`;
+  const manifest = {
+    name,
+    short_name: APP_NAME,
+    start_url: "/index.html",
+    display: "standalone",
+    background_color: "#fdf8e9",
+    theme_color: "#8c6b52",
+    description: "The official ledger for the Rules of Schikko.",
+    icons: [
+      { src: "/assets/icon-192.png", type: "image/png", sizes: "192x192" },
+      { src: "/assets/icon-512.png", type: "image/png", sizes: "512x512" }
+    ],
+    screenshots: [
+      {
+        src: "/assets/screenshot-desktop.png",
+        sizes: "1280x720",
+        type: "image/png",
+        form_factor: "wide",
+        label: "The Ledger of Punishments on Desktop"
+      },
+      {
+        src: "/assets/screenshot-mobile.png",
+        sizes: "540x720",
+        type: "image/png",
+        form_factor: "narrow",
+        label: "The Ledger of Punishments on Mobile"
+      }
+    ]
+  };
+  return c.json(manifest);
+});
+app.get("/style.css", serveStatic({ path: path.join(PUBLIC_DIR, "style.css") }));
+app.get("/assets/*", serveStatic({ root: PUBLIC_DIR }));
+app.get("/js/*", serveStatic({ root: PUBLIC_DIR }));
+app.get("/randomizer/*", serveStatic({ root: PUBLIC_DIR }));
+app.get("/", serveStatic({ path: path.join(PUBLIC_DIR, "index.html") }));
+
+// Fallback SPA route: serve index.html for any non-API path
+app.notFound((c) => {
+  if (c.req.path.startsWith("/api/")) return c.json({ error: "not-found" }, 404);
+  const file = Bun.file(path.join(PUBLIC_DIR, "index.html"));
+  return new Response(file, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+});
 
 // ---- Cron Jobs ----
 // Annual Schikko reset: 0 0 1 1 * (Jan 1st 00:00)

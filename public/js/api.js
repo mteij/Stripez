@@ -115,6 +115,13 @@ async function getCalendarConfig() {
   return res.json();
 }
 
+// App config (branding + oracle availability)
+async function getAppConfig() {
+  const res = await fetch(`${API_BASE}/api/config/app`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json(); // { name, year, hasOracle }
+}
+
 async function saveCalendarUrl(url) {
   return callSchikkoAction('saveCalendarUrl', { url });
 }
@@ -263,6 +270,7 @@ export {
   getActivity,
   // config/calendar
   getCalendarConfig,
+  getAppConfig,
   saveCalendarUrl,
   getNicatDate,
   saveNicatDate,
