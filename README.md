@@ -46,8 +46,16 @@ Server reads env from shell; default DB at ./data/stripez.sqlite.
 - GEMINI_KEY: Google Generative AI API key
 - ORACLE_MODEL: model name (default gemini-2.5-flash)
 - DB_FILE: SQLite database file path (default ./data/stripez.sqlite)
+- RESEND_API_KEY: Resend API key for transactional email
+- MAIL_FROM: Mail sender, e.g., "Schikko Rules <no-reply@example.com>"
 
 See [.env.example](.env.example).
+
+### Email (Resend) setup
+
+1) Create a free account at https://resend.com and generate an API key.
+2) Set RESEND_API_KEY and MAIL_FROM in your .env.
+3) For best deliverability, verify your sending domain in Resend DNS settings.
 
 ---
 
@@ -56,7 +64,7 @@ See [.env.example](.env.example).
 - POST /api/auth/anon
 - GET /api/schikko/status
 - GET /api/schikko/info
-- POST /api/schikko/set { email }
+- POST /api/schikko/set { firstName, lastName, email }  ← emails password; not returned in response
 - POST /api/schikko/login { password }
 - GET /api/punishments
 - GET /api/rules

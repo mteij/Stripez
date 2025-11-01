@@ -1374,26 +1374,26 @@ closeAgendaModalBtn.addEventListener('click', () => {
 
 // New listeners for Schikko auth flow
 setSchikkoBtn.addEventListener('click', async () => {
-    const email = await showPrompt("Enter thy email to claim the title of Schikko. The sacred password will be revealed to you once.", "", "Claim the Title of Schikko");
-    if (!email || !email.includes('@')) {
-        if (email !== null) { // if not cancelled by user
-            showAlert("A valid email is required to claim the title.", "Invalid Email");
-        }
+    const data = await showSetSchikkoModal();
+    if (!data) return;
+
+    const { firstName, lastName, email } = data;
+    if (!firstName || !lastName || !email || !email.includes('@')) {
+        await showAlert("Please provide a valid first name, last name, and email.", "Invalid Input");
         return;
     }
 
     try {
         showLoading('Setting Schikko...');
-        const result = await setSchikko(email);
+        const result = await setSchikko({ firstName, lastName, email });
         hideLoading();
-        
-        if (result.success && result.password) {
-            await showAlert(`You have claimed the title! Your sacred password is: ${result.password}. Guard it with your life, it will not be shown again.`, "Title Claimed!");
-            checkSchikkoStatus();
-        } else {
-            throw new Error(result.message || "Password could not be retrieved.");
-        }
 
+        if (result?.success) {
+            await showAlert("You have claimed the title! The sacred password has been sent to your email address.", "Title Claimed!");
+            await checkSchikkoStatus();
+        } else {
+            throw new Error(result?.message || "Failed to set Schikko.");
+        }
     } catch (error) {
         hideLoading();
         console.error("Error setting Schikko:", error);

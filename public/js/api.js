@@ -53,12 +53,17 @@ async function getSchikkoInfo() {
   return res.json();
 }
 
-async function setSchikko(email) {
+async function setSchikko({ firstName, lastName, email }) {
+  const payload = {
+    firstName: String(firstName || '').trim(),
+    lastName: String(lastName || '').trim(),
+    email: String(email || '').trim(),
+  };
   const res = await fetch(`${API_BASE}/api/schikko/set`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

@@ -934,38 +934,54 @@ function showSchikkoLoginModal() {
 
 /**
  * Shows a themed modal for setting the Schikko.
- * @returns {Promise<string|null>} A promise that resolves with the email, or null if canceled.
+ * @returns {Promise<{firstName:string,lastName:string,email:string}|null>} Object with firstName, lastName, email or null if canceled.
  */
 function showSetSchikkoModal() {
     const modal = document.getElementById('set-schikko-modal');
+    const firstNameInput = document.getElementById('set-schikko-firstname-input');
+    const lastNameInput = document.getElementById('set-schikko-lastname-input');
     const emailInput = document.getElementById('set-schikko-email-input');
     const okBtn = document.getElementById('set-schikko-submit-btn');
     const cancelBtn = document.getElementById('set-schikko-cancel-btn');
 
-    emailInput.value = '';
+    if (firstNameInput) firstNameInput.value = '';
+    if (lastNameInput) lastNameInput.value = '';
+    if (emailInput) emailInput.value = '';
     modal.classList.remove('hidden');
-    emailInput.focus();
+    (firstNameInput || emailInput)?.focus();
 
     return new Promise(resolve => {
-         const cleanup = () => {
+        const cleanup = () => {
             okBtn.onclick = null;
             cancelBtn.onclick = null;
-            emailInput.onkeydown = null;
+            if (firstNameInput) firstNameInput.onkeydown = null;
+            if (lastNameInput) lastNameInput.onkeydown = null;
+            if (emailInput) emailInput.onkeydown = null;
         };
 
         const handleOk = () => {
+            const firstName = String(firstNameInput?.value || '').trim();
+            const lastName = String(lastNameInput?.value || '').trim();
+            const email = String(emailInput?.value || '').trim();
             modal.classList.add('hidden');
             cleanup();
-            resolve(emailInput.value);
+            resolve({ firstName, lastName, email });
         };
-        
+
         okBtn.onclick = handleOk;
-        emailInput.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleOk();
-            }
+
+        const bindEnter = (el) => {
+            if (!el) return;
+            el.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleOk();
+                }
+            };
         };
+        bindEnter(firstNameInput);
+        bindEnter(lastNameInput);
+        bindEnter(emailInput);
 
         cancelBtn.onclick = () => {
             modal.classList.add('hidden');

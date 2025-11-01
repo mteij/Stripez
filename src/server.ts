@@ -9,6 +9,7 @@ import { request as gaxiosRequest } from "gaxios";
 import net from "net";
 import cron from "node-cron";
 import path from "node:path";
+import { Resend } from "resend";
 
 // ---- ENV ----
 const PORT = Number(process.env.PORT || 8080);
@@ -20,6 +21,8 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS ||
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session-secret-change-me";
 const GEMINI_KEY = process.env.GEMINI_KEY || "";
 const ORACLE_MODEL = process.env.ORACLE_MODEL || "gemini-2.5-flash";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const MAIL_FROM = process.env.MAIL_FROM || "";
 
 // Branding
 const APP_NAME = process.env.APP_NAME || "NICAT";
@@ -138,6 +141,28 @@ async function pushThrottle(key: string, limit: number, windowMs: number): Promi
   return true;
 }
 
+// ---- Mail (Resend) ----
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
+async function sendPasswordEmail(to: string, firstName: string, password: string) {
+  if (!resend) throw new Error("email-not-configured");
+  const subject = `${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}: Your Schikko password`;
+  const displayName = firstName ? `${firstName}` : "Schikko";
+  const text = `Hail ${displayName},
+
+Your Schikko password is: ${password}
+
+Keep it safe. This password grants access to administrative actions.
+
+— ${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}`;
+  await resend.emails.send({
+    from: MAIL_FROM || "no-reply@example.com",
+    to: [to],
+    subject,
+    text,
+  });
+}
+
 // ---- Auth: Anonymous UID ----
 app.post("/api/auth/anon", async (c) => {
   let uid = getCookie(c, "uid");
@@ -171,23 +196,38 @@ app.get("/api/schikko/info", async (c) => {
 
 // ---- Schikko: Set & Login ----
 app.post("/api/schikko/set", async (c) => {
-  const { email } = await c.req.json();
-  if (!email || typeof email !== "string") return c.json({ error: "invalid-argument" }, 400);
+  const body = await c.req.json().catch(() => ({}));
+  const firstName = String(body.firstName || "").trim();
+  const lastName = String(body.lastName || "").trim();
+  const email = String(body.email || "").trim().toLowerCase();
+
+  if (!firstName || !lastName || !email) return c.json({ error: "invalid-argument" }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "invalid-argument" }, 400);
+
+  if (!RESEND_API_KEY || !MAIL_FROM) return c.json({ error: "email-not-configured" }, 500);
 
   const y = new Date().getFullYear();
   const key = yearKey(y);
   const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
   if (exists) return c.json({ error: "already-exists", message: `A Schikko is already set for ${y}.` }, 409);
 
-  const password = crypto.randomBytes(4).toString("hex");
+  const password = crypto.randomBytes(12).toString("hex");
   const { salt, hash } = hashPassword(password);
 
-  run(
-    `INSERT INTO config (key, data, updated_at) VALUES (?, ?, ?)`,
-    [key, JSON.stringify({ email, passwordHash: hash, passwordSalt: salt }), nowIso()]
-  );
+  try {
+    run(
+      `INSERT INTO config (key, data, updated_at) VALUES (?, ?, ?)`,
+      [key, JSON.stringify({ firstName, lastName, email, passwordHash: hash, passwordSalt: salt }), nowIso()]
+    );
 
-  return c.json({ success: true, password });
+    await sendPasswordEmail(email, firstName, password);
+
+    return c.json({ success: true });
+  } catch (e) {
+    // rollback on failure to send
+    try { run(`DELETE FROM config WHERE key = ?`, [key]); } catch (_) {}
+    return c.json({ error: "internal" }, 500);
+  }
 });
 
 app.post("/api/schikko/login", async (c) => {

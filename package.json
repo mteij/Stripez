@@ -13,7 +13,8 @@
     "@google/generative-ai": "^0.24.1",
     "gaxios": "^6.7.1",
     "hono": "^4.10.4",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "resend": "^3.3.0"
   },
   "engines": {
     "bun": ">=1.1.0"
