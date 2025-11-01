@@ -7,7 +7,7 @@ import {
     renamePersonOnLedger, deletePersonFromLedger, addRuleToFirestore,
     deleteRuleFromFirestore, updateRuleOrderInFirestore, updateRuleInFirestore,
     deleteLogFromFirestore, addDrunkStripeToPerson, removeLastDrunkStripeFromPerson,
-    getCalendarConfig, getAppConfig, saveCalendarUrl, getNicatDate, saveNicatDate,
+    getCalendarConfig, getAppConfig, saveCalendarUrl, getStripezDate, saveStripezDate,
     setPersonRole, logActivity, getSchikkoStatus, getSchikkoInfo,
     setSchikko, loginSchikko, getCalendarDataProxy, getOracleJudgement
 } from './api.js';
@@ -15,7 +15,7 @@ import {
     renderLedger, showStatsModal, closeMenus, renderRules,
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
     showAlert, showConfirm, showPrompt, showSchikkoLoginModal,
-    showSetSchikkoModal, showRuleEditModal, renderNicatCountdown,
+    showSetSchikkoModal, showRuleEditModal, renderAppCountdown,
     showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading,
     setStripeTotals
 } from './ui.js';
@@ -39,7 +39,7 @@ let isSchikkoSessionActive = false; // Secure session state for Schikko
 let isSchikkoSetForTheYear = false; // NEW: Tracks if a schikko is set for the year
 
 // App branding/config (from server env)
-let appName = 'NICAT';
+let appName = 'Stripez';
 let appYear = new Date().getFullYear();
 let hasOracle = false;
 
@@ -70,7 +70,7 @@ const closeAgendaModalBtn = document.getElementById('close-agenda-modal');
 const setSchikkoBtn = document.getElementById('set-schikko-btn');
 const schikkoLoginContainer = document.getElementById('schikko-login-container');
 const schikkoLoginBtn = document.getElementById('schikko-login-btn');
-const editNicatBtn = document.getElementById('edit-nicat-btn');
+const editAppDateBtn = document.getElementById('edit-app-date-btn');
 
 // Initialize default sorting UI (Role → Stripes → A–Z)
 currentSortOrder = 'default';
@@ -174,7 +174,7 @@ let currentPersonIdForDrunkStripes = null;
        });
 
        loadCalendarData();
-       loadAndRenderNicatCountdown();
+       loadAndRenderAppCountdown();
 
        setupRealtimeListener('punishments', (data) => {
            loadingState.style.display = 'none';
@@ -251,7 +251,7 @@ function updateGuestUI() {
 
     handleRender();
     handleRenderRules();
-    loadAndRenderNicatCountdown();
+    loadAndRenderAppCountdown();
 }
 
 /**
@@ -368,9 +368,9 @@ async function loadCalendarData() {
     }
 }
 
-async function loadAndRenderNicatCountdown() {
-    const nicatData = await getNicatDate();
-    renderNicatCountdown(nicatData, isSchikkoSessionActive);
+async function loadAndRenderAppCountdown() {
+    const eventData = await getStripezDate();
+    renderAppCountdown(eventData, isSchikkoSessionActive, appName);
 }
 
 function updateDatalist() {
@@ -422,7 +422,8 @@ function handleRender() {
             case 'default': {
                 const roleRank = (p) => {
                     const r = (p.role || '').toLowerCase();
-                    if (r === 'schikko' || r === 'nicat') return 0;
+                    const appRole = appName.toLowerCase();
+                    if (r === 'schikko' || r === appRole) return 0;
                     if (r === 'board') return 1;
                     if (r === 'activist') return 2;
                     return 3;
@@ -1030,37 +1031,37 @@ punishmentListDiv.addEventListener('click', async (e) => {
             }
             break;
         case 'add-drunk-stripe':
-            // Schikko can always add drunk stripes. For others, check NICAT date.
+            // Schikko can always add drunk stripes. For others, check event date.
             if (!isSchikkoSessionActive) {
-                const nicatData = await getNicatDate();
-                if (nicatData && nicatData.date) {
-                    const nicatDate = nicatData.date.toDate();
+                const eventData = await getStripezDate();
+                if (eventData && eventData.date) {
+                    const eventDate = eventData.date.toDate();
                     const now = new Date();
 
-                    if (now < nicatDate) {
-                        const distance = nicatDate - now;
+                    if (now < eventDate) {
+                        const distance = eventDate - now;
                         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
                         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                        const countdownString = `Next NICAT in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+                        const countdownString = `Next ${appName} in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
 
                         await showAlert(
-                            `The consumption of the Golden Liquid is a sacred rite reserved for the NICAT.\n${countdownString}`,
+                            `The consumption of the Golden Liquid is a sacred rite reserved for the ${appName}.\n${countdownString}`,
                             'Patience, Young One!'
                         );
                         return; // Stop execution
                     }
                 } else {
                     await showAlert(
-                        'The date for the next NICAT has not been decreed. The Golden Liquid cannot be consumed.',
+                        `The date for the next ${appName} has not been decreed. The Golden Liquid cannot be consumed.`,
                         'Patience, Young One!'
                     );
                     return;
                 }
             }
 
-            // If we're here, it's either the Schikko or it's past the NICAT date.
+            // If we're here, it's either the Schikko or it's past the event date.
             currentPersonIdForDrunkStripes = id; 
             const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
             const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
@@ -1335,28 +1336,28 @@ editCalendarBtn.addEventListener('click', async () => {
     }
 });
 
-editNicatBtn.addEventListener('click', async () => {
+editAppDateBtn.addEventListener('click', async () => {
     if (!await confirmSchikko()) return;
-    
-    const nicatData = await getNicatDate();
-    const currentDate = nicatData.date ? nicatData.date.toDate().toISOString().split('T')[0] : '';
+
+    const eventData = await getStripezDate();
+    const currentDate = eventData.date ? eventData.date.toDate().toISOString().split('T')[0] : '';
     
     const newDateStr = await showPrompt(
-        'Enter the date for the next NICAT.',
+        `Enter the date for the next ${appName}.`,
         currentDate,
-        'Decree NICAT Date (YYYY-MM-DD)'
+        `Decree ${appName} Date (YYYY-MM-DD)`
     );
 
     if (newDateStr) {
         if (/^\d{4}-\d{2}-\d{2}$/.test(newDateStr)) {
-            showLoading('Saving NICAT date...');
+            showLoading(`Saving ${appName} date...`);
             try {
-                await saveNicatDate(newDateStr);
+                await saveStripezDate(newDateStr);
             } finally {
                 hideLoading();
             }
-            await showAlert("The date for the NICAT has been decreed!", "Success");
-            await loadAndRenderNicatCountdown();
+            await showAlert(`The date for the ${appName} has been decreed!`, "Success");
+            await loadAndRenderAppCountdown();
         } else {
             await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
         }

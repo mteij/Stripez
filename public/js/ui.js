@@ -2,14 +2,14 @@
 
 let stripeChart = null;
 let logbookChart = null;
-let nicatCountdownInterval = null;
-let nicatConfettiShown = false;
+let appCountdownInterval = null;
+let appConfettiShown = false;
 let stripeTotals = { total: 0, drunk: 0 };
-let nicatLiveNow = false;
+let appLiveNow = false;
 let schikkoLoggedIn = false;
 
-// Launch NICAT confetti once per page load (or per NICAT period)
-function launchNicatConfetti() {
+// Launch confetti once per page load (or per event period)
+function launchAppConfetti() {
     if (typeof window !== 'undefined' && typeof window.confetti === 'function') {
         var count = 200;
         var defaults = {
@@ -397,6 +397,7 @@ function renderLedger(viewData, term, isSchikko) {
     const MIN_THRESHOLD = 15;
     const MAX_THRESHOLD = 40;
     const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.max(MIN_THRESHOLD, Math.min(calculatedThreshold, MAX_THRESHOLD));
+    const appNameDom = document.querySelector('meta[name="application-name"]')?.content || 'Stripez';
 
     viewData.forEach(person => {
         const normalStripesCount = person.stripes?.length || 0;
@@ -468,7 +469,7 @@ function renderLedger(viewData, term, isSchikko) {
                             </div>
                             <div class="kebab-submenu hidden absolute left-full top-0 ml-0 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-20">
                                 <a href="#" data-action="set-role" data-role="Schikko" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Schikko</a>
-                                <a href="#" data-action="set-role" data-role="NICAT" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">NICAT</a>
+                                <a href="#" data-action="set-role" data-role="${escapeHTML(appNameDom)}" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">${escapeHTML(appNameDom)}</a>
                                 <a href="#" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>
                                 <a href="#" data-action="set-role" data-role="Activist" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Activist</a>
                                 <a href="#" data-action="set-role" data-role="" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Clear Role</a>
@@ -774,11 +775,11 @@ function renderRules(rulesData, isSchikko) {
     });
 }
 
-function renderNicatCountdown(nicatData, isSchikko) {
-    const countdownContainer = document.getElementById('nicat-countdown');
-    const editBtn = document.getElementById('edit-nicat-btn');
+function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
+    const countdownContainer = document.getElementById('countdown');
+    const editBtn = document.getElementById('edit-app-date-btn');
     const titleTextEl = document.getElementById('main-title-text');
-    const liveBadgeEl = document.getElementById('nicat-live-badge');
+    const liveBadgeEl = document.getElementById('live-badge');
     
     // Track Schikko login state inside UI module so other helpers can adapt
     schikkoLoggedIn = !!isSchikko;
@@ -789,44 +790,45 @@ function renderNicatCountdown(nicatData, isSchikko) {
         editBtn.classList.add('hidden');
     }
 
-    if (nicatCountdownInterval) clearInterval(nicatCountdownInterval);
+    if (appCountdownInterval) clearInterval(appCountdownInterval);
 
-    // If no NICAT date is set, default title to current year and hide LIVE
-    if (!nicatData || !nicatData.date) {
-        if (titleTextEl) titleTextEl.textContent = `NICAT ${new Date().getFullYear()}`;
+    // If no date is set, default title to current year and hide LIVE
+    if (!appData || !appData.date) {
+        const year = new Date().getFullYear();
+        if (titleTextEl) titleTextEl.textContent = `${appName} ${year}`;
         if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
-        document.title = `NICAT ${new Date().getFullYear()}`;
-        countdownContainer.textContent = 'Date for the next NICAT is not yet decreed.';
-        nicatLiveNow = false;
+        document.title = `${appName} ${year}`;
+        countdownContainer.textContent = `Date for the next ${appName} is not yet decreed.`;
+        appLiveNow = false;
         updateStripeOMeterUI(false);
         return;
     }
 
-    // Treat NICAT as a 3-day period starting on the selected date (local midnight)
-    const startDateRaw = nicatData.date.toDate();
+    // Treat the event as a 3-day period starting on the selected date (local midnight)
+    const startDateRaw = appData.date.toDate();
     const startDate = new Date(startDateRaw.getFullYear(), startDateRaw.getMonth(), startDateRaw.getDate());
-    const NICAT_DURATION_DAYS = 3;
-    const endDate = new Date(startDate.getTime() + NICAT_DURATION_DAYS * 24 * 60 * 60 * 1000);
+    const EVENT_DURATION_DAYS = 3;
+    const endDate = new Date(startDate.getTime() + EVENT_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
-    // Update dynamic title to NICAT {YEAR}
-    if (titleTextEl) titleTextEl.textContent = `NICAT ${startDate.getFullYear()}`;
-
-    // Fire confetti immediately on page load if NICAT is currently happening (once per load)
+    // Update dynamic title to {APP_NAME} {YEAR}
+    if (titleTextEl) titleTextEl.textContent = `${appName} ${startDate.getFullYear()}`;
+ 
+    // Fire confetti immediately on page load if the event is currently happening (once per load)
     const nowInitial = Date.now();
     const isLiveNow = nowInitial >= startDate.getTime() && nowInitial < endDate.getTime();
-    const baseTitle = `NICAT ${startDate.getFullYear()}`;
+    const baseTitle = `${appName} ${startDate.getFullYear()}`;
     document.title = isLiveNow ? `${baseTitle} • LIVE` : baseTitle;
     if (liveBadgeEl) {
         if (isLiveNow) liveBadgeEl.classList.remove('hidden'); else liveBadgeEl.classList.add('hidden');
     }
-    nicatLiveNow = isLiveNow;
-    updateStripeOMeterUI(nicatLiveNow);
-    if (isLiveNow && !nicatConfettiShown) {
-        nicatConfettiShown = true;
-        launchNicatConfetti();
+    appLiveNow = isLiveNow;
+    updateStripeOMeterUI(appLiveNow);
+    if (isLiveNow && !appConfettiShown) {
+        appConfettiShown = true;
+        launchAppConfetti();
     }
 
-    nicatCountdownInterval = setInterval(() => {
+    appCountdownInterval = setInterval(() => {
         const nowMs = Date.now();
 
         // Toggle LIVE badge visibility and update page title
@@ -839,18 +841,18 @@ function renderNicatCountdown(nicatData, isSchikko) {
             }
         }
         document.title = nowLive ? `${baseTitle} • LIVE` : baseTitle;
-        nicatLiveNow = nowLive;
-        updateStripeOMeterUI(nicatLiveNow);
+        appLiveNow = nowLive;
+        updateStripeOMeterUI(appLiveNow);
 
         if (nowMs < startDate.getTime()) {
-            // Countdown to NICAT start
+            // Countdown to event start
             const distance = startDate.getTime() - nowMs;
             const days = Math.floor(distance / (1000 * 60 * 60 * 24));
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            countdownContainer.innerHTML = `<span class="hidden sm:inline">Next NICAT in:</span>
+ 
+            countdownContainer.innerHTML = `<span class="hidden sm:inline">Next ${appName} in:</span>
                 <span class="font-bold">${days}d</span>
                 <span class="font-bold">${hours}h</span>
                 <span class="font-bold">${minutes}m</span>
@@ -859,20 +861,20 @@ function renderNicatCountdown(nicatData, isSchikko) {
         }
 
         if (nowMs < endDate.getTime()) {
-            // NICAT is currently happening — countdown to end
+            // Event is currently happening — countdown to end
             const distance = endDate.getTime() - nowMs;
             const days = Math.floor(distance / (1000 * 60 * 60 * 24));
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            // Ensure we trigger confetti once when NICAT is in progress
-            if (!nicatConfettiShown) {
-                nicatConfettiShown = true;
-                launchNicatConfetti();
+ 
+            // Ensure we trigger confetti once when the event is in progress
+            if (!appConfettiShown) {
+                appConfettiShown = true;
+                launchAppConfetti();
             }
-
-            countdownContainer.innerHTML = `<span class="hidden sm:inline">NICAT in progress — Ends in:</span>
+ 
+            countdownContainer.innerHTML = `<span class="hidden sm:inline">${appName} in progress — Ends in:</span>
                 <span class="font-bold">${days}d</span>
                 <span class="font-bold">${hours}h</span>
                 <span class="font-bold">${minutes}m</span>
@@ -880,11 +882,11 @@ function renderNicatCountdown(nicatData, isSchikko) {
             return;
         }
 
-        clearInterval(nicatCountdownInterval);
-        countdownContainer.textContent = "The NICAT has passed! Awaiting the next decree...";
+        clearInterval(appCountdownInterval);
+        countdownContainer.textContent = `The ${appName} has passed! Awaiting the next decree...`;
         if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
         document.title = baseTitle;
-        nicatLiveNow = false;
+        appLiveNow = false;
         updateStripeOMeterUI(false);
     }, 1000);
 }
@@ -1061,7 +1063,7 @@ function updateStripeOMeterUI(isLive) {
     const fill = document.getElementById('stripe-meter-fill');
     const leftEl = document.getElementById('stripe-meter-left');
     const countsEl = document.getElementById('stripe-meter-counts');
-    const countdownWrap = document.getElementById('nicat-countdown-container');
+    const countdownWrap = document.getElementById('countdown-container');
     const calendarSection = document.getElementById('calendar-section');
 
     if (!meter) return;
@@ -1101,7 +1103,7 @@ function setStripeTotals(total, drunk) {
     stripeTotals.total = Math.max(0, Number(total) || 0);
     stripeTotals.drunk = Math.max(0, Number(drunk) || 0);
     // Refresh UI if we're currently live
-    updateStripeOMeterUI(nicatLiveNow === true);
+    updateStripeOMeterUI(appLiveNow === true);
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderNicatCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderAppCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };

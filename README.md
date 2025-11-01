@@ -3,37 +3,33 @@
 <div align="center">
   <img src="public/assets/icon-512.png" alt="Stripez Icon" width="192" height="192" />
 
-  <strong>The Stripe System for NICAT — stripes, decrees, and the Schikko.</strong>
+  <strong>The Stripe System — stripes, decrees, and the Schikko.</strong>
 
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun"></a>
   <a href="https://hono.dev/"><img src="https://img.shields.io/badge/Hono-FF6A00?style=for-the-badge&logo=hono&logoColor=white" alt="Hono"></a>
   <a href="https://www.sqlite.org/"><img src="https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite"></a>
   <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"></a>
 
-  <a href="https://github.com/MichielEijpe/schikko-rules/issues"><strong>Report issues</strong></a>
+  <a href="https://github.com/mteij/stripez/issues"><strong>Report issues</strong></a>
 </div>
 
 ## What is Stripez?
 
-Stripez is a lightweight system to run the Schikko Rules at NICAT. Keep a shared ledger of people, assign stripes for transgressions, fulfill them with drinks during NICAT, and maintain an evolving scroll of decrees.
+Stripez is a lightweight system to run the Schikko Rules. Keep a shared ledger of people, assign stripes for transgressions, fulfill them, and maintain an evolving scroll of decrees.
 
 ## Core features
 
 - Ledger and stripes
   - Add stripes, revert last, and record drunk stripes to fulfill penalties
-  - Roles per person (Schikko, NICAT, Board, Activist), per-person stats and history
+  - Roles per person (Schikko, Board, Activist), per-person stats and history
 - Decrees (rules)
   - Ordered, taggable, searchable list; inline edit, reorder, and delete (Schikko only)
 - Oracle judgements (optional)
   - Ask the Oracle to judge a transgression; it returns stripes and dice rolls; apply with one click
-- NICAT mode
-  - Set the NICAT date; live countdown and a Stripe‑O‑Meter during the 3‑day window; guests can’t drink early
 - Calendar
   - Set a public iCal URL; see the next activity and a full agenda (via a hardened proxy)
 - Logbook
   - Every action is logged; smart grouping; 30‑day activity chart; Schikko can delete entries
-- Safety
-  - Session‑based admin login, rate limiting, strict CORS and security headers
 
 <div align="center">
   <img src="public/assets/screenshot-desktop.png" alt="Ledger screenshot" width="800" />
@@ -65,7 +61,7 @@ Minimal env (see .env.example):
 - CORS_ORIGINS — CSV of allowed origins
 - PORT and DB_FILE — optional overrides
 
-Set NICAT date and Calendar URL from within the app UI (Schikko only).
+Set the Calendar URL from within the app UI (Schikko only).
 
 <details>
 <summary>API overview</summary>
@@ -75,7 +71,7 @@ Set NICAT date and Calendar URL from within the app UI (Schikko only).
 - GET /api/rules
 - GET /api/activity?sinceDays=30
 - POST /api/schikko/set, /api/schikko/login, /api/schikko/action
-- GET/POST /api/config/{calendar|nicat}, GET /api/config/app
+- GET /api/config/calendar, GET /api/config/app
 - POST /api/oracle/judgement, POST /api/calendar/proxy
 
 </details>

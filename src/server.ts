@@ -25,7 +25,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const MAIL_FROM = process.env.MAIL_FROM || "";
 
 // Branding
-const APP_NAME = process.env.APP_NAME || "NICAT";
+const APP_NAME = process.env.APP_NAME || "Stripez";
 const APP_YEAR = Number(process.env.APP_YEAR || new Date().getFullYear());
 
 // ---- APP ----
@@ -279,7 +279,7 @@ app.post("/api/schikko/login", async (c) => {
   return c.json({ success: true, sessionId, expiresAtMs: +expiresAt });
 });
 
-// ---- Config (calendar/nicat) ----
+ // ---- Config (calendar/stripez) ----
 app.get("/api/config/calendar", async (c) => {
   const row = get<{ data: string }>("SELECT data FROM config WHERE key='calendar'") || null;
   if (!row) return c.json({ url: null });
@@ -303,8 +303,8 @@ app.post("/api/config/calendar", async (c) => {
   return c.json({ ok: true });
 });
 
-app.get("/api/config/nicat", async (c) => {
-  const row = get<{ data: string }>("SELECT data FROM config WHERE key='nicat'") || null;
+app.get("/api/config/stripez", async (c) => {
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") || null;
   if (!row) return c.json({ date: null });
   try {
     const data = JSON.parse(row.data || "{}");
@@ -314,13 +314,13 @@ app.get("/api/config/nicat", async (c) => {
   }
 });
 
-app.post("/api/config/nicat", async (c) => {
+app.post("/api/config/stripez", async (c) => {
   const { dateString } = await c.req.json();
   const d = new Date(String(dateString || ""));
   if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
   run(
     `INSERT INTO config (key, data, updated_at)
-     VALUES ('nicat', ?, ?)
+     VALUES ('stripez', ?, ?)
      ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
     [JSON.stringify({ date: d.toISOString() }), nowIso()]
   );
@@ -654,7 +654,7 @@ app.post("/api/schikko/action", async (c) => {
       case "setPersonRole": {
         const docId = String(data.docId || "");
         const role = typeof data.role === "string" ? String(data.role || "").trim() : "";
-        const allowedRoles = ["Schikko", "NICAT", "Board", "Activist"];
+        const allowedRoles = ["Schikko", APP_NAME, "Board", "Activist"];
         let value: string | null = null;
         if (role) {
           const match = allowedRoles.find((r) => r.toLowerCase() === role.toLowerCase());
@@ -725,13 +725,13 @@ app.post("/api/schikko/action", async (c) => {
         );
         return c.json({ ok: true });
       }
-      case "saveNicatDate": {
+      case "saveStripezDate": {
         const dateString = String(data.dateString || "");
         const d = new Date(dateString);
         if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
         run(
           `INSERT INTO config (key, data, updated_at)
-           VALUES ('nicat', ?, ?)
+           VALUES ('stripez', ?, ?)
            ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
           [JSON.stringify({ date: d.toISOString() }), nowIso()]
         );

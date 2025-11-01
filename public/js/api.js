@@ -131,15 +131,15 @@ async function saveCalendarUrl(url) {
   return callSchikkoAction('saveCalendarUrl', { url });
 }
 
-async function getNicatDate() {
-  const res = await fetch(`${API_BASE}/api/config/nicat`, { credentials: 'include' });
+async function getStripezDate() {
+  const res = await fetch(`${API_BASE}/api/config/stripez`, { credentials: 'include' });
   if (!res.ok) return { date: null };
   const data = await res.json();
   return { date: data.date ? toTs(data.date) : null };
 }
 
-async function saveNicatDate(dateString) {
-  return callSchikkoAction('saveNicatDate', { dateString });
+async function saveStripezDate(dateString) {
+  return callSchikkoAction('saveStripezDate', { dateString });
 }
 
 async function getCalendarDataProxy(url) {
@@ -277,8 +277,8 @@ export {
   getCalendarConfig,
   getAppConfig,
   saveCalendarUrl,
-  getNicatDate,
-  saveNicatDate,
+  getStripezDate,
+  saveStripezDate,
   getCalendarDataProxy,
   // mutations
   addNameToLedger,
