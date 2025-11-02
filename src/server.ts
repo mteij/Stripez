@@ -812,9 +812,15 @@ app.get("/js/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/randomizer/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/", serveStatic({ path: path.join(PUBLIC_DIR, "index.html") }));
 
-// Fallback SPA route: serve index.html for any non-API path
+// Fallback SPA route: serve index.html for any non-API path,
+// but return 404 for unknown asset-like URLs to avoid MIME-type confusion.
 app.notFound((c) => {
-  if (c.req.path.startsWith("/api/")) return c.json({ error: "not-found" }, 404);
+  const p = c.req.path;
+  if (p.startsWith("/api/")) return c.json({ error: "not-found" }, 404);
+  // If the path looks like a file (has an extension) and wasn't matched above, 404 it.
+  if (/\.[a-zA-Z0-9]+$/.test(p)) {
+    return c.text("Not Found", 404);
+  }
   const file = Bun.file(path.join(PUBLIC_DIR, "index.html"));
   return new Response(file, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
