@@ -772,7 +772,13 @@ app.post("/api/activity", async (c) => {
 // ---- Static assets ----
 const PUBLIC_DIR = path.join(import.meta.dir, "..", "public");
 app.get("/favicon.ico", (c) => c.redirect("/assets/favicon.png", 302));
-app.get("/sw.js", serveStatic({ path: path.join(PUBLIC_DIR, "sw.js") }));
+// Ensure correct MIME type for Service Worker
+app.get("/sw.js", async (c) => {
+  const filePath = path.join(PUBLIC_DIR, "sw.js");
+  const fileContent = await Deno.readTextFile(filePath);
+  c.header("Content-Type", "application/javascript");
+  return c.body(fileContent);
+});
 app.get("/manifest.json", async (c) => {
   const name = `${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}`;
   const manifest = {

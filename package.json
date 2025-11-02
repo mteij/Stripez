@@ -1,6 +1,6 @@
 {
   "name": "stripez",
-  "version": "0.2.0",
+  "version": "2.1.1",
   "private": true,
   "description": "Stripez - Bun.js API + static site with SQLite (Dockerized).",
   "type": "module",
