@@ -772,12 +772,12 @@ app.post("/api/activity", async (c) => {
 // ---- Static assets ----
 const PUBLIC_DIR = path.join(import.meta.dir, "..", "public");
 app.get("/favicon.ico", (c) => c.redirect("/assets/favicon.png", 302));
-// Ensure correct MIME type for Service Worker
+// Ensure correct MIME type for Service Worker (Bun runtime)
 app.get("/sw.js", async (c) => {
-  const filePath = path.join(PUBLIC_DIR, "sw.js");
-  const fileContent = await Deno.readTextFile(filePath);
-  c.header("Content-Type", "application/javascript");
-  return c.body(fileContent);
+  const file = Bun.file(path.join(PUBLIC_DIR, "sw.js"));
+  return new Response(file, {
+    headers: { "Content-Type": "application/javascript; charset=utf-8" },
+  });
 });
 app.get("/manifest.json", async (c) => {
   const name = `${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}`;
@@ -812,7 +812,13 @@ app.get("/manifest.json", async (c) => {
   };
   return c.json(manifest);
 });
-app.get("/style.css", serveStatic({ path: path.join(PUBLIC_DIR, "style.css") }));
+// Force correct MIME type for CSS to satisfy X-Content-Type-Options: nosniff
+app.get("/style.css", async (c) => {
+  const file = Bun.file(path.join(PUBLIC_DIR, "style.css"));
+  return new Response(file, {
+    headers: { "Content-Type": "text/css; charset=utf-8" },
+  });
+});
 app.get("/assets/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/js/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/randomizer/*", serveStatic({ root: PUBLIC_DIR }));
