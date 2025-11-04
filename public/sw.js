@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schikko-rules-cache-v7';
+const CACHE_NAME = 'schikko-rules-cache-v8';
 const urlsToCache = [
   '/',
   '/index.html',
