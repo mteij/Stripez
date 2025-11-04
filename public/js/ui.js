@@ -804,12 +804,12 @@ function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
         return;
     }
 
-    // Treat the event as a 3-day period starting on the selected date (local midnight)
+    // Treat the event as a durationDays-day period starting on the selected date (local midnight)
     const startDateRaw = appData.date.toDate();
     const startDate = new Date(startDateRaw.getFullYear(), startDateRaw.getMonth(), startDateRaw.getDate());
-    const EVENT_DURATION_DAYS = 3;
+    const EVENT_DURATION_DAYS = Math.max(1, Number(appData.durationDays || 3));
     const endDate = new Date(startDate.getTime() + EVENT_DURATION_DAYS * 24 * 60 * 60 * 1000);
-
+ 
     // Update dynamic title to {APP_NAME} {YEAR}
     if (titleTextEl) titleTextEl.textContent = `${appName} ${startDate.getFullYear()}`;
  
@@ -942,15 +942,13 @@ function showSetSchikkoModal() {
     const modal = document.getElementById('set-schikko-modal');
     const firstNameInput = document.getElementById('set-schikko-firstname-input');
     const lastNameInput = document.getElementById('set-schikko-lastname-input');
-    const emailInput = document.getElementById('set-schikko-email-input');
     const okBtn = document.getElementById('set-schikko-submit-btn');
     const cancelBtn = document.getElementById('set-schikko-cancel-btn');
 
     if (firstNameInput) firstNameInput.value = '';
     if (lastNameInput) lastNameInput.value = '';
-    if (emailInput) emailInput.value = '';
     modal.classList.remove('hidden');
-    (firstNameInput || emailInput)?.focus();
+    (firstNameInput)?.focus();
 
     return new Promise(resolve => {
         const cleanup = () => {
@@ -958,16 +956,14 @@ function showSetSchikkoModal() {
             cancelBtn.onclick = null;
             if (firstNameInput) firstNameInput.onkeydown = null;
             if (lastNameInput) lastNameInput.onkeydown = null;
-            if (emailInput) emailInput.onkeydown = null;
         };
 
         const handleOk = () => {
             const firstName = String(firstNameInput?.value || '').trim();
             const lastName = String(lastNameInput?.value || '').trim();
-            const email = String(emailInput?.value || '').trim();
             modal.classList.add('hidden');
             cleanup();
-            resolve({ firstName, lastName, email });
+            resolve({ firstName, lastName });
         };
 
         okBtn.onclick = handleOk;
@@ -983,7 +979,6 @@ function showSetSchikkoModal() {
         };
         bindEnter(firstNameInput);
         bindEnter(lastNameInput);
-        bindEnter(emailInput);
 
         cancelBtn.onclick = () => {
             modal.classList.add('hidden');

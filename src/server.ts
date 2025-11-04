@@ -9,7 +9,6 @@ import { request as gaxiosRequest } from "gaxios";
 import net from "net";
 import cron from "node-cron";
 import path from "node:path";
-import { Resend } from "resend";
 
 // ---- ENV ----
 const PORT = Number(process.env.PORT || 8080);
@@ -21,12 +20,18 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS ||
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session-secret-change-me";
 const GEMINI_KEY = process.env.GEMINI_KEY || "";
 const ORACLE_MODEL = process.env.ORACLE_MODEL || "gemini-2.5-flash";
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const MAIL_FROM = process.env.MAIL_FROM || "";
+const ADMIN_KEY = (process.env.ADMIN_KEY || "").trim();
 
 // Branding
 const APP_NAME = process.env.APP_NAME || "Stripez";
 const APP_YEAR = Number(process.env.APP_YEAR || new Date().getFullYear());
+// Drink request policy (default: require Schikko approval)
+const DRINK_REQUIRE_APPROVAL = parseBool(process.env.DRINK_REQUIRE_APPROVAL, true);
+
+// Event config and cleanup behavior
+const STRIPEZ_DEFAULT_DURATION_DAYS = Math.max(1, Number(process.env.STRIPEZ_DEFAULT_DURATION_DAYS || 3));
+const STRIPEZ_UNSET_DELAY_HOURS = Math.max(0, Number(process.env.STRIPEZ_UNSET_DELAY_HOURS || 6));
+const STRIPEZ_CLEANUP_ACTION = String(process.env.STRIPEZ_CLEANUP_ACTION || "NOTHING").toUpperCase();
 
 // ---- APP ----
 const app = new Hono();
@@ -105,6 +110,21 @@ function timingSafeEq(aHex: string, bHex: string) {
   return crypto.timingSafeEqual(a, b);
 }
 
+function timingSafeStrEq(a: string, b: string) {
+  const A = Buffer.from(String(a || ""), "utf8");
+  const B = Buffer.from(String(b || ""), "utf8");
+  if (A.length !== B.length) return false;
+  return crypto.timingSafeEqual(A, B);
+}
+
+// Env boolean parsing with sane defaults
+function parseBool(v: any, def = false) {
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+  if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+  return def;
+}
+
 function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(password, salt, 64).toString("hex");
@@ -114,6 +134,85 @@ function hashPassword(password: string) {
 function verifyPassword(password: string, salt: string, hash: string) {
   const computed = crypto.scryptSync(password, salt, 64).toString("hex");
   return timingSafeEq(computed, hash);
+}
+
+// ---- TOTP helpers (RFC 6238) ----
+const B32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+function base32Encode(bytes: Uint8Array): string {
+  let bits = 0, value = 0, output = "";
+  for (let i = 0; i < bytes.length; i++) {
+    value = (value << 8) | bytes[i];
+    bits += 8;
+    while (bits >= 5) {
+      output += B32_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    output += B32_ALPHABET[(value << (5 - bits)) & 31];
+  }
+  return output;
+}
+
+function base32Decode(str: string): Uint8Array {
+  const clean = String(str || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
+  let bits = 0, value = 0;
+  const out: number[] = [];
+  for (let i = 0; i < clean.length; i++) {
+    const idx = B32_ALPHABET.indexOf(clean[i]);
+    if (idx < 0) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Uint8Array.from(out);
+}
+
+function hotp(secret: Uint8Array, counter: number, digits = 6): string {
+  const buf = Buffer.alloc(8);
+  for (let i = 7; i >= 0; i--) {
+    buf[i] = counter & 0xff;
+    counter = Math.floor(counter / 256);
+  }
+  const hmac = crypto.createHmac("sha1", Buffer.from(secret)).update(buf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+  const mod = 10 ** digits;
+  return String(code % mod).padStart(digits, "0");
+}
+
+function totpVerify(secretBase32: string, token: string, window = 1, step = 30, digits = 6): boolean {
+  const secret = base32Decode(secretBase32);
+  const counter = Math.floor(Date.now() / 1000 / step);
+  const norm = String(token || "").replace(/\s+/g, "");
+  if (!/^\d{6}$/.test(norm)) return false;
+  for (let w = -window; w <= window; w++) {
+    const otp = hotp(secret, counter + w, digits);
+    if (otp === norm) return true;
+  }
+  return false;
+}
+
+function makeOtpAuthUrl(opts: { secretBase32: string; account: string; issuer: string }): string {
+  const issuer = opts.issuer;
+  const account = opts.account;
+  const label = `${issuer}:${account}`;
+  const params = new URLSearchParams({
+    secret: opts.secretBase32,
+    issuer,
+    algorithm: "SHA1",
+    digits: "6",
+    period: "30",
+  });
+  return `otpauth://totp/${encodeURIComponent(label)}?${params.toString()}`;
 }
 
 async function pushThrottle(key: string, limit: number, windowMs: number): Promise<boolean> {
@@ -142,26 +241,7 @@ async function pushThrottle(key: string, limit: number, windowMs: number): Promi
 }
 
 // ---- Mail (Resend) ----
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
-async function sendPasswordEmail(to: string, firstName: string, password: string) {
-  if (!resend) throw new Error("email-not-configured");
-  const subject = `${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}: Your Schikko password`;
-  const displayName = firstName ? `${firstName}` : "Schikko";
-  const text = `Hail ${displayName},
-
-Your Schikko password is: ${password}
-
-Keep it safe. This password grants access to administrative actions.
-
-— ${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}`;
-  await resend.emails.send({
-    from: MAIL_FROM || "no-reply@example.com",
-    to: [to],
-    subject,
-    text,
-  });
-}
 
 // ---- Auth: Anonymous UID ----
 app.post("/api/auth/anon", async (c) => {
@@ -178,20 +258,30 @@ app.get("/api/schikko/status", async (c) => {
   const y = new Date().getFullYear();
   const key = yearKey(y);
   const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
-  return c.json({ isSet: !!row });
+  let exists = !!row;
+  let verified = false;
+  if (row) {
+    try {
+      const data = JSON.parse(row.data || "{}");
+      verified = !!data.verified;
+    } catch {}
+  }
+  return c.json({ isSet: verified, pending: exists && !verified });
 });
 
 app.get("/api/schikko/info", async (c) => {
   const y = new Date().getFullYear();
   const key = yearKey(y);
   const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
-  if (!row) return c.json({ email: null, expires: null });
+  if (!row) return c.json({ name: null, expires: null });
   let data: any = {};
   try {
     data = JSON.parse(row.data || "{}");
   } catch {}
   const expiry = new Date(y, 11, 31, 23, 59, 59);
-  return c.json({ email: data.email || null, expires: expiry.toISOString() });
+  const verified = !!data.verified;
+  const name = verified ? ([data.firstName, data.lastName].filter(Boolean).join(" ").trim() || null) : null;
+  return c.json({ name, expires: verified ? expiry.toISOString() : null });
 });
 
 // ---- Schikko: Set & Login ----
@@ -199,40 +289,61 @@ app.post("/api/schikko/set", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const firstName = String(body.firstName || "").trim();
   const lastName = String(body.lastName || "").trim();
-  const email = String(body.email || "").trim().toLowerCase();
 
-  if (!firstName || !lastName || !email) return c.json({ error: "invalid-argument" }, 400);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "invalid-argument" }, 400);
-
-  if (!RESEND_API_KEY || !MAIL_FROM) return c.json({ error: "email-not-configured" }, 500);
+  if (!firstName || !lastName) return c.json({ error: "invalid-argument" }, 400);
 
   const y = new Date().getFullYear();
   const key = yearKey(y);
   const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
   if (exists) return c.json({ error: "already-exists", message: `A Schikko is already set for ${y}.` }, 409);
 
-  const password = crypto.randomBytes(12).toString("hex");
-  const { salt, hash } = hashPassword(password);
+  // Generate a new TOTP secret (not persisted yet — requires immediate verification)
+  const rawSecret = crypto.randomBytes(20); // 160-bit
+  const secretBase32 = base32Encode(rawSecret);
+  const issuer = `${APP_NAME} ${y}`;
+  const account = [firstName, lastName].filter(Boolean).join(" ").trim() || "Schikko";
+  const otpauthUrl = makeOtpAuthUrl({ secretBase32, account, issuer });
+
+  // Return the OTP setup details; client must confirm with a valid 2FA code to finalize
+  return c.json({ success: true, otp: { secret: secretBase32, otpauthUrl }, needsConfirmation: true });
+});
+
+app.post("/api/schikko/confirm", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const firstName = String(body.firstName || "").trim();
+  const lastName = String(body.lastName || "").trim();
+  const secretBase32 = String(body.secret || "").trim();
+  const code = String(body.code || "").trim();
+
+  if (!firstName || !lastName || !secretBase32 || !code) {
+    return c.json({ error: "invalid-argument" }, 400);
+  }
+
+  const y = new Date().getFullYear();
+  const key = yearKey(y);
+  const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
+  if (exists) return c.json({ error: "already-exists", message: `A Schikko is already set for ${y}.` }, 409);
+
+  // Verify the provided TOTP code against the provided secret
+  const ok = totpVerify(secretBase32, code, 1, 30, 6);
+  if (!ok) return c.json({ success: false, error: "invalid-2fa" }, 401);
 
   try {
     run(
       `INSERT INTO config (key, data, updated_at) VALUES (?, ?, ?)`,
-      [key, JSON.stringify({ firstName, lastName, email, passwordHash: hash, passwordSalt: salt }), nowIso()]
+      [key, JSON.stringify({ firstName, lastName, totpSecret: secretBase32, verified: true }), nowIso()]
     );
-
-    await sendPasswordEmail(email, firstName, password);
-
     return c.json({ success: true });
   } catch (e) {
-    // rollback on failure to send
-    try { run(`DELETE FROM config WHERE key = ?`, [key]); } catch (_) {}
     return c.json({ error: "internal" }, 500);
   }
 });
 
 app.post("/api/schikko/login", async (c) => {
-  const { password } = await c.req.json();
-  if (!password || typeof password !== "string") return c.json({ error: "invalid-argument" }, 400);
+  const body = await c.req.json().catch(() => ({}));
+  const providedRaw = body?.code;
+  const provided = typeof providedRaw === "string" ? providedRaw.trim() : "";
+  if (!provided) return c.json({ error: "invalid-argument" }, 400);
 
   // Throttle global login attempts
   const allowed = await pushThrottle("login_throttle", 20, 10 * 60 * 1000);
@@ -244,7 +355,21 @@ app.post("/api/schikko/login", async (c) => {
   const y = new Date().getFullYear();
   const key = yearKey(y);
   const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
-  if (!row) return c.json({ error: "not-found", message: `No Schikko set for ${y}.` }, 404);
+  // Allow break-glass ADMIN_KEY login even if no Schikko is set
+  if (!row) {
+    if (ADMIN_KEY && timingSafeStrEq(provided, ADMIN_KEY)) {
+      const sessionId = randomId("s");
+      const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
+      run(`INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`, [
+        sessionId,
+        uid,
+        nowIso(),
+        expiresAt.toISOString(),
+      ]);
+      return c.json({ success: true, sessionId, expiresAtMs: +expiresAt });
+    }
+    return c.json({ error: "not-found", message: `No Schikko set for ${y}.` }, 404);
+  }
 
   let data: any = {};
   try {
@@ -252,12 +377,27 @@ app.post("/api/schikko/login", async (c) => {
   } catch {}
 
   let ok = false;
-  if (data.passwordHash && data.passwordSalt) {
-    ok = verifyPassword(password, data.passwordSalt, data.passwordHash);
+  let usedTotp = false;
+
+  // Break-glass admin key (ENV) — bypasses TOTP when present (does NOT mark verified)
+  if (!ok && ADMIN_KEY && timingSafeStrEq(provided, ADMIN_KEY)) {
+    ok = true;
+  }
+
+  if (!ok && typeof data.totpSecret === "string" && data.totpSecret) {
+    const passed = totpVerify(data.totpSecret, provided, 1, 30, 6);
+    if (passed) {
+      ok = true;
+      usedTotp = true;
+    }
+  } else if (data.passwordHash && data.passwordSalt) {
+    // Backward compatibility: accept legacy password logins if TOTP not yet configured
+    ok = verifyPassword(provided, data.passwordSalt, data.passwordHash);
   } else if (typeof data.password === "string") {
-    ok = data.password === password;
+    // Legacy plaintext fallback + migrate to hash
+    ok = data.password === provided;
     if (ok) {
-      const { salt, hash } = hashPassword(password);
+      const { salt, hash } = hashPassword(provided);
       run(`UPDATE config SET data = ?, updated_at = ? WHERE key = ?`, [
         JSON.stringify({ ...data, passwordHash: hash, passwordSalt: salt, password: undefined }),
         nowIso(),
@@ -267,6 +407,17 @@ app.post("/api/schikko/login", async (c) => {
   }
 
   if (!ok) return c.json({ success: false });
+
+  // On first successful TOTP login, mark Schikko as verified
+  if (usedTotp && !data.verified) {
+    try {
+      run(`UPDATE config SET data = ?, updated_at = ? WHERE key = ?`, [
+        JSON.stringify({ ...data, verified: true }),
+        nowIso(),
+        key,
+      ]);
+    } catch {}
+  }
 
   const sessionId = randomId("s");
   const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
@@ -305,24 +456,26 @@ app.post("/api/config/calendar", async (c) => {
 
 app.get("/api/config/stripez", async (c) => {
   const row = get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") || null;
-  if (!row) return c.json({ date: null });
+  if (!row) return c.json({ date: null, durationDays: STRIPEZ_DEFAULT_DURATION_DAYS });
   try {
     const data = JSON.parse(row.data || "{}");
-    return c.json({ date: data.date || null });
+    const durationDays = Math.max(1, Number(data.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
+    return c.json({ date: data.date || null, durationDays });
   } catch {
-    return c.json({ date: null });
+    return c.json({ date: null, durationDays: STRIPEZ_DEFAULT_DURATION_DAYS });
   }
 });
 
 app.post("/api/config/stripez", async (c) => {
-  const { dateString } = await c.req.json();
+  const { dateString, durationDays } = await c.req.json();
   const d = new Date(String(dateString || ""));
   if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
+  const dur = Math.max(1, Number(durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
   run(
     `INSERT INTO config (key, data, updated_at)
      VALUES ('stripez', ?, ?)
      ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
-    [JSON.stringify({ date: d.toISOString() }), nowIso()]
+    [JSON.stringify({ date: d.toISOString(), durationDays: dur }), nowIso()]
   );
   return c.json({ ok: true });
 });
@@ -333,6 +486,7 @@ app.get("/api/config/app", async (c) => {
     name: APP_NAME,
     year: APP_YEAR,
     hasOracle: Boolean(GEMINI_KEY),
+    requireApprovalForDrinks: Boolean(DRINK_REQUIRE_APPROVAL),
   });
 });
 
@@ -727,13 +881,14 @@ app.post("/api/schikko/action", async (c) => {
       }
       case "saveStripezDate": {
         const dateString = String(data.dateString || "");
+        const durationDays = Math.max(1, Number(data.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
         const d = new Date(dateString);
         if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
         run(
           `INSERT INTO config (key, data, updated_at)
            VALUES ('stripez', ?, ?)
            ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
-          [JSON.stringify({ date: d.toISOString() }), nowIso()]
+          [JSON.stringify({ date: d.toISOString(), durationDays }), nowIso()]
         );
         return c.json({ ok: true });
       }
@@ -746,6 +901,69 @@ app.post("/api/schikko/action", async (c) => {
           const qs = safeIds.map(() => "?").join(", ");
           run(`DELETE FROM activity_log WHERE id IN (${qs})`, safeIds);
         }
+        return c.json({ ok: true });
+      }
+
+      // Drink requests admin (Schikko only)
+      case "listDrinkRequests": {
+        const rows = all<{ id: string; person_id: string; amount: number; status: string; requested_by: string; created_at: string; person_name: string }>(`
+          SELECT dr.id, dr.person_id, dr.amount, dr.status, dr.requested_by, dr.created_at, p.name AS person_name
+          FROM drink_requests dr
+          JOIN people p ON p.id = dr.person_id
+          WHERE dr.status = 'pending'
+          ORDER BY dr.created_at ASC
+        `);
+        return c.json({ ok: true, requests: rows });
+      }
+      case "approveDrinkRequest": {
+        const reqId = String(data.requestId || "").trim();
+        if (!reqId) return c.json({ error: "invalid-argument" }, 400);
+
+        const req = get<{ id: string; person_id: string; amount: number; status: string }>(
+          `SELECT id, person_id, amount, status FROM drink_requests WHERE id = ?`,
+          [reqId]
+        );
+        if (!req) return c.json({ error: "not-found" }, 404);
+        if (req.status !== "pending") return c.json({ error: "failed-precondition", message: "Request is not pending." }, 409);
+
+        const n = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'normal'`, [req.person_id])?.c || 0;
+        const d = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'drunk'`, [req.person_id])?.c || 0;
+        const available = Math.max(0, n - d);
+        const desired = Math.max(1, Number(req.amount || 0));
+        const toApply = Math.min(available, desired);
+
+        for (let i = 0; i < toApply; i++) {
+          const ts = new Date(Date.now() + i).toISOString();
+          run(`INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'drunk')`, [req.person_id, ts]);
+        }
+        const uid = getCookie(c, "uid") || "unknown";
+        run(
+          `UPDATE drink_requests
+             SET status = 'approved',
+                 processed_at = ?,
+                 processed_by = ?,
+                 applied = ?
+           WHERE id = ?`,
+          [nowIso(), uid, toApply > 0 ? 1 : 0, reqId]
+        );
+        return c.json({ ok: true, applied: toApply });
+      }
+      case "rejectDrinkRequest": {
+        const reqId = String(data.requestId || "").trim();
+        if (!reqId) return c.json({ error: "invalid-argument" }, 400);
+        const exists = get<{ id: string; status: string }>(`SELECT id, status FROM drink_requests WHERE id = ?`, [reqId]);
+        if (!exists) return c.json({ error: "not-found" }, 404);
+        if (exists.status !== "pending") return c.json({ error: "failed-precondition", message: "Request is not pending." }, 409);
+        const uid = getCookie(c, "uid") || "unknown";
+        run(
+          `UPDATE drink_requests
+             SET status = 'rejected',
+                 processed_at = ?,
+                 processed_by = ?,
+                 applied = 0
+           WHERE id = ?`,
+          [nowIso(), uid, reqId]
+        );
         return c.json({ ok: true });
       }
 
@@ -765,6 +983,34 @@ app.post("/api/activity", async (c) => {
   run(
     `INSERT INTO activity_log (id, action, actor, details, timestamp) VALUES (?, ?, ?, ?, ?)`,
     [id, String(action), String(actor), String(details), nowIso()]
+  );
+  return c.json({ ok: true, id });
+});
+
+// ---- Drink Requests (guest creates requests; Schikko approves/rejects) ----
+app.post("/api/drink/request", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const personId = String(body.personId || "").trim();
+  const amountRaw = Number(body.amount || 0);
+  const amount = Math.max(1, Number.isFinite(amountRaw) ? amountRaw : 0);
+
+  const uid = getCookie(c, "uid");
+  if (!uid) return c.json({ error: "unauthenticated" }, 401);
+  if (!personId || amount <= 0) return c.json({ error: "invalid-argument" }, 400);
+
+  // Person must exist
+  const exists = !!get("SELECT 1 FROM people WHERE id = ?", [personId]);
+  if (!exists) return c.json({ error: "not-found" }, 404);
+
+  // Throttle per uid
+  const allowed = await pushThrottle(`drink_request_${uid}`, 20, 10 * 60 * 1000);
+  if (!allowed) return c.json({ error: "resource-exhausted" }, 429);
+
+  const id = randomId("req");
+  run(
+    `INSERT INTO drink_requests (id, person_id, amount, status, requested_by, created_at, applied)
+     VALUES (?, ?, ?, 'pending', ?, ?, 0)`,
+    [id, personId, amount, uid, nowIso()]
   );
   return c.json({ ok: true, id });
 });
@@ -860,9 +1106,68 @@ cron.schedule(
     run(`DELETE FROM activity_log WHERE timestamp < ?`, [cutoff.toISOString()]);
   },
   { timezone: "Europe/Amsterdam" }
-);
-
-// ---- Bootstrap & Serve ----
+ );
+ 
+ // Auto-unset Schikko after Stripez event ends (+ delay), with optional cleanup
+ cron.schedule(
+   "*/10 * * * *",
+   async () => {
+     try {
+       const confRow = get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") || null;
+       if (!confRow) return;
+       let conf: any = {};
+       try {
+         conf = JSON.parse(confRow.data || "{}");
+       } catch {}
+       const dateIso = conf.date;
+       if (!dateIso) return;
+       const startISO = new Date(String(dateIso));
+       if (Number.isNaN(startISO.getTime())) return;
+       // Local midnight start
+       const startLocal = new Date(startISO.getFullYear(), startISO.getMonth(), startISO.getDate());
+       const durDays = Math.max(1, Number(conf.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
+       const endLocal = new Date(startLocal.getTime() + durDays * 24 * 60 * 60 * 1000);
+       const deadline = new Date(endLocal.getTime() + STRIPEZ_UNSET_DELAY_HOURS * 60 * 60 * 1000);
+       if (Date.now() < +deadline) return;
+ 
+       const currentKey = yearKey(new Date().getFullYear());
+       const schikkoExists = !!get("SELECT 1 FROM config WHERE key = ?", [currentKey]);
+       if (!schikkoExists) return; // already unset or not set at all
+ 
+       // Unset Schikko for the year
+       run(`DELETE FROM config WHERE key = ?`, [currentKey]);
+ 
+       switch (STRIPEZ_CLEANUP_ACTION) {
+         case "NUKE":
+           run(`DELETE FROM people`);
+           run(`DELETE FROM stripes`);
+           run(`DELETE FROM rules`);
+           run(`DELETE FROM activity_log`);
+           break;
+         case "KEEP_DECREES":
+           run(`DELETE FROM people`);
+           run(`DELETE FROM stripes`);
+           break;
+         case "KEEP_LEDGER":
+           run(`DELETE FROM rules`);
+           break;
+         case "REMOVE_STRIPES_ONLY":
+           run(`DELETE FROM stripes`);
+           break;
+         case "NOTHING":
+         default:
+           // do nothing
+           break;
+       }
+       console.log("[Stripez] Auto-unset Schikko and applied cleanup:", STRIPEZ_CLEANUP_ACTION);
+     } catch (e) {
+       console.error("[Stripez] Auto-unset job failed:", e);
+     }
+   },
+   { timezone: "Europe/Amsterdam" }
+ );
+ 
+ // ---- Bootstrap & Serve ----
 migrate();
 
 Bun.serve({

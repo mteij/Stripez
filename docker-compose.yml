@@ -13,6 +13,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://stripez.example.com,https://schikko-rules.web.app,https://schikko-rules.firebaseapp.com,http://localhost:8080}
       ORACLE_MODEL: ${ORACLE_MODEL:-gemini-2.5-flash}
       GEMINI_KEY: ${GEMINI_KEY:-}
+      # Break-glass admin key for Schikko login (optional)
+      ADMIN_KEY: ${ADMIN_KEY:-}
       # SQLite database file path inside container
       DB_FILE: ${DB_FILE:-/app/data/stripez.sqlite}
     volumes:

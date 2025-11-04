@@ -56,12 +56,20 @@ App: http://localhost:8080
 Minimal env (see .env.example):
 
 - SESSION_SECRET — required
-- RESEND_API_KEY and MAIL_FROM — required for Schikko password email
+- ADMIN_KEY — optional break-glass admin login; when set, you can log in using this value instead of a TOTP code
 - GEMINI_KEY — enables the Oracle (optional); ORACLE_MODEL defaults to gemini-2.5-flash
 - CORS_ORIGINS — CSV of allowed origins
+- DRINK_REQUIRE_APPROVAL — when true (default), guests submit drink requests and the Schikko must approve; when false, guests can record drunk stripes themselves (still subject to event timing rules)
 - PORT and DB_FILE — optional overrides
 
 Set the Calendar URL from within the app UI (Schikko only).
+
+### Drink approval (optional)
+
+If `DRINK_REQUIRE_APPROVAL=true`:
+- Guests can still press the “Drink” button and enter an amount, but this creates a pending request instead of immediately recording drunk stripes.
+- The Schikko sees pending requests via the “Drink Requests” panel in the UI and can approve or reject each one.
+- Each request shows the requested amount and the request time. Approval only applies up to the number of stripes available to fulfill.
 
 <details>
 <summary>API overview</summary>
@@ -71,8 +79,14 @@ Set the Calendar URL from within the app UI (Schikko only).
 - GET /api/rules
 - GET /api/activity?sinceDays=30
 - POST /api/schikko/set, /api/schikko/login, /api/schikko/action
+  - Schikko actions include:
+    - listDrinkRequests
+    - approveDrinkRequest
+    - rejectDrinkRequest
 - GET /api/config/calendar, GET /api/config/app
+  - config/app includes: { name, year, hasOracle, requireApprovalForDrinks }
 - POST /api/oracle/judgement, POST /api/calendar/proxy
+- POST /api/drink/request — create a pending drink request as a guest (when approval is required)
 
 </details>
 

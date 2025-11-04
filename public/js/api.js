@@ -53,11 +53,10 @@ async function getSchikkoInfo() {
   return res.json();
 }
 
-async function setSchikko({ firstName, lastName, email }) {
+async function setSchikko({ firstName, lastName }) {
   const payload = {
     firstName: String(firstName || '').trim(),
     lastName: String(lastName || '').trim(),
-    email: String(email || '').trim(),
   };
   const res = await fetch(`${API_BASE}/api/schikko/set`, {
     method: 'POST',
@@ -69,12 +68,29 @@ async function setSchikko({ firstName, lastName, email }) {
   return res.json();
 }
 
-async function loginSchikko(password) {
+async function loginSchikko(code) {
   const res = await fetch(`${API_BASE}/api/schikko/login`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function confirmSchikko({ firstName, lastName, secret, code }) {
+  const payload = {
+    firstName: String(firstName || '').trim(),
+    lastName: String(lastName || '').trim(),
+    secret: String(secret || '').trim(),
+    code: String(code || '').trim(),
+  };
+  const res = await fetch(`${API_BASE}/api/schikko/confirm`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -133,13 +149,14 @@ async function saveCalendarUrl(url) {
 
 async function getStripezDate() {
   const res = await fetch(`${API_BASE}/api/config/stripez`, { credentials: 'include' });
-  if (!res.ok) return { date: null };
+  if (!res.ok) return { date: null, durationDays: 3 };
   const data = await res.json();
-  return { date: data.date ? toTs(data.date) : null };
+  const dur = Number(data.durationDays || 3);
+  return { date: data.date ? toTs(data.date) : null, durationDays: Number.isFinite(dur) && dur > 0 ? dur : 3 };
 }
 
-async function saveStripezDate(dateString) {
-  return callSchikkoAction('saveStripezDate', { dateString });
+async function saveStripezDate(dateString, durationDays) {
+  return callSchikkoAction('saveStripezDate', { dateString, durationDays });
 }
 
 async function getCalendarDataProxy(url) {
@@ -153,7 +170,30 @@ async function getCalendarDataProxy(url) {
   return res.json(); // { icalData }
 }
 
-// Mutations: ledger/rules/logs
+ // Drink Requests API client
+ async function requestDrink(personId, amount = 1) {
+   const res = await fetch(`${API_BASE}/api/drink/request`, {
+     method: 'POST',
+     credentials: 'include',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({ personId, amount: Math.max(1, Number(amount || 1)) }),
+   });
+   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   return res.json(); // { ok, id }
+ }
+ 
+ // Admin-side (Schikko) actions
+ async function listDrinkRequests() {
+   return callSchikkoAction('listDrinkRequests', {});
+ }
+ async function approveDrinkRequest(requestId) {
+   return callSchikkoAction('approveDrinkRequest', { requestId });
+ }
+ async function rejectDrinkRequest(requestId) {
+   return callSchikkoAction('rejectDrinkRequest', { requestId });
+ }
+ 
+ // Mutations: ledger/rules/logs
 async function addNameToLedger(name) {
   return callSchikkoAction('addPerson', { name });
 }
@@ -269,6 +309,7 @@ export {
   getSchikkoInfo,
   setSchikko,
   loginSchikko,
+  confirmSchikko,
   // reads
   getPunishments,
   getRules,
@@ -280,6 +321,11 @@ export {
   getStripezDate,
   saveStripezDate,
   getCalendarDataProxy,
+  // drink requests
+  requestDrink,
+  listDrinkRequests,
+  approveDrinkRequest,
+  rejectDrinkRequest,
   // mutations
   addNameToLedger,
   addStripeToPerson,

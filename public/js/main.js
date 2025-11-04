@@ -9,7 +9,9 @@ import {
     deleteLogFromFirestore, addDrunkStripeToPerson, removeLastDrunkStripeFromPerson,
     getCalendarConfig, getAppConfig, saveCalendarUrl, getStripezDate, saveStripezDate,
     setPersonRole, logActivity, getSchikkoStatus, getSchikkoInfo,
-    setSchikko, loginSchikko, getCalendarDataProxy, getOracleJudgement
+    setSchikko, loginSchikko, confirmSchikko, getCalendarDataProxy, getOracleJudgement,
+    // drink requests
+    requestDrink, listDrinkRequests, approveDrinkRequest, rejectDrinkRequest
 } from './api.js';
 import {
     renderLedger, showStatsModal, closeMenus, renderRules,
@@ -42,6 +44,8 @@ let isSchikkoSetForTheYear = false; // NEW: Tracks if a schikko is set for the y
 let appName = 'Stripez';
 let appYear = new Date().getFullYear();
 let hasOracle = false;
+// Whether guests require Schikko approval to record drunk stripes (from server)
+let requireApprovalForDrinks = true;
 
 // --- DOM ELEMENTS ---
 const loadingState = document.getElementById('loading-state');
@@ -71,6 +75,13 @@ const setSchikkoBtn = document.getElementById('set-schikko-btn');
 const schikkoLoginContainer = document.getElementById('schikko-login-container');
 const schikkoLoginBtn = document.getElementById('schikko-login-btn');
 const editAppDateBtn = document.getElementById('edit-app-date-btn');
+
+// TOTP setup modal elements (populated if present in HTML)
+const totpModal = document.getElementById('totp-setup-modal');
+const closeTotpModalBtn = document.getElementById('close-totp-setup-modal');
+const totpQrEl = document.getElementById('totp-qr');
+const totpSecretEl = document.getElementById('totp-secret');
+const totpManualEl = document.getElementById('totp-manual');
 
 // Initialize default sorting UI (Role → Stripes → A–Z)
 currentSortOrder = 'default';
@@ -117,6 +128,12 @@ const decrementBeersBtn = document.getElementById('decrement-beers-btn');
 const confirmDrunkStripesBtn = document.getElementById('confirm-drunk-stripes-btn');
 const availableStripesDisplay = document.getElementById('available-stripes-display');
 
+// Drink Requests admin UI
+const openDrinkRequestsBtn = document.getElementById('open-drink-requests-btn');
+const drinkRequestsModal = document.getElementById('drink-requests-modal');
+const closeDrinkRequestsModalBtn = document.getElementById('close-drink-requests-modal');
+const drinkRequestsContent = document.getElementById('drink-requests-content');
+
 // Logbook elements
 const openLogbookBtn = document.getElementById('open-logbook-btn');
 const closeLogbookModalBtn = document.getElementById('close-logbook-modal');
@@ -141,20 +158,21 @@ let currentPersonIdForDrunkStripes = null;
            appName = cfg?.name || appName;
            appYear = Number(cfg?.year) || appYear;
            hasOracle = !!cfg?.hasOracle;
-
+           requireApprovalForDrinks = typeof cfg?.requireApprovalForDrinks === 'boolean' ? cfg.requireApprovalForDrinks : requireApprovalForDrinks;
+ 
            const displayTitle = appYear ? `${appName} ${appYear}` : appName;
-
+ 
            // Update document/head branding
            document.title = displayTitle;
            const metaApp = document.querySelector('meta[name="application-name"]');
            if (metaApp) metaApp.setAttribute('content', appName);
            const metaApple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
            if (metaApple) metaApple.setAttribute('content', appName);
-
+ 
            // Update visible header
            const titleSpan = document.getElementById('main-title-text');
            if (titleSpan) titleSpan.textContent = displayTitle;
-
+ 
            // Hide Oracle if not available
            if (!hasOracle) {
                const oracleBtn = document.getElementById('open-gemini-from-hub-btn');
@@ -213,7 +231,7 @@ let currentPersonIdForDrunkStripes = null;
  * Handles the Schikko login process.
  */
 async function handleLogin() {
-    await confirmSchikko();
+    await ensureSchikkoSession();
 }
 
 /**
@@ -244,6 +262,7 @@ function updateGuestUI() {
     if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'flex';
     if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
     if (editCalendarBtn) editCalendarBtn.style.display = isGuest ? 'none' : 'inline-flex';
+    if (openDrinkRequestsBtn) openDrinkRequestsBtn.style.display = isGuest ? 'none' : 'inline-flex';
     
     if (schikkoLoginBtn) {
         schikkoLoginBtn.textContent = isSchikkoSessionActive ? 'Schikko Logout' : 'Schikko Login';
@@ -266,11 +285,11 @@ async function checkSchikkoStatus() {
 
         if (isSet) {
             setSchikkoBtn.classList.add('hidden');
-            schikkoLoginContainer.classList.remove('hidden');
         } else {
             setSchikkoBtn.classList.remove('hidden');
-            schikkoLoginContainer.classList.add('hidden');
         }
+        // Always present Schikko login (supports ADMIN_KEY even when no Schikko is set)
+        schikkoLoginContainer.classList.remove('hidden');
     } catch (error) {
         console.error("Error checking Schikko status:", error);
         showAlert("Could not verify the Schikko's status. The archives may be sealed.", "Connection Error");
@@ -281,30 +300,30 @@ async function checkSchikkoStatus() {
  * Replaces the old schikko confirmation with a secure password login flow.
  * Caches the login status in the current session to avoid repeated logins.
  */
-async function confirmSchikko() {
+async function ensureSchikkoSession() {
     if (isSchikkoSessionActive) {
         return true;
     }
 
-    const password = await showSchikkoLoginModal();
-    if (!password) {
+    const code = await showSchikkoLoginModal();
+    if (!code) {
         return false;
     }
 
     try {
-        showLoading('Authenticating...');
-        const result = await loginSchikko(password);
+        showLoading('Verifying code...');
+        const result = await loginSchikko(code);
         hideLoading();
 
         if (result?.success && result?.sessionId) {
             localStorage.setItem('schikkoSessionId', result.sessionId);
             isSchikkoSessionActive = true;
-            await showAlert("Password accepted. You are the Schikko.", "Login Successful");
+            await showAlert("Code accepted. You are the Schikko.", "Login Successful");
             updateGuestUI();
             updateAppFooter();
             return true;
         } else {
-            await showAlert("The password was incorrect. The archives remain sealed to you.", "Login Failed");
+            await showAlert("The code was incorrect. Access denied.", "Login Failed");
             return false;
         }
     } catch (error) {
@@ -638,10 +657,10 @@ async function updateAppFooter() {
     if (isSchikkoSetForTheYear) { // Use the correct state variable
         try {
             const info = await getSchikkoInfo();
-            if (info.email) {
+            if (info.name) {
                 const expiryDate = new Date(info.expires);
                 const expiryString = expiryDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric'});
-                schikkoInfoText = `Current Schikko: ${info.email}. Reign ends on ${expiryString}.`;
+                schikkoInfoText = `Current Schikko: ${info.name}. Reign ends on ${expiryString}.`;
             }
         } catch (error) {
             console.error("Could not fetch Schikko info:", error);
@@ -873,9 +892,81 @@ async function handleGeminiSubmit() {
 
 
 
+/**
+* Show TOTP setup with QR and manual details, and require 6‑digit confirmation to finalize Schikko.
+* Expects qrcodejs (window.QRCode) to be loaded; falls back to a link if absent.
+*/
+function showTotpSetup(otpauthUrl, secret, account, issuer, firstName, lastName) {
+   if (!totpModal) return;
+
+   // Populate QR/secret/manual
+   if (totpQrEl) {
+       totpQrEl.innerHTML = '';
+       try {
+           if (window.QRCode) {
+               new QRCode(totpQrEl, { text: otpauthUrl, width: 200, height: 200 });
+           } else {
+               const a = document.createElement('a');
+               a.href = otpauthUrl;
+               a.textContent = 'Open otpauth:// link';
+               a.className = 'text-blue-700 underline break-all';
+               totpQrEl.appendChild(a);
+           }
+       } catch (_) {}
+   }
+   if (totpSecretEl) totpSecretEl.textContent = secret || '';
+   if (totpManualEl) {
+       const manual = `Issuer: ${issuer || ''}\nAccount: ${account || ''}\nType: TOTP (SHA1, 6 digits, 30s)`;
+       totpManualEl.textContent = manual;
+   }
+
+   // Bind confirm handlers
+   const codeInput = document.getElementById('totp-code-input');
+   const confirmBtn = document.getElementById('totp-confirm-btn');
+
+   const cleanup = () => {
+       if (confirmBtn) confirmBtn.onclick = null;
+       if (codeInput) codeInput.onkeydown = null;
+   };
+
+   const doConfirm = async () => {
+       const code = String(codeInput?.value || '').trim();
+       if (!/^\d{6}$/.test(code)) {
+           await showAlert('Enter a valid 6‑digit code from your authenticator app.', 'Invalid Code');
+           return;
+       }
+       try {
+           showLoading('Verifying 2FA...');
+           const result = await confirmSchikko({
+               firstName,
+               lastName,
+               secret,
+               code,
+           });
+           hideLoading();
+           if (result?.success) {
+               totpModal.classList.add('hidden');
+               cleanup();
+               await showAlert('2FA confirmed. The title has been claimed.', 'Title Claimed!');
+               await checkSchikkoStatus(); // reflect new state in UI (shows login)
+           } else {
+               await showAlert('The code was incorrect. Please try again.', 'Verification Failed');
+           }
+       } catch (e) {
+           hideLoading();
+           await showAlert(`An error occurred while confirming 2FA: ${e.message}`, 'Verification Error');
+       }
+   };
+
+   if (confirmBtn) confirmBtn.onclick = (e) => { e.stopPropagation(); doConfirm(); };
+   if (codeInput) codeInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); doConfirm(); } };
+
+   totpModal.classList.remove('hidden');
+}
+
 // --- EVENT HANDLERS ---
 async function handleAddName() {
-    if (!await confirmSchikko()) return;
+    if (!await ensureSchikkoSession()) return;
     const name = mainInput.value.trim();
     if (!name) return;
     if (ledgerDataCache.some(p => p.name.toLowerCase() === name.toLowerCase())) {
@@ -931,7 +1022,7 @@ async function handleRemoveStripe(docId) {
 }
 
 async function handleAddRule() {
-    const isConfirmed = await confirmSchikko();
+    const isConfirmed = await ensureSchikkoSession();
     if (!isConfirmed) return;
 
     const text = ruleSearchInput.value.trim();
@@ -1017,7 +1108,7 @@ punishmentListDiv.addEventListener('click', async (e) => {
             if(isSchikkoSessionActive) document.getElementById(`menu-${id}`)?.classList.toggle('hidden');
             break;
         case 'add-stripe':
-            if (await confirmSchikko()) {
+            if (await ensureSchikkoSession()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
                     showLoading('Saving stripe...');
@@ -1079,7 +1170,7 @@ punishmentListDiv.addEventListener('click', async (e) => {
             drunkStripesModal.classList.remove('hidden'); 
             break;
         case 'remove-stripe':
-            if (await confirmSchikko()) {
+            if (await ensureSchikkoSession()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
                     showLoading('Reverting...');
@@ -1093,7 +1184,7 @@ punishmentListDiv.addEventListener('click', async (e) => {
             }
             break;
         case 'remove-drunk-stripe':
-            if (await confirmSchikko()) {
+            if (await ensureSchikkoSession()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
                     showLoading('Reverting...');
@@ -1107,17 +1198,17 @@ punishmentListDiv.addEventListener('click', async (e) => {
             }
             break;
         case 'rename':
-             if (await confirmSchikko()) {
+             if (await ensureSchikkoSession()) {
                 handleRename(id);
              }
             break;
         case 'delete':
-             if (await confirmSchikko()) {
+             if (await ensureSchikkoSession()) {
                 handleDeletePerson(id);
              }
             break;
         case 'set-role':
-            if (await confirmSchikko()) {
+            if (await ensureSchikkoSession()) {
                 const role = target.dataset.role || '';
                 const person = ledgerDataCache.find(p => p.id === id);
                 showLoading('Updating role...');
@@ -1140,7 +1231,7 @@ punishmentListDiv.addEventListener('click', async (e) => {
 });
 editRulesBtn?.addEventListener('click', async () => {
     if (!rulesListOl.classList.contains('rules-list-editing')) {
-        const isConfirmed = await confirmSchikko();
+        const isConfirmed = await ensureSchikkoSession();
         if (!isConfirmed) return;
     }
     rulesListOl.classList.toggle('rules-list-editing');
@@ -1218,7 +1309,7 @@ logbookContentDiv?.addEventListener('click', async (e) => {
     if (!idsStr) return;
     const ids = idsStr.split(',').filter(id => id);
     if (action === 'delete') {
-        if (await confirmSchikko()) {
+        if (await ensureSchikkoSession()) {
             const confirmed = await showConfirm(`Are you sure you want to delete this log entry? This action cannot be undone.`, "Confirm Log Deletion");
             if (confirmed) {
                 showLoading('Deleting log entry...');
@@ -1276,9 +1367,83 @@ closeGeminiModalBtn?.addEventListener('click', () => {
 
 geminiSubmitBtn?.addEventListener('click', handleGeminiSubmit);
 
-closeDrunkStripesModalBtn.addEventListener('click', () => { 
-    drunkStripesModal.classList.add('hidden'); 
+// ---- Drink Requests admin UI wiring ----
+async function loadDrinkRequests() {
+    try {
+        const resp = await listDrinkRequests();
+        renderDrinkRequestsList(resp?.requests || []);
+    } catch (e) {
+        console.error('Failed to load drink requests:', e);
+        if (drinkRequestsContent) {
+            drinkRequestsContent.innerHTML = '<p class="text-center text-lg text-[#6f4e37] p-4">Failed to load requests.</p>';
+        }
+    }
+}
+
+function renderDrinkRequestsList(requests) {
+    if (!drinkRequestsContent) return;
+    if (!Array.isArray(requests) || requests.length === 0) {
+        drinkRequestsContent.innerHTML = '<p class="text-center text-lg text-[#6f4e37] p-4">No pending drink requests.</p>';
+        return;
+    }
+    drinkRequestsContent.innerHTML = '';
+    requests.forEach(r => {
+        const when = r.created_at ? new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-[#e9e2d7] border border-[#b9987e] rounded-md p-3';
+        row.innerHTML = `
+            <div>
+                <p class="text-[#4a3024]"><span class="font-bold">${(r.person_name || 'Unknown')}</span> — Amount: <span class="font-bold text-[#c0392b]">${r.amount}</span></p>
+                <p class="text-sm text-[#6f4e37]">Requested at ${when}</p>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn-ancient px-3 py-2 rounded-md" data-req-action="approve" data-req-id="${r.id}">Approve</button>
+                <button class="btn-subtle-decree px-3 py-2 rounded-md" data-req-action="reject" data-req-id="${r.id}">Reject</button>
+            </div>
+        `;
+        drinkRequestsContent.appendChild(row);
+    });
+}
+
+openDrinkRequestsBtn?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!await ensureSchikkoSession()) return;
+    if (drinkRequestsModal) drinkRequestsModal.classList.remove('hidden');
+    await loadDrinkRequests();
 });
+
+closeDrinkRequestsModalBtn?.addEventListener('click', () => {
+    if (drinkRequestsModal) drinkRequestsModal.classList.add('hidden');
+});
+
+drinkRequestsContent?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-req-action]');
+    if (!btn) return;
+    const reqId = btn.getAttribute('data-req-id');
+    const act = btn.getAttribute('data-req-action');
+    if (!reqId || !act) return;
+
+    if (!await ensureSchikkoSession()) return;
+
+    try {
+        showLoading(act === 'approve' ? 'Approving...' : 'Rejecting...');
+        if (act === 'approve') {
+            const res = await approveDrinkRequest(reqId);
+            const applied = Number(res?.applied || 0);
+            await logActivity('APPROVE_DRINK_REQUEST', 'Schikko', `Approved drink request (${applied} applied).`);
+        } else {
+            await rejectDrinkRequest(reqId);
+            await logActivity('REJECT_DRINK_REQUEST', 'Schikko', `Rejected drink request.`);
+        }
+    } finally {
+        hideLoading();
+    }
+    await loadDrinkRequests();
+});
+ 
+ closeDrunkStripesModalBtn.addEventListener('click', () => {
+     drunkStripesModal.classList.add('hidden');
+ });
 
 incrementBeersBtn.addEventListener('click', () => {
     const currentValue = parseInt(howManyBeersInput.value);
@@ -1296,33 +1461,54 @@ decrementBeersBtn.addEventListener('click', () => {
 });
 
 confirmDrunkStripesBtn.addEventListener('click', async () => {
-    if (currentPersonIdForDrunkStripes) {
-        const count = parseInt(howManyBeersInput.value);
-        const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
-        const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
+    if (!currentPersonIdForDrunkStripes) return;
 
-        if (count > availablePenaltiesToFulfill) {
-            await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
-            return;
-        }
+    const count = Math.max(1, parseInt(howManyBeersInput.value));
+    const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
+    const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
 
-        if (count > 0) {
+    if (count > availablePenaltiesToFulfill) {
+        await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
+        return;
+    }
+
+    if (count > 0) {
+        if (!isSchikkoSessionActive && requireApprovalForDrinks) {
+            // Guests submit a drink request instead of directly recording
+            showLoading('Submitting request...');
+            try {
+                await requestDrink(currentPersonIdForDrunkStripes, count);
+                await logActivity('DRINK_REQUEST', 'Guest', `Guest requested ${count} draught(s) for ${person?.name || 'someone'}.`);
+                // Hide overlay before showing the modal to avoid blocking interactions
+                hideLoading();
+                await showAlert('Your drink request was submitted and awaits Schikko approval.', 'Request Submitted');
+            } catch (e) {
+                // Ensure loading overlay is hidden on error and surface a friendly message
+                hideLoading();
+                await showAlert(`Failed to submit drink request: ${e?.message || 'Unknown error'}`, 'Request Failed');
+            } finally {
+                // Safety: make sure overlay is hidden in all cases
+                hideLoading();
+            }
+        } else {
+            // Schikko (or approval not required): record immediately
             const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
             showLoading('Recording draughts...');
             try {
                 await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count);
-                await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person.name}.`);
+                await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person?.name || 'someone'}.`);
             } finally {
                 hideLoading();
             }
         }
-        drunkStripesModal.classList.add('hidden');
-        currentPersonIdForDrunkStripes = null;
     }
+
+    drunkStripesModal.classList.add('hidden');
+    currentPersonIdForDrunkStripes = null;
 });
 
 editCalendarBtn.addEventListener('click', async () => {
-    if(!await confirmSchikko()) return;
+    if(!await ensureSchikkoSession()) return;
     const config = await getCalendarConfig();
     const newUrl = await showPrompt('Enter the public iCal URL for the calendar:', config.url || '', 'Update Calendar');
     if (newUrl) {
@@ -1337,31 +1523,42 @@ editCalendarBtn.addEventListener('click', async () => {
 });
 
 editAppDateBtn.addEventListener('click', async () => {
-    if (!await confirmSchikko()) return;
+    if (!await ensureSchikkoSession()) return;
 
     const eventData = await getStripezDate();
     const currentDate = eventData.date ? eventData.date.toDate().toISOString().split('T')[0] : '';
-    
+    const currentDuration = Math.max(1, Number(eventData.durationDays || 3));
+
     const newDateStr = await showPrompt(
         `Enter the date for the next ${appName}.`,
         currentDate,
         `Decree ${appName} Date (YYYY-MM-DD)`
     );
 
-    if (newDateStr) {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(newDateStr)) {
-            showLoading(`Saving ${appName} date...`);
-            try {
-                await saveStripezDate(newDateStr);
-            } finally {
-                hideLoading();
-            }
-            await showAlert(`The date for the ${appName} has been decreed!`, "Success");
-            await loadAndRenderAppCountdown();
-        } else {
-            await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
-        }
+    if (!newDateStr) return;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDateStr)) {
+        await showAlert("Invalid date format. Please use YYYY-MM-DD.", "Scribe's Error");
+        return;
     }
+
+    const durationInput = await showPrompt(
+        `How many days shall the ${appName} endure?`,
+        String(currentDuration),
+        `Event Duration (days, ≥ 1)`
+    );
+    if (durationInput === null) return; // user canceled
+    const parsedDur = parseInt(durationInput, 10);
+    const durationDays = Number.isFinite(parsedDur) && parsedDur > 0 ? parsedDur : currentDuration;
+
+    showLoading(`Saving ${appName} date...`);
+    try {
+        await saveStripezDate(newDateStr, durationDays);
+    } finally {
+        hideLoading();
+    }
+    await showAlert(`The date and duration for the ${appName} have been decreed!`, "Success");
+    await loadAndRenderAppCountdown();
 });
 
 fullAgendaBtn.addEventListener('click', () => {
@@ -1372,28 +1569,33 @@ fullAgendaBtn.addEventListener('click', () => {
 closeAgendaModalBtn.addEventListener('click', () => {
     showAgendaModal(false);
 });
+closeTotpModalBtn?.addEventListener('click', () => {
+    totpModal?.classList.add('hidden');
+});
 
 // New listeners for Schikko auth flow
 setSchikkoBtn.addEventListener('click', async () => {
     const data = await showSetSchikkoModal();
     if (!data) return;
 
-    const { firstName, lastName, email } = data;
-    if (!firstName || !lastName || !email || !email.includes('@')) {
-        await showAlert("Please provide a valid first name, last name, and email.", "Invalid Input");
+    const { firstName, lastName } = data;
+    if (!firstName || !lastName) {
+        await showAlert("Please provide a valid first and last name.", "Invalid Input");
         return;
     }
 
     try {
-        showLoading('Setting Schikko...');
-        const result = await setSchikko({ firstName, lastName, email });
+        showLoading('Preparing TOTP enrollment...');
+        const result = await setSchikko({ firstName, lastName });
         hideLoading();
 
-        if (result?.success) {
-            await showAlert("You have claimed the title! The sacred password has been sent to your email address.", "Title Claimed!");
-            await checkSchikkoStatus();
+        if (result?.success && result?.otp) {
+            const otp = result.otp;
+            const account = `${firstName} ${lastName}`.trim();
+            // Show modal that requires 6‑digit confirmation to finalize
+            showTotpSetup(otp.otpauthUrl, otp.secret, account, `${appName} ${new Date().getFullYear()}`, firstName, lastName);
         } else {
-            throw new Error(result?.message || "Failed to set Schikko.");
+            throw new Error(result?.message || "Failed to start Schikko setup.");
         }
     } catch (error) {
         hideLoading();

@@ -4,10 +4,14 @@
 /* @ts-nocheck */
 import { Database } from "bun:sqlite";
 import { mkdirSync, existsSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 
 // Determine DB path (persisted inside ./data)
-const DB_FILE = process.env.DB_FILE || "../data/stripez.sqlite";
+// Resolve default path relative to repo root (one dir above src)
+const DEFAULT_DB = join(import.meta.dir, "..", "data", "stripez.sqlite");
+const DB_FILE = (process.env.DB_FILE && process.env.DB_FILE.trim())
+ ? process.env.DB_FILE
+ : DEFAULT_DB;
 
 // Ensure data directory exists
 const dataDir = dirname(DB_FILE);
@@ -16,6 +20,9 @@ if (!existsSync(dataDir)) {
 }
 
 export const db = new Database(DB_FILE, { create: true });
+export const DB_PATH = DB_FILE;
+// Helpful for troubleshooting which DB file is actually used (local vs Docker)
+try { console.log(`[DB] Using file: ${DB_FILE}`); } catch (_) {}
 
 // Pragmas for reliability
 db.exec(`
@@ -124,5 +131,23 @@ export function migrate() {
       key TEXT PRIMARY KEY,
       attempts TEXT NOT NULL DEFAULT '[]'
     );
+  `);
+
+  // drink_requests (guest requests to record consumed draughts; timestamps ISO TEXT)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS drink_requests (
+      id TEXT PRIMARY KEY,
+      person_id TEXT NOT NULL,
+      amount INTEGER NOT NULL CHECK (amount > 0),
+      status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
+      requested_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      processed_at TEXT,
+      processed_by TEXT,
+      applied INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_drink_requests_status_created ON drink_requests(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_drink_requests_person ON drink_requests(person_id);
   `);
 }

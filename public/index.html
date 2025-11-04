@@ -161,6 +161,7 @@
                 <button id="open-randomizer-hub-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Randomizers">
                     👑
                 </button>
+                <button id="open-drink-requests-btn" class="btn-ancient flex-shrink-0 px-4 rounded-md text-2xl flex items-center justify-center" title="Open Drink Requests">✔️</button>
                 <input type="text" id="main-input" placeholder="Search or Inscribe Name..." class="flex-grow bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]" list="ledger-names">
                 <datalist id="ledger-names"></datalist>
                 <button id="add-btn" class="btn-ancient w-[56px] h-[56px] flex items-center justify-center rounded-md text-3xl font-bold hidden" title="Inscribe Name">
@@ -332,6 +333,15 @@
         </div>
     </div>
 
+    <!-- Drink Requests Modal -->
+    <div id="drink-requests-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-3xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-drink-requests-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Drink Requests</h2>
+            <div id="drink-requests-content" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
     <div id="generic-alert-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
             <h2 id="alert-title" class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">A Declaration!</h2>
@@ -366,8 +376,8 @@
     <div id="schikko-login-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
             <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">Schikko Authentication</h2>
-            <p class="text-lg text-[#4a3024] mb-4">Inscribe the sacred password.</p>
-            <input type="password" id="schikko-password-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6" placeholder="Password...">
+            <p class="text-lg text-[#4a3024] mb-4">Enter the 6-digit code from your authenticator app.</p>
+            <input type="password" id="schikko-password-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6" placeholder="Code or admin key">
             <div class="flex justify-center gap-4">
                 <button id="schikko-login-submit-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Enter</button>
                 <button id="schikko-login-cancel-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Cancel</button>
@@ -378,13 +388,32 @@
     <div id="set-schikko-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
             <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">Claim the Title of Schikko</h2>
-            <p class="text-lg text-[#4a3024] mb-4">Enter thy first name, last name, and email. The sacred password will be sent to thy inbox.</p>
+            <p class="text-lg text-[#4a3024] mb-4">Enter thy first name and last name. After claiming, scan the QR code that appears and use your authenticator app to generate 6-digit codes.</p>
             <input type="text" id="set-schikko-firstname-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4" placeholder="First name">
             <input type="text" id="set-schikko-lastname-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4" placeholder="Last name">
-            <input type="email" id="set-schikko-email-input" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6" placeholder="thy-email@domain.com">
             <div class="flex justify-center gap-4">
                 <button id="set-schikko-submit-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Claim Title</button>
                 <button id="set-schikko-cancel-btn" class="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="totp-setup-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-md p-8 rounded-lg border-4 border-[#8c6b52] relative text-center">
+            <button id="close-totp-setup-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">Set Up Authenticator</h2>
+            <p class="text-lg text-[#4a3024] mb-4">Scan this QR with Google Authenticator, 1Password, or similar. Then confirm with a 6‑digit code to claim the title.</p>
+            <div id="totp-qr" class="flex items-center justify-center mb-4"></div>
+            <div class="text-left bg-[#e9e2d7] border-2 border-[#b9987e] rounded-md p-4 mb-2">
+                <p class="text-sm text-[#6f4e37]"><strong>Secret:</strong> <span id="totp-secret" class="break-all"></span></p>
+                <pre id="totp-manual" class="text-sm mt-2 whitespace-pre-wrap"></pre>
+            </div>
+            <div class="mt-4 text-left">
+                <p class="text-md text-[#4a3024] mb-2">Enter the 6‑digit code from your authenticator app:</p>
+                <input type="text" id="totp-code-input" inputmode="numeric" pattern="\\d{6}" maxlength="6" placeholder="6-digit code" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]">
+                <div class="flex justify-center gap-4 mt-4">
+                    <button id="totp-confirm-btn" class="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg">Confirm</button>
+                </div>
             </div>
         </div>
     </div>
@@ -471,6 +500,7 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="/js/main.js?v=1.2" type="module"></script>
     <!-- Global Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Loading">
