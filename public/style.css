@@ -523,3 +523,8 @@ body {
     background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%) !important;
     /* Keep gradient; do not nullify background-image, as gradients are background-images */
 }
+
+/* App fade-in utilities to prevent brand flash */
+.app-fade { opacity: 0; transition: opacity 600ms ease; }
+.app-fade-in { opacity: 1; }
+.app-fade-slow { transition-duration: 700ms; }

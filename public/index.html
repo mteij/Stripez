@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stripez</title>
-    <meta name="application-name" content="Stripez">
-    <meta name="apple-mobile-web-app-title" content="Stripez">
+    <title>Loading…</title>
+    <meta name="application-name" content="">
+    <meta name="apple-mobile-web-app-title" content="">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="/assets/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -80,13 +80,13 @@
 
         <header class="text-center mb-4 pb-4">
             <h1 id="main-title" class="font-cinzel-decorative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">
-                <span id="main-title-text">Stripez</span>
+                <span id="main-title-text" class="opacity-0 transition-opacity duration-700"></span>
                 <span id="live-badge" class="live-badge hidden"><span class="live-dot"></span> LIVE</span>
             </h1>
             <p class="text-lg text-[#6f4e37] mt-2">Schikko Rules as Decreed by the Ancients</p>
             <div id="countdown-container" class="mt-4 flex justify-center items-center gap-2">
                 <span id="countdown" class="font-cinzel-decorative text-xl text-red-700"></span>
-                <button id="edit-app-date-btn" class="btn-calendar-icon hidden" title="Edit Stripez Date">&#x270E;</button>
+                <button id="edit-app-date-btn" class="btn-calendar-icon hidden" title="Edit Event Date">&#x270E;</button>
             </div>
 
             <!-- Stripe‑o‑meter (visible only during the event) -->
@@ -115,7 +115,7 @@
             <ol class="roman-list text-base sm:text-lg md:text-xl leading-snug sm:leading-relaxed text-[#4a3024]">
                 <li>The Schikko is chosen by sacred overbidding, each soul raising the burden until one alone dares bear it.</li>
                 <li>All must obey the Schikko’s decrees, for his word is law within the circle.</li>
-                <li>He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the Stripez until penance is made.</li>
+                <li>He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the <span id="app-name-inline" class="opacity-0 transition-opacity duration-700"></span> until penance is made.</li>
             </ol>
             
             <div id="show-decrees-container" class="flex justify-center items-center gap-4 mt-8">
@@ -426,7 +426,7 @@
                 <textarea id="edit-rule-text-input" rows="4" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4"></textarea>
                 
                 <label for="edit-rule-tags-input" class="block text-lg text-[#4a3024] mb-2">Tags (comma-separated):</label>
-                <input type="text" id="edit-rule-tags-input" placeholder="e.g., Stripez, Meeting" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4">
+                <input type="text" id="edit-rule-tags-input" placeholder="e.g., Event, Meeting" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-4">
 
                 <div id="existing-tags-container" class="mb-6"></div>
             </div>

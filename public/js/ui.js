@@ -397,7 +397,7 @@ function renderLedger(viewData, term, isSchikko) {
     const MIN_THRESHOLD = 15;
     const MAX_THRESHOLD = 40;
     const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.max(MIN_THRESHOLD, Math.min(calculatedThreshold, MAX_THRESHOLD));
-    const appNameDom = document.querySelector('meta[name="application-name"]')?.content || 'Stripez';
+    const appNameDom = (document.querySelector('meta[name="application-name"]')?.content || '').trim();
 
     viewData.forEach(person => {
         const normalStripesCount = person.stripes?.length || 0;
@@ -469,7 +469,7 @@ function renderLedger(viewData, term, isSchikko) {
                             </div>
                             <div class="kebab-submenu hidden absolute left-full top-0 ml-0 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-20">
                                 <a href="#" data-action="set-role" data-role="Schikko" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Schikko</a>
-                                <a href="#" data-action="set-role" data-role="${escapeHTML(appNameDom)}" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">${escapeHTML(appNameDom)}</a>
+                                ${appNameDom ? `<a href="#" data-action="set-role" data-role="${escapeHTML(appNameDom)}" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">${escapeHTML(appNameDom)}</a>` : ''}
                                 <a href="#" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>
                                 <a href="#" data-action="set-role" data-role="Activist" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Activist</a>
                                 <a href="#" data-action="set-role" data-role="" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Clear Role</a>
@@ -795,7 +795,7 @@ function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
     // If no date is set, default title to current year and hide LIVE
     if (!appData || !appData.date) {
         const year = new Date().getFullYear();
-        if (titleTextEl) titleTextEl.textContent = `${appName} ${year}`;
+        if (titleTextEl) { titleTextEl.textContent = `${appName} ${year}`; titleTextEl.classList.remove('opacity-0'); }
         if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
         document.title = `${appName} ${year}`;
         countdownContainer.textContent = `Date for the next ${appName} is not yet decreed.`;
@@ -811,7 +811,7 @@ function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
     const endDate = new Date(startDate.getTime() + EVENT_DURATION_DAYS * 24 * 60 * 60 * 1000);
  
     // Update dynamic title to {APP_NAME} {YEAR}
-    if (titleTextEl) titleTextEl.textContent = `${appName} ${startDate.getFullYear()}`;
+    if (titleTextEl) { titleTextEl.textContent = `${appName} ${startDate.getFullYear()}`; titleTextEl.classList.remove('opacity-0'); }
  
     // Fire confetti immediately on page load if the event is currently happening (once per load)
     const nowInitial = Date.now();

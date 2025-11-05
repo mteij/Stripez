@@ -41,7 +41,7 @@ let isSchikkoSessionActive = false; // Secure session state for Schikko
 let isSchikkoSetForTheYear = false; // NEW: Tracks if a schikko is set for the year
 
 // App branding/config (from server env)
-let appName = 'Stripez';
+let appName = '';
 let appYear = new Date().getFullYear();
 let hasOracle = false;
 // Whether guests require Schikko approval to record drunk stripes (from server)
@@ -160,19 +160,28 @@ let currentPersonIdForDrunkStripes = null;
            hasOracle = !!cfg?.hasOracle;
            requireApprovalForDrinks = typeof cfg?.requireApprovalForDrinks === 'boolean' ? cfg.requireApprovalForDrinks : requireApprovalForDrinks;
  
-           const displayTitle = appYear ? `${appName} ${appYear}` : appName;
- 
+           const displayTitle = appName ? (appYear ? `${appName} ${appYear}` : appName) : '';
+
            // Update document/head branding
-           document.title = displayTitle;
+           if (displayTitle) document.title = displayTitle;
            const metaApp = document.querySelector('meta[name="application-name"]');
-           if (metaApp) metaApp.setAttribute('content', appName);
+           if (metaApp && appName) metaApp.setAttribute('content', appName);
            const metaApple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-           if (metaApple) metaApple.setAttribute('content', appName);
- 
+           if (metaApple && appName) metaApple.setAttribute('content', appName);
+
            // Update visible header
            const titleSpan = document.getElementById('main-title-text');
-           if (titleSpan) titleSpan.textContent = displayTitle;
- 
+           if (titleSpan && displayTitle) {
+               titleSpan.textContent = displayTitle;
+               requestAnimationFrame(() => titleSpan.classList.remove('opacity-0'));
+           }
+           // Also populate any inline app-name placeholders and fade them in
+           const inlineNameEl = document.getElementById('app-name-inline');
+           if (inlineNameEl && appName) {
+               inlineNameEl.textContent = appName;
+               requestAnimationFrame(() => inlineNameEl.classList.remove('opacity-0'));
+           }
+
            // Hide Oracle if not available
            if (!hasOracle) {
                const oracleBtn = document.getElementById('open-gemini-from-hub-btn');
@@ -1135,17 +1144,18 @@ punishmentListDiv.addEventListener('click', async (e) => {
                         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                        const countdownString = `Next ${appName} in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
-
+                        const nameForCopy = appName || 'event';
+                        const countdownString = `Next ${nameForCopy} in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+ 
                         await showAlert(
-                            `The consumption of the Golden Liquid is a sacred rite reserved for the ${appName}.\n${countdownString}`,
+                            `The consumption of the Golden Liquid is a sacred rite reserved for the ${nameForCopy}.\n${countdownString}`,
                             'Patience, Young One!'
                         );
                         return; // Stop execution
                     }
                 } else {
                     await showAlert(
-                        `The date for the next ${appName} has not been decreed. The Golden Liquid cannot be consumed.`,
+                        `The date for the next ${appName || 'event'} has not been decreed. The Golden Liquid cannot be consumed.`,
                         'Patience, Young One!'
                     );
                     return;
@@ -1529,10 +1539,11 @@ editAppDateBtn.addEventListener('click', async () => {
     const currentDate = eventData.date ? eventData.date.toDate().toISOString().split('T')[0] : '';
     const currentDuration = Math.max(1, Number(eventData.durationDays || 3));
 
+    const nameForCopy = appName || 'event';
     const newDateStr = await showPrompt(
-        `Enter the date for the next ${appName}.`,
+        `Enter the date for the next ${nameForCopy}.`,
         currentDate,
-        `Decree ${appName} Date (YYYY-MM-DD)`
+        appName ? `Decree ${appName} Date (YYYY-MM-DD)` : `Decree Event Date (YYYY-MM-DD)`
     );
 
     if (!newDateStr) return;
@@ -1543,7 +1554,7 @@ editAppDateBtn.addEventListener('click', async () => {
     }
 
     const durationInput = await showPrompt(
-        `How many days shall the ${appName} endure?`,
+        `How many days shall the ${nameForCopy} endure?`,
         String(currentDuration),
         `Event Duration (days, ≥ 1)`
     );
