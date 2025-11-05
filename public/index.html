@@ -510,12 +510,17 @@
           var meta = document.querySelector('meta[name="application-name"]');
           var appName = ((meta && meta.getAttribute('content')) || '').trim() || 'Schikko Rules';
           var year = new Date().getFullYear();
+          // Ensure the title is visible even if a stale HTML adds opacity-0 or main.js fails
           titleEl.textContent = appName + ' ' + year;
-          titleEl.classList.remove('opacity-0');
+          titleEl.classList.remove('opacity-0', 'app-fade');
+          titleEl.style.opacity = '1';
+          titleEl.style.visibility = 'visible';
           var inline = document.getElementById('app-name-inline');
           if (inline) {
             inline.textContent = appName;
-            inline.classList.remove('opacity-0');
+            inline.classList.remove('opacity-0', 'app-fade');
+            inline.style.opacity = '1';
+            inline.style.visibility = 'visible';
           }
         } catch (e) { /* no-op */ }
       })();
