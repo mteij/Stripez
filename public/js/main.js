@@ -155,29 +155,29 @@ let currentPersonIdForDrunkStripes = null;
        // Load app config (branding + oracle availability)
        try {
            const cfg = await getAppConfig();
-           appName = cfg?.name || appName;
+           appName = (cfg?.name && String(cfg.name).trim()) || 'Schikko Rules';
            appYear = Number(cfg?.year) || appYear;
            hasOracle = !!cfg?.hasOracle;
            requireApprovalForDrinks = typeof cfg?.requireApprovalForDrinks === 'boolean' ? cfg.requireApprovalForDrinks : requireApprovalForDrinks;
  
-           const displayTitle = appName ? (appYear ? `${appName} ${appYear}` : appName) : '';
+           const displayTitle = appYear ? `${appName} ${appYear}` : appName;
 
            // Update document/head branding
-           if (displayTitle) document.title = displayTitle;
+           document.title = displayTitle;
            const metaApp = document.querySelector('meta[name="application-name"]');
-           if (metaApp && appName) metaApp.setAttribute('content', appName);
+           if (metaApp) metaApp.setAttribute('content', appName);
            const metaApple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-           if (metaApple && appName) metaApple.setAttribute('content', appName);
+           if (metaApple) metaApple.setAttribute('content', appName);
 
            // Update visible header
            const titleSpan = document.getElementById('main-title-text');
-           if (titleSpan && displayTitle) {
+           if (titleSpan) {
                titleSpan.textContent = displayTitle;
                requestAnimationFrame(() => titleSpan.classList.remove('opacity-0'));
            }
            // Also populate any inline app-name placeholders and fade them in
            const inlineNameEl = document.getElementById('app-name-inline');
-           if (inlineNameEl && appName) {
+           if (inlineNameEl) {
                inlineNameEl.textContent = appName;
                requestAnimationFrame(() => inlineNameEl.classList.remove('opacity-0'));
            }
@@ -188,7 +188,19 @@ let currentPersonIdForDrunkStripes = null;
                if (oracleBtn) oracleBtn.classList.add('hidden');
            }
        } catch (_) {
-           // keep defaults on failure
+           // keep defaults on failure; ensure the title appears with a neutral fallback
+           try {
+               const titleSpan = document.getElementById('main-title-text');
+               const metaApp = document.querySelector('meta[name="application-name"]');
+               const fallbackName = (metaApp?.getAttribute('content') || '').trim() || 'Schikko Rules';
+               const year = Number.isFinite(appYear) ? appYear : new Date().getFullYear();
+               const displayTitle = `${fallbackName} ${year}`;
+               document.title = displayTitle;
+               if (titleSpan) {
+                   titleSpan.textContent = displayTitle;
+                   requestAnimationFrame(() => titleSpan.classList.remove('opacity-0'));
+               }
+           } catch (e) { /* no-op */ }
        }
 
        await checkSchikkoStatus().then(() => {
