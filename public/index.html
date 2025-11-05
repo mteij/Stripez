@@ -80,7 +80,7 @@
 
         <header class="text-center mb-4 pb-4">
             <h1 id="main-title" class="font-cinzel-decorative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">
-                <span id="main-title-text" class="opacity-0 transition-opacity duration-700"></span>
+                <span id="main-title-text" class="transition-opacity duration-700"></span>
                 <span id="live-badge" class="live-badge hidden"><span class="live-dot"></span> LIVE</span>
             </h1>
             <p class="text-lg text-[#6f4e37] mt-2">Schikko Rules as Decreed by the Ancients</p>
@@ -501,6 +501,25 @@
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Early inline fallback to ensure the title is visible even before main.js finishes loading -->
+    <script>
+      (function () {
+        try {
+          var titleEl = document.getElementById('main-title-text');
+          if (!titleEl) return;
+          var meta = document.querySelector('meta[name="application-name"]');
+          var appName = ((meta && meta.getAttribute('content')) || '').trim() || 'Schikko Rules';
+          var year = new Date().getFullYear();
+          titleEl.textContent = appName + ' ' + year;
+          titleEl.classList.remove('opacity-0');
+          var inline = document.getElementById('app-name-inline');
+          if (inline) {
+            inline.textContent = appName;
+            inline.classList.remove('opacity-0');
+          }
+        } catch (e) { /* no-op */ }
+      })();
+    </script>
     <script src="/js/main.js?v=1.2" type="module"></script>
     <!-- Global Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Loading">

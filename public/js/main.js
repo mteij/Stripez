@@ -187,6 +187,30 @@ let currentPersonIdForDrunkStripes = null;
                const oracleBtn = document.getElementById('open-gemini-from-hub-btn');
                if (oracleBtn) oracleBtn.classList.add('hidden');
            }
+           // Safety: ensure title becomes visible even if earlier steps failed
+           setTimeout(() => {
+               try {
+                   const titleEl = document.getElementById('main-title-text');
+                   if (titleEl) {
+                       if (!titleEl.textContent || !titleEl.textContent.trim()) {
+                           const meta = document.querySelector('meta[name="application-name"]');
+                           const name = ((meta && meta.getAttribute('content')) || '').trim() || appName || 'Schikko Rules';
+                           const y = Number.isFinite(appYear) ? appYear : new Date().getFullYear();
+                           titleEl.textContent = `${name} ${y}`;
+                       }
+                       titleEl.classList.remove('opacity-0');
+                       titleEl.style.opacity = '1';
+                   }
+                   const inline = document.getElementById('app-name-inline');
+                   if (inline) {
+                       if (!inline.textContent || !inline.textContent.trim()) {
+                           inline.textContent = appName || 'Schikko Rules';
+                       }
+                       inline.classList.remove('opacity-0');
+                       inline.style.opacity = '1';
+                   }
+               } catch (e) { /* no-op */ }
+           }, 800);
        } catch (_) {
            // keep defaults on failure; ensure the title appears with a neutral fallback
            try {
