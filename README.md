@@ -3,7 +3,7 @@
 <div align="center">
   <img src="public/assets/icon-512.png" alt="Stripez Icon" width="192" height="192" />
 
-  <strong>The Stripe System — stripes, decrees, and the Schikko.</strong>
+  <strong>Stripez - A stripe system for student commitees</strong>
 
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun"></a>
   <a href="https://hono.dev/"><img src="https://img.shields.io/badge/Hono-FF6A00?style=for-the-badge&logo=hono&logoColor=white" alt="Hono"></a>
@@ -15,7 +15,7 @@
 
 ## What is Stripez?
 
-Stripez is a lightweight system to run the Schikko Rules. Keep a shared ledger of people, assign stripes for transgressions, fulfill them, and maintain an evolving scroll of decrees.
+Stripez is a lightweight system to keep track of stripes. Keep a shared list of people, assign stripes for transgressions, fulfill them, and maintain an evolving scroll of decrees.
 
 ## Core features
 

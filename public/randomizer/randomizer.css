@@ -47,3 +47,48 @@
     letter-spacing: 0.05em;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
+/* --- Punishment Wheel Styles (MVP) --- */
+.wheel-container {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    margin: 0 auto;
+}
+
+#wheel-canvas {
+    width: 320px;
+    height: 320px;
+    border: 4px solid #8c6b52;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 45%, #f5eeda 0%, #e9e2d7 70%, #e5dccf 100%);
+    box-shadow:
+        inset 0 2px 8px rgba(0,0,0,0.18),
+        0 6px 16px rgba(0,0,0,0.22);
+    display: block;
+}
+
+/* Top pointer at 12 o'clock */
+.wheel-pointer {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 18px solid #c0392b; /* red tip */
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.35));
+}
+
+/* Responsive downscale on narrow screens */
+@media (max-width: 380px) {
+    .wheel-container {
+        width: 260px;
+        height: 260px;
+    }
+    #wheel-canvas {
+        width: 260px;
+        height: 260px;
+    }
+}

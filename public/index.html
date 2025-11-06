@@ -255,6 +255,29 @@
         </div>
     </div>
 
+    <div id="wheel-randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
+            <button id="close-wheel-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
+            <h2 class="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">Punishment Wheel</h2>
+
+            <div class="flex flex-col items-center gap-4">
+                <div class="wheel-container relative">
+                    <canvas id="wheel-canvas" width="320" height="320"></canvas>
+                    <div class="wheel-pointer" aria-hidden="true"></div>
+                </div>
+
+                <button id="wheel-spin-btn" class="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Spin the Wheel</button>
+                <div id="wheel-result" class="text-center text-xl text-[#6f4e37] min-h-[28px]"></div>
+
+                <div id="wheel-punishment-assign-container" class="mt-2 w-full hidden">
+                    <p class="font-cinzel-decorative text-lg text-center text-[#6f4e37] mb-2">Apply Outcome:</p>
+                    <select id="wheel-assign-person-select" class="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-2 text-md focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-3"></select>
+                    <button id="wheel-assign-apply-btn" class="btn-punishment w-full font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg">Apply to Selected</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="list-randomizer-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-[#fdf8e9] w-full max-w-xl p-8 rounded-lg border-4 border-[#8c6b52] relative">
             <button id="close-list-randomizer-modal" class="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700">&times;</button>
@@ -291,6 +314,7 @@
             <div class="flex flex-col gap-4">
                 <button id="open-list-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Name Randomizer</button>
                 <button id="open-dice-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Dice Roller</button>
+                <button id="open-wheel-randomizer-from-hub-btn" class="btn-ancient font-cinzel-decorative font-bold py-4 px-6 rounded-md text-xl">Punishment Wheel</button>
                 </div>
         </div>
     </div>

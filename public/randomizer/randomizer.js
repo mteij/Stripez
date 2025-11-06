@@ -323,6 +323,9 @@ export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, l
     // The alert has been removed from here as per your request.
     const diceRandomizerModal = document.getElementById('dice-randomizer-modal');
     if (diceRandomizerModal) {
+        // Signal to the global click handler not to immediately close the dice modal
+        try { window.__openingDiceModal = true; } catch (_) {}
+
         // Initialize the dice roller with a clean slate
         initDiceRandomizer(ledgerData, addStripeFn, showAlertFn, isSchikko);
 
@@ -339,7 +342,7 @@ export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, l
         const assignPersonSelect = document.getElementById('assign-person-select');
         if (assignPersonSelect) {
             // Populate the dropdown first, as initDiceRandomizer doesn't do it.
-             assignPersonSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
+            assignPersonSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
             ledgerData.forEach(person => {
                 const option = document.createElement('option');
                 option.value = person.id;
@@ -350,6 +353,389 @@ export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, l
             assignPersonSelect.value = targetPerson.id;
         }
 
+        // Force the modal open, on top, and focus it
         diceRandomizerModal.classList.remove('hidden');
+        try { diceRandomizerModal.style.display = 'flex'; } catch (_) {}
+        try { diceRandomizerModal.style.zIndex = '1000'; } catch (_) {}
+        try { diceRandomizerModal.setAttribute('aria-hidden', 'false'); } catch (_) {}
+        try {
+            const focusEl = document.getElementById('dice-spin-btn') || diceRandomizerModal;
+            focusEl.focus();
+        } catch (_) {}
+
+        // Clear the guard on the next tick
+        setTimeout(() => { try { window.__openingDiceModal = false; } catch (_) {} }, 0);
+    } else {
+        // Fallback: try to locate and show the modal even if the element reference is missing
+        const modal = document.querySelector('#dice-randomizer-modal');
+        if (modal) {
+            try { window.__openingDiceModal = true; } catch (_) {}
+            modal.classList.remove('hidden');
+            try { modal.style.display = 'flex'; } catch (_) {}
+            setTimeout(() => { try { window.__openingDiceModal = false; } catch (_) {} }, 0);
+        }
     }
+}
+// --- Punishment Wheel (MVP) ---
+// Public initializer: initWheelRandomizer(ledgerData, isSchikko, addStripeFn, showAlertFn, { logActivity, removeLastStripeFn })
+let wheelCanvas, wheelCtx, wheelSpinBtn, wheelResultEl;
+let wheelAssignContainer, wheelAssignSelect, wheelAssignApplyBtn;
+let wheelModalEl, wheelCloseBtn;
+let _ledgerDataWheel = [];
+let _isSchikkoWheel = false;
+let _addStripeWheelFn = null;
+let _showAlertWheelFn = null;
+let _logActivityWheel = async () => {};
+let _removeLastStripeWheelFn = null;
+let _ensureSessionFn = null;
+
+const TWO_PI = Math.PI * 2;
+const DEFAULT_WHEEL_SLICES = [
+  // Heavier weight on small, predictable outcomes
+  { label: '+1 Stripe', type: 'stripes', amount: 1 },
+  { label: '+1 Stripe', type: 'stripes', amount: 1 },
+  { label: '+1 Stripe', type: 'stripes', amount: 1 },
+  { label: '+2 Stripes', type: 'stripes', amount: 2 },
+  { label: '+2 Stripes', type: 'stripes', amount: 2 },
+  { label: '+3 Stripes', type: 'stripes', amount: 3 },
+
+  // Small dice with one higher outlier
+  { label: 'Roll d4', type: 'dice', value: 4 },
+  { label: 'Roll d6', type: 'dice', value: 6 },
+  { label: 'Roll d8', type: 'dice', value: 8 },
+  { label: 'Roll d12', type: 'dice', value: 12 }, // single higher exception
+
+  // Social twist and control
+  { label: 'Give 1', type: 'stripes', amount: 1 },
+  { label: 'Re-roll', type: 'reroll' },
+];
+
+const WHEEL_COLORS = [
+  '#c0392b', '#8c6b52', '#34495e', '#b9987e', '#2c3e50', '#a58467', '#d35400'
+];
+
+// Animation state
+let currentRotation = 0;  // radians
+let spinning = false;
+let slices = DEFAULT_WHEEL_SLICES.slice();
+
+function drawWheel(rotation = 0) {
+  if (!wheelCtx || !wheelCanvas) return;
+  const { width, height } = wheelCanvas;
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = Math.min(cx, cy) - 6;
+
+  wheelCtx.clearRect(0, 0, width, height);
+
+  const arc = TWO_PI / slices.length;
+
+  // Draw segments
+  for (let i = 0; i < slices.length; i++) {
+    const start = rotation + i * arc;
+    const end = start + arc;
+
+    // segment
+    wheelCtx.beginPath();
+    wheelCtx.moveTo(cx, cy);
+    wheelCtx.arc(cx, cy, radius, start, end, false);
+    wheelCtx.closePath();
+    wheelCtx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length];
+    wheelCtx.fill();
+
+    // separator line
+    wheelCtx.strokeStyle = 'rgba(0,0,0,0.15)';
+    wheelCtx.lineWidth = 2;
+    wheelCtx.beginPath();
+    wheelCtx.moveTo(cx, cy);
+    wheelCtx.lineTo(cx + Math.cos(start) * radius, cy + Math.sin(start) * radius);
+    wheelCtx.stroke();
+
+    // label
+    const mid = start + arc / 2;
+    const rx = cx + Math.cos(mid) * (radius * 0.65);
+    const ry = cy + Math.sin(mid) * (radius * 0.65);
+    wheelCtx.save();
+    wheelCtx.translate(rx, ry);
+    // Rotate so the local Y-axis points radially (outwards), and we stack characters along it
+    wheelCtx.rotate(mid + Math.PI / 2);
+    wheelCtx.textAlign = 'center';
+    wheelCtx.textBaseline = 'middle';
+    wheelCtx.fillStyle = '#fdf8e9';
+
+    // Prepare vertical text (characters stacked)
+    const raw = String(slices[i].label || '');
+    const chars = raw.split('');
+
+    // Adaptive font size/line height based on label length
+    let fontSize = 14;
+    let line = 13;
+    if (chars.length > 12) { fontSize = 12; line = 11; }
+    if (chars.length > 18) { fontSize = 11; line = 10; }
+    wheelCtx.font = `bold ${fontSize}px "Cinzel Decorative", serif`;
+
+    // Center the stack around the anchor point
+    const total = chars.length * line;
+    let y = -total / 2 + line / 2;
+
+    for (const ch of chars) {
+      wheelCtx.fillText(ch, 0, y);
+      y += line;
+    }
+
+    wheelCtx.restore();
+  }
+
+  // Center hub
+  wheelCtx.beginPath();
+  wheelCtx.arc(cx, cy, 18, 0, TWO_PI);
+  wheelCtx.fillStyle = '#5c3d2e';
+  wheelCtx.fill();
+  wheelCtx.strokeStyle = '#b9987e';
+  wheelCtx.lineWidth = 3;
+  wheelCtx.stroke();
+}
+
+function normalizeAngle(a) {
+  let x = a % TWO_PI;
+  if (x < 0) x += TWO_PI;
+  return x;
+}
+
+// Pointer is visually at the top (12 o'clock). Canvas 0 rad is 3 o'clock.
+// The slice at angle (3π/2) after applying rotation is the winner.
+function getSliceIndexAtPointer(rotation) {
+  const arc = TWO_PI / slices.length;
+  const pointerAngle = Math.PI * 1.5; // 12 o'clock
+  const effective = normalizeAngle(pointerAngle - rotation);
+  let idx = Math.floor(effective / arc);
+  if (idx < 0) idx = 0;
+  if (idx >= slices.length) idx = slices.length - 1;
+  return idx;
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+async function spinOnce(onDone) {
+  if (spinning) return;
+  spinning = true;
+
+  const turns = 2 + Math.random() * 1.75; // 2–3.75 turns (snappier)
+  const extra = Math.random() * TWO_PI;  // random offset
+  const target = currentRotation + turns * TWO_PI + extra;
+  const duration = 1700 + Math.random() * 500; // ~1.7–2.2s
+
+  const startTime = performance.now();
+  function frame(now) {
+    const t = Math.min(1, (now - startTime) / duration);
+    const eased = easeOutCubic(t);
+    currentRotation = currentRotation + (target - currentRotation) * eased;
+    drawWheel(currentRotation);
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      // snap to final target to avoid drift
+      currentRotation = target;
+      drawWheel(currentRotation);
+      spinning = false;
+      if (typeof onDone === 'function') onDone();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function populateAssignSelect() {
+  if (!wheelAssignSelect) return;
+  const current = wheelAssignSelect.value;
+  wheelAssignSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
+  _ledgerDataWheel.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    wheelAssignSelect.appendChild(opt);
+  });
+  if (_ledgerDataWheel.some(p => p.id === current)) {
+    wheelAssignSelect.value = current;
+  }
+}
+
+/**
+ * Initialize the Punishment Wheel modal and logic.
+ * @param {Array} ledgerData
+ * @param {boolean} isSchikko
+ * @param {Function} addStripeFn (docId, count)
+ * @param {Function} showAlertFn (msg, title?)
+ * @param {Object} opts { logActivity?: fn, removeLastStripeFn?: fn(person) }
+ */
+export function initWheelRandomizer(ledgerData = [], isSchikko = false, addStripeFn = null, showAlertFn = null, opts = {}) {
+  // Cache callbacks and state
+  _ledgerDataWheel = Array.isArray(ledgerData) ? ledgerData : [];
+  _isSchikkoWheel = !!isSchikko;
+  _addStripeWheelFn = addStripeFn;
+  _showAlertWheelFn = showAlertFn || (async () => {});
+  _logActivityWheel = typeof opts.logActivity === 'function' ? opts.logActivity : (async () => {});
+  _removeLastStripeWheelFn = typeof opts.removeLastStripeFn === 'function' ? opts.removeLastStripeFn : null;
+  _ensureSessionFn = typeof opts.ensureSessionFn === 'function' ? opts.ensureSessionFn : null;
+
+  // DOM
+  wheelModalEl = document.getElementById('wheel-randomizer-modal');
+  wheelCloseBtn = document.getElementById('close-wheel-randomizer-modal');
+  wheelCanvas = document.getElementById('wheel-canvas');
+  wheelSpinBtn = document.getElementById('wheel-spin-btn');
+  wheelResultEl = document.getElementById('wheel-result');
+  wheelAssignContainer = document.getElementById('wheel-punishment-assign-container');
+  wheelAssignSelect = document.getElementById('wheel-assign-person-select');
+  wheelAssignApplyBtn = document.getElementById('wheel-assign-apply-btn');
+
+  if (!wheelCanvas || !wheelSpinBtn) {
+    console.error('Wheel UI elements missing. Check index.html IDs.');
+    return;
+  }
+  wheelCtx = wheelCanvas.getContext('2d');
+
+  // Reset UI
+  currentRotation = Math.random() * TWO_PI;
+  spinning = false;
+  wheelResultEl.textContent = '';
+  if (!_isSchikkoWheel && wheelAssignContainer) {
+    wheelAssignContainer.classList.add('hidden'); // hide apply UI for non-Schikko
+  } else {
+    wheelAssignContainer.classList.add('hidden'); // start hidden until a result exists
+  }
+  drawWheel(currentRotation);
+
+  if (wheelCloseBtn) {
+    wheelCloseBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (wheelModalEl) wheelModalEl.classList.add('hidden');
+    };
+  }
+
+  wheelSpinBtn.onclick = async (e) => {
+    e.stopPropagation();
+    if (spinning) return;
+    wheelResultEl.textContent = '';
+    await spinOnce(async () => {
+      const idx = getSliceIndexAtPointer(currentRotation);
+      const outcome = slices[idx];
+      const actor = _isSchikkoWheel ? 'Schikko' : 'Guest';
+      await _logActivityWheel('WHEEL_SPIN', actor, `Wheel result: ${outcome.label}`);
+
+      // Reroll auto-behavior (snappier)
+      if (outcome.type === 'reroll') {
+        wheelResultEl.textContent = 'Re-roll!';
+        setTimeout(() => { if (!spinning && wheelSpinBtn) wheelSpinBtn.click(); }, 80);
+        return;
+      }
+
+      // Show result text
+      wheelResultEl.textContent = `Result: ${outcome.label}`;
+
+      // For non-Schikko, do not allow applying stripes — show message only
+      if (!_isSchikkoWheel) {
+        if (_showAlertWheelFn) _showAlertWheelFn('Only the Schikko can apply outcomes. Log in to proceed.', 'Permission Required');
+        return;
+      }
+
+      // Prepare assignment UI for Schikko
+      populateAssignSelect();
+      wheelAssignContainer.classList.remove('hidden');
+
+      // Apply logic
+      wheelAssignApplyBtn.onclick = async (ev) => {
+        try { ev && ev.stopPropagation && ev.stopPropagation(); } catch (_) {}
+        try { ev && ev.preventDefault && ev.preventDefault(); } catch (_) {}
+
+        const personId = wheelAssignSelect.value;
+        const person = _ledgerDataWheel.find(p => p.id === personId);
+        if (!person) {
+          if (_showAlertWheelFn) await _showAlertWheelFn('Please select a person to apply the outcome to.', 'Missing Selection');
+          return;
+        }
+
+        // Proactively ensure Schikko session is valid (UI can be stale)
+        if (typeof _ensureSessionFn === 'function') {
+          const ok = await _ensureSessionFn();
+          if (!ok) {
+            if (_showAlertWheelFn) await _showAlertWheelFn('Schikko login required to apply outcomes.', 'Permission Required');
+            return;
+          }
+        }
+
+        // Ensure a valid Schikko session token is present before calling protected endpoints
+        try {
+          const sid = localStorage.getItem('schikkoSessionId');
+          if (!sid) {
+            if (_showAlertWheelFn) await _showAlertWheelFn('Schikko login required to apply outcomes.', 'Permission Required');
+            return;
+          }
+        } catch (_) {}
+
+        // stripes
+        if (outcome.type === 'stripes') {
+          try {
+            const count = Math.max(1, Number(outcome.amount || 1));
+            if (typeof _addStripeWheelFn !== 'function') throw new Error('Add stripe handler not available');
+            await _addStripeWheelFn(person.id, count);
+            await _logActivityWheel('WHEEL_SPIN', 'Schikko', `Applied ${count} stripe(s) to ${person.name} via wheel (${outcome.label}).`);
+            if (_showAlertWheelFn) await _showAlertWheelFn(`${count} stripe(s) assigned to ${person.name}!`, 'Success');
+            // Close after success
+            if (wheelModalEl) wheelModalEl.classList.add('hidden');
+            wheelAssignContainer.classList.add('hidden');
+            wheelResultEl.textContent = '';
+          } catch (e) {
+            if (_showAlertWheelFn) await _showAlertWheelFn(`Failed to apply stripes: ${e?.message || 'Unknown error'}`, 'Error');
+          }
+          return;
+        }
+
+        // dice
+        if (outcome.type === 'dice') {
+          const values = [Number(outcome.value || 6)];
+          if (values[0] > 0) {
+            // Hide wheel before showing dice to avoid stacked overlays
+            // Also set a guard flag so the document-level click handler won't immediately close the dice modal.
+            try { window.__openingDiceModal = true; } catch (_) {}
+            if (wheelModalEl) wheelModalEl.classList.add('hidden');
+            try {
+              // Defer to next tick so any bubbling/capture listeners complete before opening modal
+              await new Promise(resolve => setTimeout(resolve, 0));
+              // Dispatch an app-level event that main.js listens to, to open the dice modal reliably
+              window.dispatchEvent(new CustomEvent('open-dice-modal', { detail: { diceValues: values, personId: person.id } }));
+              await _logActivityWheel('WHEEL_SPIN', 'Schikko', `Invoked dice roll (${values.map(v => 'd' + v).join(', ')}) for ${person.name} via wheel.`);
+            } catch (e) {
+              if (_showAlertWheelFn) await _showAlertWheelFn(`Failed to open dice roller: ${e?.message || 'Unknown error'}`, 'Error');
+            } finally {
+              try { window.__openingDiceModal = false; } catch (_) {}
+            }
+          }
+          return;
+        }
+
+        // mercy
+        if (outcome.type === 'mercy') {
+          try {
+            if (typeof _removeLastStripeWheelFn !== 'function') throw new Error('Remove stripe handler not available');
+            await _removeLastStripeWheelFn(person);
+            await _logActivityWheel('WHEEL_SPIN', 'Schikko', `Granted mercy to ${person.name} (removed last stripe).`);
+            if (_showAlertWheelFn) await _showAlertWheelFn(`Mercy granted to ${person.name}. Removed last stripe.`, 'Mercy');
+            if (wheelModalEl) wheelModalEl.classList.add('hidden');
+            wheelAssignContainer.classList.add('hidden');
+            wheelResultEl.textContent = '';
+          } catch (e) {
+            if (_showAlertWheelFn) await _showAlertWheelFn(`Failed to remove stripe: ${e?.message || 'Unknown error'}`, 'Error');
+          }
+          return;
+        }
+
+        // Fallback
+        if (_showAlertWheelFn) await _showAlertWheelFn('Outcome acknowledged.', 'Noted');
+        if (wheelModalEl) wheelModalEl.classList.add('hidden');
+        wheelAssignContainer.classList.add('hidden');
+        wheelResultEl.textContent = '';
+      };
+    });
+  };
 }

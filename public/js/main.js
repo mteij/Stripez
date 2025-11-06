@@ -21,7 +21,7 @@ import {
     showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading,
     setStripeTotals
 } from './ui.js';
-import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign } from '../randomizer/randomizer.js';
+import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign, initWheelRandomizer } from '../randomizer/randomizer.js';
 
 
 // --- STATE VARIABLES ---
@@ -108,6 +108,7 @@ const randomizerHubModal = document.getElementById('randomizer-hub-modal');
 const closeRandomizerHubModalBtn = document.getElementById('close-randomizer-hub-modal');
 const openListRandomizerFromHubBtn = document.getElementById('open-list-randomizer-from-hub-btn');
 const openDiceRandomizerFromHubBtn = document.getElementById('open-dice-randomizer-from-hub-btn');
+const openWheelRandomizerFromHubBtn = document.getElementById('open-wheel-randomizer-from-hub-btn');
 
 // Gemini Oracle elements
 const openGeminiFromHubBtn = document.getElementById('open-gemini-from-hub-btn');
@@ -346,8 +347,20 @@ async function checkSchikkoStatus() {
  * Caches the login status in the current session to avoid repeated logins.
  */
 async function ensureSchikkoSession() {
+    // If UI thinks we're logged in, proactively verify the session by calling a protected action.
     if (isSchikkoSessionActive) {
-        return true;
+        try {
+            const sid = localStorage.getItem('schikkoSessionId');
+            if (!sid) throw new Error('missing session');
+            // Lightweight protected call; will 401/403 if the session is stale
+            await listDrinkRequests();
+            return true;
+        } catch (e) {
+            // Session is stale; clear UI state and fall through to prompt login
+            try { localStorage.removeItem('schikkoSessionId'); } catch (_) {}
+            isSchikkoSessionActive = false;
+            try { updateGuestUI(); } catch (_) {}
+        }
     }
 
     const code = await showSchikkoLoginModal();
@@ -725,8 +738,14 @@ async function updateAppFooter() {
  */
 function createActionButtons(parsedJudgement) {
     geminiActionButtonsContainer.innerHTML = ''; 
-    if (!geminiActionButtonsContainer.parentNode) {
-        geminiOutput.parentNode.insertBefore(geminiActionButtonsContainer, geminiOutput.nextSibling);
+    if (geminiOutput && geminiOutput.parentNode) {
+        if (!geminiActionButtonsContainer.parentNode || geminiActionButtonsContainer.parentNode !== geminiOutput.parentNode) {
+            try {
+                geminiOutput.parentNode.appendChild(geminiActionButtonsContainer);
+            } catch (e) {
+                try { geminiOutput.parentNode.insertBefore(geminiActionButtonsContainer, geminiOutput); } catch (_) {}
+            }
+        }
     }
     
     // For non-Schikko users, just show an acknowledgement button.
@@ -1328,16 +1347,21 @@ rulesListOl?.addEventListener('click', async (e) => {
         case 'edit': await handleEditRule(id); break;
     }
 });
-document.addEventListener('click', (e) => { 
+document.addEventListener('click', (e) => {
+    // Guard: when opening the dice modal programmatically (e.g., from the wheel),
+    // skip this auto-close once to avoid immediately hiding the modal.
+    if (window.__openingDiceModal) {
+        window.__openingDiceModal = false;
+        return;
+    }
+
     if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
-        closeMenus(); 
+        closeMenus();
     }
-    if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) { 
-        drunkStripesModal.classList.add('hidden'); 
+    if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) {
+        drunkStripesModal.classList.add('hidden');
     }
-    if (!diceRandomizerModal.classList.contains('hidden') && !e.target.closest('#dice-randomizer-modal') && !e.target.closest('#open-dice-randomizer-from-hub-btn')) {
-        diceRandomizerModal.classList.add('hidden');
-    }
+    // Do not auto-close the dice modal on outside click; rely on its explicit close button.
 });
 
 // Logbook listeners
@@ -1388,6 +1412,24 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => {
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
     initDiceRandomizer(ledgerDataCache, addStripeToPerson, showAlert, isSchikkoSessionActive);
+});
+
+openWheelRandomizerFromHubBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    randomizerHubModal.classList.add('hidden');
+    const wheelModal = document.getElementById('wheel-randomizer-modal');
+    if (wheelModal) wheelModal.classList.remove('hidden');
+    initWheelRandomizer(
+        ledgerDataCache,
+        isSchikkoSessionActive,
+        addStripeToPerson,
+        showAlert,
+        {
+            logActivity,
+            removeLastStripeFn: removeLastStripeFromPerson,
+            ensureSessionFn: ensureSchikkoSession
+        }
+    );
 });
 
 closeDiceRandomizerModalBtn?.addEventListener('click', (e) => {
@@ -1657,4 +1699,27 @@ schikkoLoginBtn.addEventListener('click', async () => {
     } else {
         await handleLogin();
     }
+});
+
+// Wheel -> Dice bridge: programmatic opener that the wheel dispatches via CustomEvent('open-dice-modal')
+window.addEventListener('open-dice-modal', async (e) => {
+  try {
+    const detail = (e && e.detail) || {};
+    const diceValues = Array.isArray(detail.diceValues) ? detail.diceValues.map(v => Number(v)).filter(v => Number.isFinite(v) && v > 0) : [];
+    const personId = detail.personId;
+    const person = Array.isArray(ledgerDataCache) ? ledgerDataCache.find(p => p.id === personId) : null;
+    if (!person || diceValues.length === 0) return;
+
+    // Ensure session is valid before opening/assigning
+    try {
+      const ok = await ensureSchikkoSession();
+      if (!ok) return;
+    } catch (_) {}
+
+    // Signal to skip any one-time auto-close guard and open the dice modal reliably
+    try { window.__openingDiceModal = true; } catch (_) {}
+    await rollDiceAndAssign(diceValues, person, addStripeToPerson, ledgerDataCache, showAlert, isSchikkoSessionActive);
+  } catch (err) {
+    console.error('open-dice-modal handler failed:', err);
+  }
 });

@@ -1,10 +1,10 @@
-const CACHE_NAME = 'schikko-rules-cache-v9';
+const CACHE_NAME = 'schikko-rules-cache-v10';
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
   '/js/main.js',
-  '/js/firebase.js',
+  '/js/api.js',
   '/js/ui.js',
   '/randomizer/randomizer.js',
   '/randomizer/randomizer.css',
@@ -13,19 +13,24 @@ const urlsToCache = [
 
 // Install a service worker
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        // Only cache same-origin assets to comply with CSP connect-src
-        const safeUrls = urlsToCache.filter(u => !(u.startsWith('http://') || u.startsWith('https://')));
-        return cache.addAll(safeUrls);
-      })
-      .then(() => self.skipWaiting())
-      .catch(err => {
-        console.error('Cache install failed', err);
-      })
-  );
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      // Only cache same-origin assets to comply with CSP connect-src
+      const safeUrls = urlsToCache.filter(u => !(u.startsWith('http://') || u.startsWith('https://')));
+      // Add each entry individually; skip failures to avoid aborting the whole install
+      await Promise.all(safeUrls.map(async (u) => {
+        try {
+          await cache.add(u);
+        } catch (e) {
+          console.warn('SW: skip caching', u, e && (e.message || e));
+        }
+      }));
+      await self.skipWaiting();
+    } catch (err) {
+      console.error('Cache install failed', err);
+    }
+  })());
 });
 
 // Cache only same-origin GET requests; bypass caching for API and non-GET to avoid Cache.put POST errors
