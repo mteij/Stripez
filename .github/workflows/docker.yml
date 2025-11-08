@@ -73,7 +73,7 @@ jobs:
           
           # Make API call with better error handling
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent?key=$GEMINI_API_KEY" \
             -H "Content-Type: application/json" \
             -d @"$JSON_FILE")
           
