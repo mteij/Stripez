@@ -101,10 +101,12 @@ jobs:
             BODY="Release $VERSION for Stripez / Schikko Rules.\n- Internal changes deployed.\n- AI description unavailable (API error).\n\nMay your ledgers be accurate and your stripes well-deserved."
           fi
 
-          # Properly escape for GitHub Actions without introducing weird characters
-          # Use printf to handle newlines correctly
-          printf 'notes=' >> "$GITHUB_OUTPUT"
-          printf '%s' "$BODY" >> "$GITHUB_OUTPUT"
+          # Properly escape for GitHub Actions - use heredoc to handle multiline content
+          {
+            echo 'notes<<EOF'
+            echo "$BODY"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
