@@ -43,34 +43,34 @@ jobs:
       - name: Generate AI-powered release notes
         id: ai_notes
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           VERSION="${{ steps.pkg.outputs.version }}"
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "AI release notes skipped: OPENAI_API_KEY not set."
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "AI release notes skipped: GEMINI_API_KEY not set."
             {
-              echo "notes=Release $VERSION built. Set OPENAI_API_KEY to enable AI-generated notes."
+              echo "notes=Release $VERSION built. Set GEMINI_API_KEY to enable AI-generated notes."
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           COMMITS=$(git log -10 --pretty=format:'- %s (%an)')
-          MODEL="gpt-4o-mini"
           PROMPT=$'You are a witty but clear scribe for the "Stripez / Schikko Rules" app.\nSummarize the following commits into:\n1) A short ceremonial headline (max 80 chars).\n2) 3-7 bullet points of notable changes, grouped logically.\n3) A short closing blessing or toast (1 sentence).\nKeep it crisp, helpful, and fun, but not cringe. No markdown headings, only plain text and bullets.\nCommits:\n'
-          BODY=$(jq -n --arg model "$MODEL" --arg prompt "$PROMPT" --arg commits "$COMMITS" '
+          BODY=$(jq -n --arg prompt "$PROMPT" --arg commits "$COMMITS" '
             {
-              model: $model,
-              messages: [
+              contents: [
                 {
-                  role: "user",
-                  content: ($prompt + "\n" + $commits)
+                  parts: [
+                    {
+                      text: ($prompt + "\n" + $commits)
+                    }
+                  ]
                 }
               ]
             }
-          ' | curl -sS https://api.openai.com/v1/chat/completions \
+          ' | curl -sS "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" \
                -H "Content-Type: application/json" \
-               -H "Authorization: Bearer '"'"'$OPENAI_API_KEY'"'"' \
-               -d @- | jq -r ".choices[0].message.content" || true)
+               -d @- | jq -r ".candidates[0].content.parts[0].text" || true)
 
           if [ -z "$BODY" ] || [ "$BODY" = "null" ]; then
             BODY="Release $VERSION for Stripez / Schikko Rules.\n- Internal changes deployed.\n- AI description unavailable (API error).\n\nMay your ledgers be accurate and your stripes well-deserved."
