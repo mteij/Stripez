@@ -55,7 +55,7 @@ jobs:
           fi
 
           COMMITS=$(git log -10 --pretty=format:'- %s (%an)')
-          PROMPT=$'Generate a concise changelog for the Stripez / Schikko Rules app based on the following commits. Format:\n1) Brief version summary (1 line)\n2) 3-7 bullet points describing key changes, grouped logically\n3) Reference specific commits where relevant\nUse plain text, no markdown, no playful language. Focus on technical changes and improvements.\nCommits:\n'
+          PROMPT=$'Generate a changelog for Stripez / Schikko Rules app version '"${{ steps.pkg.outputs.version }}"$' following Keep a Changelog format (https://keepachangelog.com/en/1.1.0/). Use this structure:\n\n## [${{ steps.pkg.outputs.version }}] - 2025-XX-XX\n\n### Added\n- (list new features)\n\n### Changed\n- (list changes to existing functionality)\n\n### Fixed\n- (list bug fixes)\n\n### Removed\n- (list removed features)\n\nBased on these commits, populate the relevant sections. Use proper markdown formatting with ### headers and - bullet points. Reference specific commits where relevant. If a section has no changes, omit it. Focus on technical changes only.\n\nCommits:\n'
           
           # Create JSON payload and save to temp file
           JSON_FILE=$(mktemp)
@@ -101,11 +101,10 @@ jobs:
             BODY="Release $VERSION for Stripez / Schikko Rules.\n- Internal changes deployed.\n- AI description unavailable (API error).\n\nMay your ledgers be accurate and your stripes well-deserved."
           fi
 
-          BODY_ESCAPED="${BODY//'%'/'%25'}"
-          BODY_ESCAPED="${BODY_ESCAPED//$'\n'/'%0A'}"
-          BODY_ESCAPED="${BODY_ESCAPED//$'\r'/'%0D'}"
-
-          echo "notes=$BODY_ESCAPED" >> "$GITHUB_OUTPUT"
+          # Properly escape for GitHub Actions without introducing weird characters
+          # Use printf to handle newlines correctly
+          printf 'notes=' >> "$GITHUB_OUTPUT"
+          printf '%s' "$BODY" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
