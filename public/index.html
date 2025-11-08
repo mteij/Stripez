@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-app-version="2.1.1">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -80,10 +80,10 @@
 
         <header class="text-center mb-4 pb-4">
             <h1 id="main-title" class="font-cinzel-decorative text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#5c3d2e] tracking-wider">
-                <span id="main-title-text" class="transition-opacity duration-700"></span>
+                <span id="main-title-text" class="app-fade app-fade-slow"></span>
                 <span id="live-badge" class="live-badge hidden"><span class="live-dot"></span> LIVE</span>
             </h1>
-            <p class="text-lg text-[#6f4e37] mt-2">Schikko Rules as Decreed by the Ancients</p>
+            <!-- Removed hardcoded Schikko Rules tagline to avoid flashing wrong brand -->
             <div id="countdown-container" class="mt-4 flex justify-center items-center gap-2">
                 <span id="countdown" class="font-cinzel-decorative text-xl text-red-700"></span>
                 <button id="edit-app-date-btn" class="btn-calendar-icon hidden" title="Edit Event Date">&#x270E;</button>
@@ -192,6 +192,9 @@
             </div>
              <div id="app-info-footer" class="text-base text-[#4a3024] mt-4">
                 </div>
+             <div class="mt-2 flex justify-center items-center gap-2 text-xs text-[#6f4e37]">
+                 <span id="app-version-label" class="font-cinzel-decorative">v<span id="app-version">loading…</span></span>
+             </div>
             
              <div class="mt-6 flex justify-center">
                 <a href="https://github.com/MichielEijpe/schikko-rules" target="_blank" rel="noopener noreferrer" class="text-[#6f4e37] hover:text-[#5c3d2e] transition-colors duration-300" title="View on GitHub">
@@ -525,30 +528,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <!-- Early inline fallback to ensure the title is visible even before main.js finishes loading -->
-    <script>
-      (function () {
-        try {
-          var titleEl = document.getElementById('main-title-text');
-          if (!titleEl) return;
-          var meta = document.querySelector('meta[name="application-name"]');
-          var appName = ((meta && meta.getAttribute('content')) || '').trim() || 'Schikko Rules';
-          var year = new Date().getFullYear();
-          // Ensure the title is visible even if a stale HTML adds opacity-0 or main.js fails
-          titleEl.textContent = appName + ' ' + year;
-          titleEl.classList.remove('opacity-0', 'app-fade');
-          titleEl.style.opacity = '1';
-          titleEl.style.visibility = 'visible';
-          var inline = document.getElementById('app-name-inline');
-          if (inline) {
-            inline.textContent = appName;
-            inline.classList.remove('opacity-0', 'app-fade');
-            inline.style.opacity = '1';
-            inline.style.visibility = 'visible';
-          }
-        } catch (e) { /* no-op */ }
-      })();
-    </script>
+    <!-- Early inline fallback removed to prevent flashing "Schikko Rules".
+         main.js now fully controls rendering and fade-in of app name + year. -->
     <script src="/js/main.js?v=1.2" type="module"></script>
     <!-- Global Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Loading">

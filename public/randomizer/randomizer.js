@@ -633,9 +633,9 @@ export function initWheelRandomizer(ledgerData = [], isSchikko = false, addStrip
       // Show result text
       wheelResultEl.textContent = `Result: ${outcome.label}`;
 
-      // For non-Schikko, do not allow applying stripes — show message only
+      // For non-Schikko, do not allow applying or prompting any protected actions.
+      // Show the result only; no permission error, no assignment UI.
       if (!_isSchikkoWheel) {
-        if (_showAlertWheelFn) _showAlertWheelFn('Only the Schikko can apply outcomes. Log in to proceed.', 'Permission Required');
         return;
       }
 

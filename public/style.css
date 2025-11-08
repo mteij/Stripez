@@ -183,6 +183,25 @@ body {
     border-top: 4px dotted #b9987e; /* Consistent with main divider */
 }
 
+/* Keep layout stable when toggling Schikko's Decrees */
+#decrees-content {
+    transition: opacity 200ms ease;
+}
+#decrees-content.hidden {
+    display: block;              /* keep space reserved */
+    opacity: 0;                  /* visually hidden */
+    height: 0;
+    overflow: hidden;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+}
+#decrees-content:not(.hidden) {
+    opacity: 1;
+    height: auto;
+    padding-top: 1.5rem;         /* match existing spacing visually */
+}
+
 /* New Calendar Styles */
 .calendar-container {
     display: flex;

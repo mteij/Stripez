@@ -173,8 +173,15 @@ let currentPersonIdForDrunkStripes = null;
            // Update visible header
            const titleSpan = document.getElementById('main-title-text');
            if (titleSpan) {
+               // Prepare fade-in: start hidden, then reveal
                titleSpan.textContent = displayTitle;
-               requestAnimationFrame(() => titleSpan.classList.remove('opacity-0'));
+               titleSpan.classList.add('app-fade', 'app-fade-slow');
+               // Use double rAF to avoid initial flash of "Schikko Rules"
+               requestAnimationFrame(() => {
+                   requestAnimationFrame(() => {
+                       titleSpan.classList.add('app-fade-in');
+                   });
+               });
            }
            // Also populate any inline app-name placeholders and fade them in
            const inlineNameEl = document.getElementById('app-name-inline');
@@ -309,6 +316,11 @@ function updateGuestUI() {
     if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
     if (editCalendarBtn) editCalendarBtn.style.display = isGuest ? 'none' : 'inline-flex';
     if (openDrinkRequestsBtn) openDrinkRequestsBtn.style.display = isGuest ? 'none' : 'inline-flex';
+
+    // Logbook trigger is only visible for Schikko
+    if (openLogbookBtn) {
+        openLogbookBtn.classList.toggle('hidden', isGuest);
+    }
     
     if (schikkoLoginBtn) {
         schikkoLoginBtn.textContent = isSchikkoSessionActive ? 'Schikko Logout' : 'Schikko Login';
@@ -692,7 +704,7 @@ function handleRenderLogbook() {
 
 async function updateAppFooter() {
     if (!appInfoFooter) return;
-    
+
     let latestUpdateTimestamp = null;
     if (rulesDataCache.length > 0) {
         latestUpdateTimestamp = rulesDataCache.reduce((max, rule) => {
@@ -702,28 +714,47 @@ async function updateAppFooter() {
         if (latestUpdateTimestamp && typeof latestUpdateTimestamp.toDate === 'function') {
             latestUpdateTimestamp = latestUpdateTimestamp.toDate();
         } else {
-             latestUpdateTimestamp = null;
+            latestUpdateTimestamp = null;
         }
     }
-    const dateString = latestUpdateTimestamp ?
-        latestUpdateTimestamp.toLocaleDateString(undefined, {
-                year: 'numeric', month: 'long', day: 'numeric',
-                hour: '2-digit', minute: '2-digit', hour12: false
-            }) : 'Unknown Date';
-    
+    const dateString = latestUpdateTimestamp
+        ? latestUpdateTimestamp.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        })
+        : 'Unknown Date';
+
     let schikkoInfoText = 'No Schikko has been chosen for this year.';
-    if (isSchikkoSetForTheYear) { // Use the correct state variable
+    if (isSchikkoSetForTheYear) {
         try {
             const info = await getSchikkoInfo();
             if (info.name) {
                 const expiryDate = new Date(info.expires);
-                const expiryString = expiryDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric'});
+                const expiryString = expiryDate.toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                });
                 schikkoInfoText = `Current Schikko: ${info.name}. Reign ends on ${expiryString}.`;
             }
         } catch (error) {
             console.error("Could not fetch Schikko info:", error);
             schikkoInfoText = "Could not retrieve the current Schikko's identity.";
         }
+    }
+
+    // Read version from the HTML data attribute or fall back
+    const htmlEl = document.documentElement;
+    const version = (htmlEl && htmlEl.getAttribute('data-app-version')) || 'dev';
+
+    // Update small inline label next to GitHub icon if present
+    const versionInlineEl = document.getElementById('app-version');
+    if (versionInlineEl) {
+        versionInlineEl.textContent = version;
     }
 
     appInfoFooter.innerHTML = `
@@ -1145,11 +1176,9 @@ showDecreesBtn?.addEventListener('click', () => {
     if (isHidden) {
         decreesContent.classList.remove('hidden');
         showDecreesBtn.setAttribute('data-state', 'expanded');
-        showDecreesBtn.querySelector('span:first-child').textContent = "Hide Decrees";
     } else {
         decreesContent.classList.add('hidden');
         showDecreesBtn.setAttribute('data-state', 'collapsed');
-        showDecreesBtn.querySelector('span:first-child').textContent = "Schikko's Decrees";
         if (rulesListOl.classList.contains('rules-list-editing')) {
             rulesListOl.classList.remove('rules-list-editing');
             editRulesBtn.textContent = 'Finish Editing';
@@ -1365,7 +1394,10 @@ document.addEventListener('click', (e) => {
 });
 
 // Logbook listeners
-openLogbookBtn?.addEventListener('click', () => showLogbookModal(true));
+openLogbookBtn?.addEventListener('click', () => {
+    if (!isSchikkoSessionActive) return;
+    showLogbookModal(true);
+});
 closeLogbookModalBtn?.addEventListener('click', () => showLogbookModal(false));
 logbookSearchInput?.addEventListener('input', () => { currentLogbookSearchTerm = logbookSearchInput.value; handleRenderLogbook(); });
 logbookFilterSelect?.addEventListener('change', (e) => { currentLogbookFilter = e.target.value; handleRenderLogbook(); });

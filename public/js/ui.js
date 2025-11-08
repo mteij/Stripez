@@ -30,6 +30,38 @@ function launchAppConfetti() {
     }
 }
 
+/**
+ * Typewriter effect: progressively reveals text content inside an element.
+ * Safe for repeated calls; each call cancels any previous animation on the same element.
+ * @param {HTMLElement} el
+ * @param {string} text
+ * @param {number} [speed=35] ms per character
+ */
+function typewriter(el, text, speed = 35) {
+    if (!el) return;
+    // Cancel any previous animation on this element
+    if (el.__twTimer) {
+        clearTimeout(el.__twTimer);
+        el.__twTimer = null;
+    }
+    const target = String(text || '');
+    el.textContent = '';
+    el.style.visibility = 'visible';
+    el.style.whiteSpace = 'normal';
+
+    let i = 0;
+    const step = () => {
+        if (i <= target.length) {
+            el.textContent = target.slice(0, i);
+            i++;
+            el.__twTimer = setTimeout(step, speed);
+        } else {
+            el.__twTimer = null;
+        }
+    };
+    step();
+}
+
 // --- UTILITY FUNCTIONS ---
 function hashCode(str) {
     let hash = 0;
@@ -883,7 +915,8 @@ function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
         }
 
         clearInterval(appCountdownInterval);
-        countdownContainer.textContent = `The ${appName} has passed! Awaiting the next decree...`;
+        // Typewriter message when the event period has fully passed
+        typewriter(countdownContainer, `The ${appName} has passed! Awaiting the next decree...`);
         if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
         document.title = baseTitle;
         appLiveNow = false;
