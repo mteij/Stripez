@@ -56,7 +56,7 @@ jobs:
 
           COMMITS=$(git log -10 --pretty=format:'- %s (%an)')
           PROMPT=$'You are a witty but clear scribe for the "Stripez / Schikko Rules" app.\nSummarize the following commits into:\n1) A short ceremonial headline (max 80 chars).\n2) 3-7 bullet points of notable changes, grouped logically.\n3) A short closing blessing or toast (1 sentence).\nKeep it crisp, helpful, and fun, but not cringe. No markdown headings, only plain text and bullets.\nCommits:\n'
-          BODY=$(jq -n --arg prompt "$PROMPT" --arg commits "$COMMITS" '
+          RESPONSE=$(jq -n --arg prompt "$PROMPT" --arg commits "$COMMITS" '
             {
               contents: [
                 {
@@ -70,7 +70,17 @@ jobs:
             }
           ' | curl -sS "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" \
                -H "Content-Type: application/json" \
-               -d @- | jq -r ".candidates[0].content.parts[0].text" || true)
+               -d @- || echo '{"error": "API call failed"}')
+          
+          # Debug: log the response (redacted for safety)
+          echo "Gemini response received (length: $(echo "$RESPONSE" | wc -c))"
+          
+          BODY=$(echo "$RESPONSE" | jq -r ".candidates[0].content.parts[0].text // empty" || true)
+          
+          # If jq fails or returns empty, try alternative parsing
+          if [ -z "$BODY" ]; then
+            BODY=$(echo "$RESPONSE" | grep -o '"text":"[^"]*"' | head -1 | sed 's/"text":"\([^"]*\)"/\1/' || true)
+          fi
 
           if [ -z "$BODY" ] || [ "$BODY" = "null" ]; then
             BODY="Release $VERSION for Stripez / Schikko Rules.\n- Internal changes deployed.\n- AI description unavailable (API error).\n\nMay your ledgers be accurate and your stripes well-deserved."
