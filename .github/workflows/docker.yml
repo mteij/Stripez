@@ -55,7 +55,7 @@ jobs:
           fi
 
           COMMITS=$(git log -10 --pretty=format:'- %s (%an)')
-          PROMPT=$'You are a witty but clear scribe for the "Stripez / Schikko Rules" app.\nSummarize the following commits into:\n1) A short ceremonial headline (max 80 chars).\n2) 3-7 bullet points of notable changes, grouped logically.\n3) A short closing blessing or toast (1 sentence).\nKeep it crisp, helpful, and fun, but not cringe. No markdown headings, only plain text and bullets.\nCommits:\n'
+          PROMPT=$'Generate a concise changelog for the Stripez / Schikko Rules app based on the following commits. Format:\n1) Brief version summary (1 line)\n2) 3-7 bullet points describing key changes, grouped logically\n3) Reference specific commits where relevant\nUse plain text, no markdown, no playful language. Focus on technical changes and improvements.\nCommits:\n'
           
           # Create JSON payload and save to temp file
           JSON_FILE=$(mktemp)
