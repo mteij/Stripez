@@ -56,30 +56,45 @@ jobs:
 
           COMMITS=$(git log -10 --pretty=format:'- %s (%an)')
           PROMPT=$'You are a witty but clear scribe for the "Stripez / Schikko Rules" app.\nSummarize the following commits into:\n1) A short ceremonial headline (max 80 chars).\n2) 3-7 bullet points of notable changes, grouped logically.\n3) A short closing blessing or toast (1 sentence).\nKeep it crisp, helpful, and fun, but not cringe. No markdown headings, only plain text and bullets.\nCommits:\n'
-          RESPONSE=$(jq -n --arg prompt "$PROMPT" --arg commits "$COMMITS" '
-            {
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: ($prompt + "\n" + $commits)
-                    }
-                  ]
-                }
-              ]
-            }
-          ' | curl -sS "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" \
-               -H "Content-Type: application/json" \
-               -d @- || echo '{"error": "API call failed"}')
           
-          # Debug: log the response (redacted for safety)
-          echo "Gemini response received (length: $(echo "$RESPONSE" | wc -c))"
+          # Create JSON payload and save to temp file
+          JSON_FILE=$(mktemp)
+          jq -n --arg prompt "$PROMPT" --arg commits "$COMMITS" '{
+            contents: [
+              {
+                parts: [
+                  {
+                    text: ($prompt + "\n" + $commits)
+                  }
+                ]
+              }
+            ]
+          }' > "$JSON_FILE"
           
-          BODY=$(echo "$RESPONSE" | jq -r ".candidates[0].content.parts[0].text // empty" || true)
+          # Make API call with better error handling
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @"$JSON_FILE")
           
-          # If jq fails or returns empty, try alternative parsing
-          if [ -z "$BODY" ]; then
-            BODY=$(echo "$RESPONSE" | grep -o '"text":"[^"]*"' | head -1 | sed 's/"text":"\([^"]*\)"/\1/' || true)
+          # Clean up temp file
+          rm -f "$JSON_FILE"
+          
+          # Extract body and status
+          BODY=$(echo "$RESPONSE" | sed -e 's/HTTPSTATUS:.*//g')
+          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          
+          # Debug info
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response length: $(echo "$BODY" | wc -c)"
+          
+          # Extract text from Gemini response
+          if [ "$HTTP_STATUS" = "200" ]; then
+            BODY=$(echo "$BODY" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null || echo "")
+          else
+            echo "Gemini API error: HTTP $HTTP_STATUS"
+            echo "Response: $BODY"
+            BODY=""
           fi
 
           if [ -z "$BODY" ] || [ "$BODY" = "null" ]; then
