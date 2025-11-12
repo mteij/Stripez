@@ -1,5 +1,7 @@
 // public/randomizer/randomizer.js
 
+import { soundManager } from '../js/sounds.js';
+
 // --- Shared Utility Functions ---
 function rand(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -418,6 +420,8 @@ const WHEEL_COLORS = [
 let currentRotation = 0;  // radians
 let spinning = false;
 let slices = DEFAULT_WHEEL_SLICES.slice();
+let lastTickTime = 0;
+let tickInterval = 0;
 
 function drawWheel(rotation = 0) {
   if (!wheelCtx || !wheelCanvas) return;
@@ -451,37 +455,29 @@ function drawWheel(rotation = 0) {
     wheelCtx.lineTo(cx + Math.cos(start) * radius, cy + Math.sin(start) * radius);
     wheelCtx.stroke();
 
-    // label
+    // label - rotated sideways (tangential)
     const mid = start + arc / 2;
     const rx = cx + Math.cos(mid) * (radius * 0.65);
     const ry = cy + Math.sin(mid) * (radius * 0.65);
     wheelCtx.save();
     wheelCtx.translate(rx, ry);
-    // Rotate so the local Y-axis points radially (outwards), and we stack characters along it
-    wheelCtx.rotate(mid + Math.PI / 2);
+    // Rotate text to be tangent to the circle (sideways, not radial)
+    wheelCtx.rotate(mid);
     wheelCtx.textAlign = 'center';
     wheelCtx.textBaseline = 'middle';
     wheelCtx.fillStyle = '#fdf8e9';
 
-    // Prepare vertical text (characters stacked)
+    // Prepare text for sideways display
     const raw = String(slices[i].label || '');
-    const chars = raw.split('');
-
-    // Adaptive font size/line height based on label length
+    
+    // Adaptive font size based on label length
     let fontSize = 14;
-    let line = 13;
-    if (chars.length > 12) { fontSize = 12; line = 11; }
-    if (chars.length > 18) { fontSize = 11; line = 10; }
+    if (raw.length > 10) { fontSize = 12; }
+    if (raw.length > 15) { fontSize = 10; }
     wheelCtx.font = `bold ${fontSize}px "Cinzel Decorative", serif`;
 
-    // Center the stack around the anchor point
-    const total = chars.length * line;
-    let y = -total / 2 + line / 2;
-
-    for (const ch of chars) {
-      wheelCtx.fillText(ch, 0, y);
-      y += line;
-    }
+    // Draw text sideways (tangential to the circle)
+    wheelCtx.fillText(raw, 0, 0);
 
     wheelCtx.restore();
   }
@@ -522,16 +518,41 @@ async function spinOnce(onDone) {
   if (spinning) return;
   spinning = true;
 
-  const turns = 2 + Math.random() * 1.75; // 2–3.75 turns (snappier)
+  // Initialize sound on first interaction
+  soundManager.init();
+
+  // Add spinning animation class to wheel container
+  const wheelContainer = document.querySelector('.wheel-container');
+  if (wheelContainer) {
+    wheelContainer.classList.add('spinning');
+  }
+
+  const turns = 1.5 + Math.random() * 1.0; // 1.5–2.5 turns (faster)
   const extra = Math.random() * TWO_PI;  // random offset
   const target = currentRotation + turns * TWO_PI + extra;
-  const duration = 1700 + Math.random() * 500; // ~1.7–2.2s
+  const duration = 1200 + Math.random() * 400; // ~1.2–1.6s (much faster)
+
+  // Calculate tick intervals for sound effects - fewer ticks for faster spin
+  const totalRotation = turns * TWO_PI + extra;
+  const tickCount = 18; // Fewer ticks for faster spin
+  tickInterval = totalRotation / tickCount;
+  lastTickTime = 0;
 
   const startTime = performance.now();
   function frame(now) {
-    const t = Math.min(1, (now - startTime) / duration);
+    const elapsed = now - startTime;
+    const t = Math.min(1, elapsed / duration);
     const eased = easeOutCubic(t);
+    const prevRotation = currentRotation;
     currentRotation = currentRotation + (target - currentRotation) * eased;
+    
+    // Play tick sounds at intervals
+    if (currentRotation - prevRotation > tickInterval) {
+      const intensity = Math.max(0.3, 1 - t * 0.6); // Decrease intensity as wheel slows, but keep minimum
+      soundManager.playWheelTick(intensity);
+      lastTickTime = currentRotation;
+    }
+    
     drawWheel(currentRotation);
     if (t < 1) {
       requestAnimationFrame(frame);
@@ -540,7 +561,17 @@ async function spinOnce(onDone) {
       currentRotation = target;
       drawWheel(currentRotation);
       spinning = false;
-      if (typeof onDone === 'function') onDone();
+      
+      // Remove spinning animation class immediately
+      if (wheelContainer) {
+        wheelContainer.classList.remove('spinning');
+      }
+      
+      // Call onDone immediately without delay
+      if (typeof onDone === 'function') {
+        // Use setTimeout with 0 to ensure it runs on next frame for better responsiveness
+        setTimeout(onDone, 0);
+      }
     }
   }
   requestAnimationFrame(frame);
@@ -616,8 +647,14 @@ export function initWheelRandomizer(ledgerData = [], isSchikko = false, addStrip
   wheelSpinBtn.onclick = async (e) => {
     e.stopPropagation();
     if (spinning) return;
+    
+    // Disable button during spin
+    wheelSpinBtn.disabled = true;
     wheelResultEl.textContent = '';
+    
     await spinOnce(async () => {
+      // Re-enable button after spin
+      wheelSpinBtn.disabled = false;
       const idx = getSliceIndexAtPointer(currentRotation);
       const outcome = slices[idx];
       const actor = _isSchikkoWheel ? 'Schikko' : 'Guest';
