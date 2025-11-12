@@ -135,6 +135,15 @@ const drinkRequestsModal = document.getElementById('drink-requests-modal');
 const closeDrinkRequestsModalBtn = document.getElementById('close-drink-requests-modal');
 const drinkRequestsContent = document.getElementById('drink-requests-content');
 
+// Bulk Stripes Modal Elements
+const bulkStripesModal = document.getElementById('bulk-stripes-modal');
+const closeBulkStripesModalBtn = document.getElementById('close-bulk-stripes-modal');
+const howManyBulkStripesInput = document.getElementById('how-many-bulk-stripes-input');
+const incrementBulkStripesBtn = document.getElementById('increment-bulk-stripes-btn');
+const decrementBulkStripesBtn = document.getElementById('decrement-bulk-stripes-btn');
+const confirmBulkStripesBtn = document.getElementById('confirm-bulk-stripes-btn');
+const bulkStripesPersonDisplay = document.getElementById('bulk-stripes-person-display');
+
 // Logbook elements
 const openLogbookBtn = document.getElementById('open-logbook-btn');
 const closeLogbookModalBtn = document.getElementById('close-logbook-modal');
@@ -146,6 +155,7 @@ const logbookContentDiv = document.getElementById('logbook-content');
 
 
 let currentPersonIdForDrunkStripes = null;
+let currentPersonIdForBulkStripes = null;
 
 
 // --- AUTHENTICATION & INITIALIZATION ---
@@ -310,6 +320,7 @@ function updateGuestUI() {
 
     document.querySelectorAll('[data-action="add-stripe"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
     document.querySelectorAll('[data-action="toggle-menu"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
+    document.querySelectorAll('[data-action="toggle-stripe-menu"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
     
     if (editRulesBtn) editRulesBtn.style.display = isGuest ? 'none' : 'inline-flex';
     if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'flex';
@@ -493,12 +504,25 @@ function updateTagFilterDropdown() {
 }
 
 // --- RENDER LOGIC ---
-function handleRender() {
+let lastLedgerLength = 0;
+let justAddedName = false;
+
+function handleRender(animateNewItems = false) {
     let viewData = [...ledgerDataCache];
     const term = currentSearchTerm.toLowerCase();
     if (term) {
         viewData = viewData.filter(person => person.name.toLowerCase().includes(term));
     }
+    
+    // Check if a new item was added
+    const currentLength = ledgerDataCache.length;
+    if (currentLength > lastLedgerLength && !justAddedName) {
+        animateNewItems = true;
+        justAddedName = true;
+        setTimeout(() => { justAddedName = false; }, 1000);
+    }
+    lastLedgerLength = currentLength;
+    
     viewData.sort((a, b) => {
         const nameA = a.name.toLowerCase();
         const nameB = b.name.toLowerCase();
@@ -533,7 +557,7 @@ function handleRender() {
             case 'asc': default: return nameA.localeCompare(nameB);
         }
     });
-    renderLedger(viewData, term, isSchikkoSessionActive);
+    renderLedger(viewData, term, isSchikkoSessionActive, animateNewItems);
 }
 
 function handleRenderRules() {
@@ -1072,11 +1096,20 @@ async function handleAddName() {
     try {
         await addNameToLedger(name);
         await logActivity('ADD_PERSON', 'Schikko', `Inscribed "${name}" onto the ledger.`);
+        
+        // Trigger immediate UI update with animation
+        justAddedName = true;
+        handleRender(true);
+        
+        // Clear input and search
+        mainInput.value = '';
+        currentSearchTerm = '';
+        
+        // Focus back to input for quick entry
+        mainInput.focus();
     } finally {
         hideLoading();
     }
-    mainInput.value = '';
-    currentSearchTerm = '';
 }
 
 async function handleRename(docId) {
@@ -1194,11 +1227,69 @@ punishmentListDiv.addEventListener('click', async (e) => {
     e.preventDefault();
     const action = target.dataset.action;
     const id = target.dataset.id;
-    if (action !== 'toggle-menu') closeMenus();
+    if (action !== 'toggle-menu' && action !== 'toggle-stripe-menu') closeMenus();
     const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
     switch (action) {
-        case 'toggle-menu': 
-            if(isSchikkoSessionActive) document.getElementById(`menu-${id}`)?.classList.toggle('hidden');
+        case 'toggle-menu':
+            if(isSchikkoSessionActive) {
+                const menu = document.getElementById(`menu-${id}`);
+                if (menu) {
+                    // Close all other menus first
+                    closeMenus();
+                    
+                    const button = e.target.closest('[data-action="toggle-menu"]');
+                    const rect = button.getBoundingClientRect();
+                    
+                    // Position menu relative to viewport
+                    menu.style.position = 'fixed';
+                    menu.style.top = `${rect.bottom + window.scrollY}px`;
+                    menu.style.right = `${window.innerWidth - rect.right + window.scrollX}px`;
+                    menu.style.zIndex = '99999';
+                    
+                    // Move to body if not already there
+                    if (menu.parentNode !== document.body) {
+                        document.body.appendChild(menu);
+                    }
+                    
+                    menu.classList.remove('hidden');
+                }
+            }
+            break;
+        case 'toggle-stripe-menu':
+            if(isSchikkoSessionActive) {
+                const menu = document.getElementById(`stripe-menu-${id}`);
+                if (menu) {
+                    // Close all other menus first
+                    closeMenus();
+                    
+                    const button = e.target.closest('[data-action="toggle-stripe-menu"]');
+                    const rect = button.getBoundingClientRect();
+                    
+                    // Position menu relative to viewport
+                    menu.style.position = 'fixed';
+                    menu.style.top = `${rect.bottom + window.scrollY}px`;
+                    menu.style.right = `${window.innerWidth - rect.right + window.scrollX}px`;
+                    menu.style.zIndex = '99999';
+                    
+                    // Move to body if not already there
+                    if (menu.parentNode !== document.body) {
+                        document.body.appendChild(menu);
+                    }
+                    
+                    menu.classList.remove('hidden');
+                }
+            }
+            break;
+        case 'bulk-stripes':
+            if (await ensureSchikkoSession()) {
+                const person = ledgerDataCache.find(p => p.id === id);
+                if (person) {
+                    currentPersonIdForBulkStripes = id;
+                    howManyBulkStripesInput.value = 1;
+                    bulkStripesPersonDisplay.textContent = person.name;
+                    bulkStripesModal.classList.remove('hidden');
+                }
+            }
             break;
         case 'add-stripe':
             if (await ensureSchikkoSession()) {
@@ -1247,19 +1338,35 @@ punishmentListDiv.addEventListener('click', async (e) => {
             }
 
             // If we're here, it's either the Schikko or it's past the event date.
-            currentPersonIdForDrunkStripes = id; 
+            currentPersonIdForDrunkStripes = id;
             const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
             const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
+            const currentDrunkStripes = person?.drunkStripes?.length || 0;
             
-            howManyBeersInput.value = Math.min(1, availablePenaltiesToFulfill); 
-            howManyBeersInput.max = availablePenaltiesToFulfill; 
-            availableStripesDisplay.textContent = ` Available Stripes: ${availablePenaltiesToFulfill}`;
-            
-            howManyBeersInput.disabled = availablePenaltiesToFulfill <= 0;
-            incrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
-            decrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
-            confirmDrunkStripesBtn.disabled = availablePenaltiesToFulfill <= 0; 
-            if (availablePenaltiesToFulfill <= 0) availableStripesDisplay.textContent = 'No Stripes available to fulfill!';
+            if (isSchikkoSessionActive) {
+                // Schikko can add or remove drunk stripes
+                howManyBeersInput.value = 1;
+                howManyBeersInput.min = -currentDrunkStripes; // Can't remove more than available
+                howManyBeersInput.max = availablePenaltiesToFulfill; // Can't add more than available
+                availableStripesDisplay.textContent = `Current: ${currentDrunkStripes}, Available: ${availablePenaltiesToFulfill}`;
+                
+                howManyBeersInput.disabled = false;
+                incrementBeersBtn.disabled = false;
+                decrementBeersBtn.disabled = false;
+                confirmDrunkStripesBtn.disabled = false;
+            } else {
+                // Guests can only add drunk stripes
+                howManyBeersInput.value = Math.min(1, availablePenaltiesToFulfill);
+                howManyBeersInput.min = 1;
+                howManyBeersInput.max = availablePenaltiesToFulfill;
+                availableStripesDisplay.textContent = ` Available Stripes: ${availablePenaltiesToFulfill}`;
+                
+                howManyBeersInput.disabled = availablePenaltiesToFulfill <= 0;
+                incrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
+                decrementBeersBtn.disabled = availablePenaltiesToFulfill <= 0;
+                confirmDrunkStripesBtn.disabled = availablePenaltiesToFulfill <= 0;
+                if (availablePenaltiesToFulfill <= 0) availableStripesDisplay.textContent = 'No Stripes available to fulfill!';
+            }
 
             drunkStripesModal.classList.remove('hidden'); 
             break;
@@ -1384,11 +1491,16 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]')) {
+    if (!e.target.closest('[data-action="toggle-menu"]') && !e.target.closest('[id^="menu-"]') &&
+        !e.target.closest('[data-action="toggle-stripe-menu"]') && !e.target.closest('[id^="stripe-menu-"]')) {
         closeMenus();
     }
     if (!drunkStripesModal.classList.contains('hidden') && !e.target.closest('#drunk-stripes-modal') && !e.target.closest('[data-action="add-drunk-stripe"]')) {
         drunkStripesModal.classList.add('hidden');
+    }
+    if (!bulkStripesModal.classList.contains('hidden') && !e.target.closest('#bulk-stripes-modal') && !e.target.closest('[data-action="bulk-stripes"]')) {
+        bulkStripesModal.classList.add('hidden');
+        currentPersonIdForBulkStripes = null;
     }
     // Do not auto-close the dice modal on outside click; rely on its explicit close button.
 });
@@ -1433,6 +1545,42 @@ openRandomizerHubBtn?.addEventListener('click', (e) => {
 
 closeRandomizerHubModalBtn?.addEventListener('click', () => randomizerHubModal.classList.add('hidden'));
 
+// Handle clicks on randomizer cards
+randomizerHubModal?.addEventListener('click', (e) => {
+    const card = e.target.closest('.randomizer-card');
+    if (!card) return;
+    
+    const randomizerType = card.dataset.randomizer;
+    randomizerHubModal.classList.add('hidden');
+    
+    switch (randomizerType) {
+        case 'list':
+            listRandomizerModal.classList.remove('hidden');
+            initListRandomizer(ledgerDataCache, isSchikkoSessionActive, addStripeToPerson, showAlert);
+            break;
+        case 'dice':
+            diceRandomizerModal.classList.remove('hidden');
+            initDiceRandomizer(ledgerDataCache, addStripeToPerson, showAlert, isSchikkoSessionActive);
+            break;
+        case 'wheel':
+            const wheelModal = document.getElementById('wheel-randomizer-modal');
+            if (wheelModal) wheelModal.classList.remove('hidden');
+            initWheelRandomizer(
+                ledgerDataCache,
+                isSchikkoSessionActive,
+                addStripeToPerson,
+                showAlert,
+                {
+                    logActivity,
+                    removeLastStripeFn: removeLastStripeFromPerson,
+                    ensureSessionFn: ensureSchikkoSession
+                }
+            );
+            break;
+    }
+});
+
+// Keep the old button handlers as fallback for any direct button clicks
 openListRandomizerFromHubBtn?.addEventListener('click', () => {
     randomizerHubModal.classList.add('hidden');
     listRandomizerModal.classList.remove('hidden');
@@ -1575,7 +1723,8 @@ incrementBeersBtn.addEventListener('click', () => {
 
 decrementBeersBtn.addEventListener('click', () => {
     const currentValue = parseInt(howManyBeersInput.value);
-    if (currentValue > 1) { 
+    const minValue = parseInt(howManyBeersInput.min);
+    if (currentValue > minValue) {
         howManyBeersInput.value = currentValue - 1;
     }
 });
@@ -1583,17 +1732,36 @@ decrementBeersBtn.addEventListener('click', () => {
 confirmDrunkStripesBtn.addEventListener('click', async () => {
     if (!currentPersonIdForDrunkStripes) return;
 
-    const count = Math.max(1, parseInt(howManyBeersInput.value));
+    const count = parseInt(howManyBeersInput.value);
     const person = ledgerDataCache.find(p => p.id === currentPersonIdForDrunkStripes);
     const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
+    const currentDrunkStripes = person?.drunkStripes?.length || 0;
 
-    if (count > availablePenaltiesToFulfill) {
-        await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
-        return;
+    // Validation for different user types
+    if (!isSchikkoSessionActive) {
+        // Guests can only add positive stripes
+        if (count <= 0) {
+            await showAlert(`Guests can only add positive amounts of draughts!`, "Invalid Amount");
+            return;
+        }
+        if (count > availablePenaltiesToFulfill) {
+            await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
+            return;
+        }
+    } else {
+        // Schikko can add or remove, but with limits
+        if (count > availablePenaltiesToFulfill) {
+            await showAlert(`Cannot add more draughts than available stripes! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
+            return;
+        }
+        if (count < -currentDrunkStripes) {
+            await showAlert(`Cannot remove more draughts than already consumed! You have ${currentDrunkStripes} draughts recorded.`, "Too Many Removals");
+            return;
+        }
     }
 
-    if (count > 0) {
-        if (!isSchikkoSessionActive && requireApprovalForDrinks) {
+    if (count !== 0) {
+        if (!isSchikkoSessionActive && requireApprovalForDrinks && count > 0) {
             // Guests submit a drink request instead of directly recording
             showLoading('Submitting request...');
             try {
@@ -1613,10 +1781,15 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
         } else {
             // Schikko (or approval not required): record immediately
             const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
-            showLoading('Recording draughts...');
+            showLoading(count > 0 ? 'Recording draughts...' : 'Removing draughts...');
             try {
-                await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count);
-                await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person?.name || 'someone'}.`);
+                if (count > 0) {
+                    await addDrunkStripeToPerson(currentPersonIdForDrunkStripes, count);
+                    await logActivity('ADD_DRUNK_STRIPE', actor, `${actor} recorded ${count} consumed draught(s) for ${person?.name || 'someone'}.`);
+                } else {
+                    await removeLastDrunkStripeFromPerson(person, Math.abs(count));
+                    await logActivity('REMOVE_DRUNK_STRIPE', actor, `${actor} removed ${Math.abs(count)} consumed draught(s) for ${person?.name || 'someone'}.`);
+                }
             } finally {
                 hideLoading();
             }
@@ -1625,6 +1798,59 @@ confirmDrunkStripesBtn.addEventListener('click', async () => {
 
     drunkStripesModal.classList.add('hidden');
     currentPersonIdForDrunkStripes = null;
+});
+
+// Bulk Stripes Modal Event Listeners
+closeBulkStripesModalBtn.addEventListener('click', () => {
+    bulkStripesModal.classList.add('hidden');
+    currentPersonIdForBulkStripes = null;
+});
+
+incrementBulkStripesBtn.addEventListener('click', () => {
+    const currentValue = parseInt(howManyBulkStripesInput.value);
+    if (currentValue < 50) {
+        howManyBulkStripesInput.value = currentValue + 1;
+    }
+});
+
+decrementBulkStripesBtn.addEventListener('click', () => {
+    const currentValue = parseInt(howManyBulkStripesInput.value);
+    if (currentValue > -50) {
+        howManyBulkStripesInput.value = currentValue - 1;
+    }
+});
+
+confirmBulkStripesBtn.addEventListener('click', async () => {
+    if (!currentPersonIdForBulkStripes) return;
+
+    const count = parseInt(howManyBulkStripesInput.value);
+    const person = ledgerDataCache.find(p => p.id === currentPersonIdForBulkStripes);
+    
+    if (!person) return;
+
+    if (count !== 0) {
+        if (!await ensureSchikkoSession()) return;
+        
+        const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
+        showLoading(count > 0 ? 'Adding stripes...' : 'Removing stripes...');
+        
+        try {
+            if (count > 0) {
+                await addStripeToPerson(currentPersonIdForBulkStripes, count);
+                await logActivity('ADD_STRIPE', actor, `Added ${count} stripe${count > 1 ? 's' : ''} to ${person.name}.`);
+            } else {
+                for (let i = 0; i < Math.abs(count); i++) {
+                    await removeLastStripeFromPerson(person);
+                }
+                await logActivity('REMOVE_STRIPE', actor, `Removed ${Math.abs(count)} stripe${Math.abs(count) > 1 ? 's' : ''} from ${person.name}.`);
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    bulkStripesModal.classList.add('hidden');
+    currentPersonIdForBulkStripes = null;
 });
 
 editCalendarBtn.addEventListener('click', async () => {

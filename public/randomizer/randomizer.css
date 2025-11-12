@@ -189,3 +189,144 @@
         filter: brightness(1.1);
     }
 }
+
+/* --- Randomizer Hub Preview Cards --- */
+.randomizer-card {
+    perspective: 1000px;
+}
+
+.randomizer-card .bg-gradient-to-br {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.randomizer-card .bg-gradient-to-br::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.randomizer-card:hover .bg-gradient-to-br::before {
+    left: 100%;
+}
+
+.randomizer-card:hover .bg-gradient-to-br {
+    background: linear-gradient(to bottom right, #f0e9dc, #d5ccc0);
+    border-color: #8c6b52;
+}
+
+.randomizer-card .text-5xl {
+    transition: transform 0.3s ease;
+}
+
+.randomizer-card:hover .text-5xl {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.randomizer-card h3 {
+    transition: color 0.3s ease;
+}
+
+.randomizer-card:hover h3 {
+    color: #8c6b52;
+}
+
+.randomizer-card .space-y-2 {
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.randomizer-card:hover .space-y-2 {
+    opacity: 1;
+}
+
+.randomizer-card .w-2 {
+    transition: all 0.3s ease;
+}
+
+.randomizer-card:hover .w-2 {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(192, 57, 43, 0.5);
+}
+
+/* Enhanced button styles for cards */
+.randomizer-card button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.randomizer-card button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(140, 107, 82, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+}
+
+.randomizer-card button:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.randomizer-card button:active {
+    transform: scale(0.98);
+}
+
+/* Responsive adjustments for cards */
+@media (max-width: 768px) {
+    .randomizer-card {
+        margin-bottom: 1rem;
+    }
+    
+    .randomizer-card .text-5xl {
+        font-size: 3rem;
+    }
+    
+    .randomizer-card h3 {
+        font-size: 1.1rem;
+    }
+    
+    .randomizer-card p {
+        font-size: 0.85rem;
+    }
+}
+
+/* Animation for card entrance */
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.randomizer-card {
+    animation: cardSlideIn 0.5s ease forwards;
+}
+
+.randomizer-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.randomizer-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.randomizer-card:nth-child(3) {
+    animation-delay: 0.3s;
+}

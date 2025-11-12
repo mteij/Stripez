@@ -411,27 +411,52 @@ function renderLogbookChart(logData, filter) {
  * @param {string} term - The current search term.
  * @param {boolean} isSchikko - Flag to determine if the user is the Schikko.
  */
-function renderLedger(viewData, term, isSchikko) {
+function renderLedger(viewData, term, isSchikko, animateNewItems = false) {
     const punishmentListDiv = document.getElementById('punishment-list');
-    punishmentListDiv.innerHTML = '';
+    
+    // Store current items for animation comparison
+    const currentItems = Array.from(punishmentListDiv.children);
+    const currentIds = new Set(currentItems.map(item => item.dataset.personId));
+    
+    // Clear with fade out animation
+    if (currentItems.length > 0) {
+        currentItems.forEach(item => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(10px)';
+        });
+        
+        // Wait for fade out before clearing
+        setTimeout(() => {
+            punishmentListDiv.innerHTML = '';
+            renderLedgerItems(viewData, term, isSchikko, currentIds, animateNewItems);
+        }, 200);
+    } else {
+        punishmentListDiv.innerHTML = '';
+        renderLedgerItems(viewData, term, isSchikko, currentIds, animateNewItems);
+    }
+}
+
+function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), animateNewItems = false) {
+    const punishmentListDiv = document.getElementById('punishment-list');
 
     if (viewData.length === 0) {
         const message = term ? "No transgressors match your search." : "The ledger is clear. No transgressions recorded.";
-        punishmentListDiv.innerHTML = `<div class="text-center text-xl text-[#6f4e37]">${message}</div>`;
+        punishmentListDiv.innerHTML = `<div class="text-center text-xl text-[#6f4e37] app-fade">${message}</div>`;
         return;
     }
 
     const containerWidth = punishmentListDiv.clientWidth;
-    const safeStripeAreaPercentage = 0.55; 
+    const safeStripeAreaPercentage = 0.55;
     const safeStripeAreaWidth = containerWidth * safeStripeAreaPercentage;
-    const effectiveStripeWidthPx = 8; 
+    const effectiveStripeWidthPx = 8;
     const calculatedThreshold = Math.floor(safeStripeAreaWidth / effectiveStripeWidthPx);
     const MIN_THRESHOLD = 15;
     const MAX_THRESHOLD = 40;
     const STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY = Math.max(MIN_THRESHOLD, Math.min(calculatedThreshold, MAX_THRESHOLD));
     const appNameDom = (document.querySelector('meta[name="application-name"]')?.content || '').trim();
 
-    viewData.forEach(person => {
+    // Render items with staggered animation
+    viewData.forEach((person, index) => {
         const normalStripesCount = person.stripes?.length || 0;
         const drunkStripesCount = person.drunkStripes?.length || 0;
         
@@ -475,21 +500,39 @@ function renderLedger(viewData, term, isSchikko) {
         }
 
         const personDiv = document.createElement('div');
-        personDiv.className = 'flex items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
+        const isNew = !previousIds.has(person.id) && animateNewItems;
+        const baseClass = 'flex items-center justify-between bg-[#f5eeda] p-4 rounded-lg border-2 border-[#b9987e]';
+        personDiv.className = isNew ? `${baseClass} ledger-item-new` : baseClass;
+        personDiv.dataset.personId = person.id;
+        
+        // Add staggered animation delay
+        if (isNew) {
+            personDiv.style.animationDelay = `${index * 0.1}s`;
+        }
 
         let buttonsHTML = `<div class="flex items-center gap-2 flex-shrink-0">`;
         if (isSchikko) {
-            buttonsHTML += `<button data-action="add-stripe" data-id="${person.id}" class="btn-ancient text-2xl font-bold w-12 h-12 flex items-center justify-center rounded-md">+</button>`;
+            buttonsHTML += `<div class="relative">
+                    <button data-action="toggle-stripe-menu" data-id="${person.id}" class="btn-ancient text-2xl font-bold w-12 h-12 flex items-center justify-center rounded-md" title="Manage Stripes">±</button>
+                    <div id="stripe-menu-${person.id}" class="hidden absolute right-0 mt-2 w-48 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg" style="z-index: 9999 !important;">
+                        <a href="#" data-action="add-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
+                            <span class="text-green-600 font-bold">+</span> Add Stripe
+                        </a>
+                        <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
+                            <span class="text-red-600 font-bold">-</span> Remove Stripe
+                        </a>
+                        <div class="border-t border-[#b9987e] my-1"></div>
+                        <a href="#" data-action="bulk-stripes" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
+                            <span class="text-blue-600 font-bold">±</span> Bulk Stripes
+                        </a>
+                    </div>
+                </div>`;
         }
-        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-beer" title="Pour Liquid">
-                            <span class="hidden sm:inline">Drink</span><span>🍺</span>
-                        </button>`;
+        buttonsHTML += `<button data-action="add-drunk-stripe" data-id="${person.id}" class="btn-ancient text-2xl font-bold w-12 h-12 flex items-center justify-center rounded-md" title="Pour Liquid">🍺</button>`;
         if (isSchikko) {
             buttonsHTML += `<div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
-                    <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-10">
-                        <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Remove Last Stripe</a>
-                        <a href="#" data-action="remove-drunk-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Revert Drunk Stripe</a>
+                    <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg" style="z-index: 9999 !important;">
                         <a href="#" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
                         <div class="border-t border-[#b9987e] my-1"></div>
 
@@ -526,7 +569,14 @@ function renderLedger(viewData, term, isSchikko) {
                 <div class="flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
             </div>
             ${buttonsHTML}`;
+        
+        // Add to DOM with animation
         punishmentListDiv.appendChild(personDiv);
+        
+        // Trigger reflow for animation
+        if (isNew) {
+            personDiv.offsetHeight;
+        }
     });
 }
 
@@ -725,7 +775,20 @@ function showStatsModal(person) {
  * Closes all open kebab menus.
  */
 function closeMenus() {
-    document.querySelectorAll('[id^="menu-"]').forEach(menu => menu.classList.add('hidden'));
+    document.querySelectorAll('[id^="menu-"]').forEach(menu => {
+        menu.classList.add('hidden');
+        // Reset position when closing to avoid issues if the element gets re-appended
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.right = '';
+    });
+    document.querySelectorAll('[id^="stripe-menu-"]').forEach(menu => {
+        menu.classList.add('hidden');
+        // Reset position when closing to avoid issues if the element gets re-appended
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.right = '';
+    });
 }
 
 /**
