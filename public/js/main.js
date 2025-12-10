@@ -160,6 +160,22 @@ let currentPersonIdForBulkStripes = null;
 
 // --- AUTHENTICATION & INITIALIZATION ---
 (async function init() {
+   // Add global error handler for unhandled promise rejections
+   window.addEventListener('unhandledrejection', function(event) {
+       console.error('Unhandled promise rejection:', event.reason);
+       // Prevent the default browser behavior
+       event.preventDefault();
+   });
+
+   // Add global error handler for JavaScript errors
+   window.addEventListener('error', function(event) {
+       console.error('JavaScript error:', event.error);
+       // Check if it's related to external resources
+       if (event.message && event.message.includes('Failed to load resource')) {
+           console.warn('External resource loading detected - this may be due to browser extensions');
+       }
+   });
+
    try {
        await ensureAnon();
 
@@ -1022,16 +1038,31 @@ function showTotpSetup(otpauthUrl, secret, account, issuer, firstName, lastName)
    if (totpQrEl) {
        totpQrEl.innerHTML = '';
        try {
-           if (window.QRCode) {
+           if (window.QRCode && typeof window.QRCode === 'function') {
                new QRCode(totpQrEl, { text: otpauthUrl, width: 200, height: 200 });
            } else {
-               const a = document.createElement('a');
-               a.href = otpauthUrl;
-               a.textContent = 'Open otpauth:// link';
-               a.className = 'text-blue-700 underline break-all';
-               totpQrEl.appendChild(a);
+               // Fallback when QRCode is not available
+               const fallbackDiv = document.createElement('div');
+               fallbackDiv.className = 'text-center p-4 border-2 border-dashed border-[#b9987e] rounded-md';
+               fallbackDiv.innerHTML = `
+                   <p class="text-sm text-[#6f4e37] mb-2">QR Code not available</p>
+                   <a href="${otpauthUrl}" class="text-blue-700 underline break-all text-xs" target="_blank">Open otpauth:// link</a>
+                   <p class="text-xs text-[#6f4e37] mt-2">Manual entry required</p>
+               `;
+               totpQrEl.appendChild(fallbackDiv);
            }
-       } catch (_) {}
+       } catch (error) {
+           console.warn('QR Code generation failed:', error);
+           // Show fallback
+           const fallbackDiv = document.createElement('div');
+           fallbackDiv.className = 'text-center p-4 border-2 border-dashed border-[#b9987e] rounded-md';
+           fallbackDiv.innerHTML = `
+               <p class="text-sm text-[#6f4e37] mb-2">QR Code generation failed</p>
+               <a href="${otpauthUrl}" class="text-blue-700 underline break-all text-xs" target="_blank">Open otpauth:// link</a>
+               <p class="text-xs text-[#6f4e37] mt-2">Manual entry required</p>
+           `;
+           totpQrEl.appendChild(fallbackDiv);
+       }
    }
    if (totpSecretEl) totpSecretEl.textContent = secret || '';
    if (totpManualEl) {
@@ -1503,6 +1534,93 @@ document.addEventListener('click', (e) => {
         currentPersonIdForBulkStripes = null;
     }
     // Do not auto-close the dice modal on outside click; rely on its explicit close button.
+});
+
+// Add event delegation for dropdown menus that are moved to document.body
+document.addEventListener('click', async (e) => {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const action = target.dataset.action;
+    const id = target.dataset.id;
+    
+    // Only handle actions that should be processed globally
+    if (!['add-stripe', 'remove-stripe', 'bulk-stripes', 'rename', 'delete', 'set-role'].includes(action)) {
+        return;
+    }
+    
+    if (action !== 'toggle-menu' && action !== 'toggle-stripe-menu') closeMenus();
+    const actor = isSchikkoSessionActive ? 'Schikko' : 'Guest';
+    
+    switch (action) {
+        case 'bulk-stripes':
+            if (await ensureSchikkoSession()) {
+                const person = ledgerDataCache.find(p => p.id === id);
+                if (person) {
+                    currentPersonIdForBulkStripes = id;
+                    howManyBulkStripesInput.value = 1;
+                    bulkStripesPersonDisplay.textContent = person.name;
+                    bulkStripesModal.classList.remove('hidden');
+                }
+            }
+            break;
+        case 'add-stripe':
+            if (await ensureSchikkoSession()) {
+                const person = ledgerDataCache.find(p => p.id === id);
+                if (person) {
+                    showLoading('Saving stripe...');
+                    try {
+                        await addStripeToPerson(id);
+                        await logActivity('ADD_STRIPE', actor, `Added 1 stripe to ${person.name}.`);
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            }
+            break;
+        case 'remove-stripe':
+            if (await ensureSchikkoSession()) {
+                const person = ledgerDataCache.find(p => p.id === id);
+                if (person) {
+                    showLoading('Reverting...');
+                    try {
+                        await removeLastStripeFromPerson(person);
+                        await logActivity('REMOVE_STRIPE', actor, `Removed the last stripe from ${person.name}.`);
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            }
+            break;
+        case 'rename':
+            if (await ensureSchikkoSession()) {
+                handleRename(id);
+            }
+            break;
+        case 'delete':
+            if (await ensureSchikkoSession()) {
+                handleDeletePerson(id);
+            }
+            break;
+        case 'set-role':
+            if (await ensureSchikkoSession()) {
+                const role = target.dataset.role || '';
+                const person = ledgerDataCache.find(p => p.id === id);
+                showLoading('Updating role...');
+                try {
+                    await setPersonRole(id, role);
+                    if (person) {
+                        const actionText = role ? `Set role "${role}" for ${person.name}.` : `Cleared role for ${person.name}.`;
+                        await logActivity('SET_ROLE', 'Schikko', actionText);
+                    }
+                } finally {
+                    hideLoading();
+                }
+            }
+            break;
+    }
 });
 
 // Logbook listeners

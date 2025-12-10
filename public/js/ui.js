@@ -10,23 +10,33 @@ let schikkoLoggedIn = false;
 
 // Launch confetti once per page load (or per event period)
 function launchAppConfetti() {
-    if (typeof window !== 'undefined' && typeof window.confetti === 'function') {
-        var count = 200;
-        var defaults = {
-          origin: { y: 0.7 }
-        };
-        function fire(particleRatio, opts) {
-            window.confetti({
-                ...defaults,
-                ...opts,
-                particleCount: Math.floor(count * particleRatio)
-            });
+    try {
+        if (typeof window !== 'undefined' && typeof window.confetti === 'function') {
+            var count = 200;
+            var defaults = {
+              origin: { y: 0.7 }
+            };
+            function fire(particleRatio, opts) {
+                try {
+                    window.confetti({
+                        ...defaults,
+                        ...opts,
+                        particleCount: Math.floor(count * particleRatio)
+                    });
+                } catch (error) {
+                    console.warn('Confetti effect failed:', error);
+                }
+            }
+            fire(0.25, { spread: 26, startVelocity: 55 });
+            fire(0.2, { spread: 60 });
+            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+            fire(0.1, { spread: 120, startVelocity: 45 });
+        } else {
+            console.log('Confetti not available - celebration effect skipped');
         }
-        fire(0.25, { spread: 26, startVelocity: 55 });
-        fire(0.2, { spread: 60 });
-        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
-        fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
-        fire(0.1, { spread: 120, startVelocity: 45 });
+    } catch (error) {
+        console.warn('Confetti launch failed:', error);
     }
 }
 
@@ -321,11 +331,40 @@ function renderLogbook(logData, isSchikko = false) {
 }
 
 function renderLogbookChart(logData, filter) {
-    const ctx = document.getElementById('logbook-chart')?.getContext('2d');
+    let ctx = null;
+    let chartError = false;
+    
+    try {
+        const canvas = document.getElementById('logbook-chart');
+        if (canvas) {
+            ctx = canvas.getContext('2d');
+        }
+    } catch (error) {
+        console.warn('Logbook chart canvas not available:', error);
+        chartError = true;
+    }
+    
     if (!ctx) return;
 
     if (logbookChart) {
-        logbookChart.destroy();
+        try {
+            logbookChart.destroy();
+        } catch (error) {
+            console.warn('Error destroying existing logbook chart:', error);
+        }
+    }
+    
+    // If Chart.js is not available, show fallback message
+    if (chartError || typeof window.Chart === 'undefined') {
+        const canvas = document.getElementById('logbook-chart');
+        if (canvas) {
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#6f4e37';
+            context.font = '16px Arial';
+            context.textAlign = 'center';
+            context.fillText('Charts not available due to blocked resources', canvas.width / 2, canvas.height / 2);
+        }
+        return;
     }
 
     const getActionType = (action) => {
@@ -382,27 +421,40 @@ function renderLogbookChart(logData, filter) {
         }
     }
 
-    logbookChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: sortedLabels,
-            datasets: finalDatasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: { display: true, text: 'Activity Over Last 30 Days' },
-                legend: { position: 'top' }
+    try {
+        logbookChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedLabels,
+                datasets: finalDatasets
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: 'Activity Over Last 30 Days' },
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
                 }
             }
+        });
+    } catch (error) {
+        console.error('Error creating logbook chart:', error);
+        // Show fallback message
+        const canvas = document.getElementById('logbook-chart');
+        if (canvas) {
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#6f4e37';
+            context.font = '16px Arial';
+            context.textAlign = 'center';
+            context.fillText('Chart creation failed', canvas.width / 2, canvas.height / 2);
         }
-    });
+    }
 }
 
 /**
@@ -515,14 +567,14 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
             buttonsHTML += `<div class="relative">
                     <button data-action="toggle-stripe-menu" data-id="${person.id}" class="btn-ancient text-2xl font-bold w-12 h-12 flex items-center justify-center rounded-md" title="Manage Stripes">±</button>
                     <div id="stripe-menu-${person.id}" class="hidden absolute right-0 mt-2 w-48 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg" style="z-index: 9999 !important;">
-                        <a href="#" data-action="add-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
+                        <a href="javascript:void(0)" data-action="add-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
                             <span class="text-green-600 font-bold">+</span> Add Stripe
                         </a>
-                        <a href="#" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
+                        <a href="javascript:void(0)" data-action="remove-stripe" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
                             <span class="text-red-600 font-bold">-</span> Remove Stripe
                         </a>
                         <div class="border-t border-[#b9987e] my-1"></div>
-                        <a href="#" data-action="bulk-stripes" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
+                        <a href="javascript:void(0)" data-action="bulk-stripes" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda] flex items-center gap-2">
                             <span class="text-blue-600 font-bold">±</span> Bulk Stripes
                         </a>
                     </div>
@@ -533,7 +585,7 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
             buttonsHTML += `<div class="relative">
                     <button data-action="toggle-menu" data-id="${person.id}" class="btn-ancient text-lg font-bold py-2 px-3 rounded-md">&#x22EE;</button>
                     <div id="menu-${person.id}" class="hidden absolute right-0 mt-2 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg" style="z-index: 9999 !important;">
-                        <a href="#" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
+                        <a href="javascript:void(0)" data-action="rename" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Rename</a>
                         <div class="border-t border-[#b9987e] my-1"></div>
 
                         <!-- Flyout Roles submenu -->
@@ -543,16 +595,16 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
                                 <span class="ml-2 text-[#6f4e37]">›</span>
                             </div>
                             <div class="kebab-submenu hidden absolute left-full top-0 ml-0 w-56 bg-[#fdf8e9] border-2 border-[#8c6b52] rounded-md shadow-lg z-20">
-                                <a href="#" data-action="set-role" data-role="Schikko" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Schikko</a>
-                                ${appNameDom ? `<a href="#" data-action="set-role" data-role="${escapeHTML(appNameDom)}" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">${escapeHTML(appNameDom)}</a>` : ''}
-                                <a href="#" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>
-                                <a href="#" data-action="set-role" data-role="Activist" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Activist</a>
-                                <a href="#" data-action="set-role" data-role="" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Clear Role</a>
+                                <a href="javascript:void(0)" data-action="set-role" data-role="Schikko" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Schikko</a>
+                                ${appNameDom ? `<a href="javascript:void(0)" data-action="set-role" data-role="${escapeHTML(appNameDom)}" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">${escapeHTML(appNameDom)}</a>` : ''}
+                                <a href="javascript:void(0)" data-action="set-role" data-role="Board" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Board</a>
+                                <a href="javascript:void(0)" data-action="set-role" data-role="Activist" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Activist</a>
+                                <a href="javascript:void(0)" data-action="set-role" data-role="" data-id="${person.id}" class="block px-4 py-2 text-md text-[#5c3d2e] hover:bg-[#f5eeda]">Clear Role</a>
                             </div>
                         </div>
 
                         <div class="border-t border-[#b9987e] my-1"></div>
-                        <a href="#" data-action="delete" data-id="${person.id}" class="block px-4 py-2 text-md text-red-700 hover:bg-[#f5eeda] hover:text-red-800 font-bold">Delete Person</a>
+                        <a href="javascript:void(0)" data-action="delete" data-id="${person.id}" class="block px-4 py-2 text-md text-red-700 hover:bg-[#f5eeda] hover:text-red-800 font-bold">Delete Person</a>
                     </div>
                 </div>`;
         }
@@ -587,20 +639,57 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
 function showStatsModal(person) {
     const statsModal = document.getElementById('stats-modal');
     const statsName = document.getElementById('stats-name');
-    const stripeChartCanvas = document.getElementById('stripe-chart').getContext('2d');
+    let stripeChartCanvas = null;
+    let chartError = false;
+    
+    try {
+        const canvas = document.getElementById('stripe-chart');
+        if (canvas) {
+            stripeChartCanvas = canvas.getContext('2d');
+        }
+    } catch (error) {
+        console.warn('Chart canvas not available:', error);
+        chartError = true;
+    }
+    
     const stripeFilterSelect = document.getElementById('stripe-filter-select');
     const remainingStripesDisplay = document.getElementById('remaining-stripes-display');
 
 
     statsName.textContent = `Statistics for ${person.name}`;
-    if (stripeChart) stripeChart.destroy();
+    if (stripeChart) {
+        try {
+            stripeChart.destroy();
+        } catch (error) {
+            console.warn('Error destroying existing chart:', error);
+        }
+    }
 
     const normalStripeTimestamps = (person.stripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
     const drunkStripeTimestamps = (person.drunkStripes || []).map(ts => ts.toDate()).sort((a, b) => a - b);
     
     // Function to update the chart and the display text based on the selected filter
     const updateChart = (filterType) => {
-        if (stripeChart) stripeChart.destroy(); // Destroy existing chart before creating a new one
+        if (stripeChart) {
+            try {
+                stripeChart.destroy(); // Destroy existing chart before creating a new one
+            } catch (error) {
+                console.warn('Error destroying chart:', error);
+            }
+        }
+        
+        // If Chart.js is not available or canvas failed, show fallback message
+        if (chartError || typeof window.Chart === 'undefined') {
+            const canvas = document.getElementById('stripe-chart');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#6f4e37';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Charts not available due to blocked resources', canvas.width / 2, canvas.height / 2);
+            }
+            return;
+        }
 
         let dataPoints = [];
         let label = '';
@@ -718,46 +807,59 @@ function showStatsModal(person) {
             }]
         };
 
-        stripeChart = new Chart(stripeChartCanvas, {
-            type: 'line', data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            title: function(tooltipItems) {
-                                const date = new Date(tooltipItems[0].parsed.x);
-                                return date.toLocaleString(undefined, {
-                                    year: 'numeric', month: 'short', day: 'numeric',
-                                    hour: '2-digit', minute: '2-digit'
-                                });
-                            },
-                            label: function(tooltipItem) {
-                                const value = tooltipItem.parsed.y;
-                                return `${label}: ${value}`;
+        try {
+            stripeChart = new Chart(stripeChartCanvas, {
+                type: 'line', data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    const date = new Date(tooltipItems[0].parsed.x);
+                                    return date.toLocaleString(undefined, {
+                                        year: 'numeric', month: 'short', day: 'numeric',
+                                        hour: '2-digit', minute: '2-digit'
+                                    });
+                                },
+                                label: function(tooltipItem) {
+                                    const value = tooltipItem.parsed.y;
+                                    return `${label}: ${value}`;
+                                }
                             }
+                        },
+                        // Removed the main chart title when data exists
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            title: { display: true, text: 'Date of Event' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Count' },
+                            ticks: { stepSize: 1 }
                         }
-                    },
-                    // Removed the main chart title when data exists
-                },
-                scales: {
-                    x: {
-                        type: 'time',
-                        title: { display: true, text: 'Date of Event' }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Count' },
-                        ticks: { stepSize: 1 }
                     }
                 }
+            });
+        } catch (error) {
+            console.error('Error creating chart:', error);
+            // Show fallback message
+            const canvas = document.getElementById('stripe-chart');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#6f4e37';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Chart creation failed', canvas.width / 2, canvas.height / 2);
             }
-        });
+        }
     };
 
     // Initial chart render based on current select value
