@@ -1540,6 +1540,15 @@ document.addEventListener('click', (e) => {
 document.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-action]');
     if (!target) return;
+    
+    // Debug logging
+    console.log('Global click handler triggered:', {
+        action: target.dataset.action,
+        id: target.dataset.id,
+        targetElement: target.tagName + (target.className ? '.' + target.className : ''),
+        textContent: target.textContent?.trim()
+    });
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -1556,6 +1565,7 @@ document.addEventListener('click', async (e) => {
     
     switch (action) {
         case 'bulk-stripes':
+            console.log('Handling bulk-stripes action');
             if (await ensureSchikkoSession()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
@@ -1567,6 +1577,7 @@ document.addEventListener('click', async (e) => {
             }
             break;
         case 'add-stripe':
+            console.log('Handling add-stripe action');
             if (await ensureSchikkoSession()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
@@ -1581,6 +1592,7 @@ document.addEventListener('click', async (e) => {
             }
             break;
         case 'remove-stripe':
+            console.log('Handling remove-stripe action');
             if (await ensureSchikkoSession()) {
                 const person = ledgerDataCache.find(p => p.id === id);
                 if (person) {
@@ -1595,16 +1607,19 @@ document.addEventListener('click', async (e) => {
             }
             break;
         case 'rename':
+            console.log('Handling rename action');
             if (await ensureSchikkoSession()) {
                 handleRename(id);
             }
             break;
         case 'delete':
+            console.log('Handling delete action');
             if (await ensureSchikkoSession()) {
                 handleDeletePerson(id);
             }
             break;
         case 'set-role':
+            console.log('Handling set-role action');
             if (await ensureSchikkoSession()) {
                 const role = target.dataset.role || '';
                 const person = ledgerDataCache.find(p => p.id === id);
