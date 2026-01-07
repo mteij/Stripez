@@ -11,6 +11,7 @@ import net from "net";
 import cron from "node-cron";
 import path from "node:path";
 import { Index } from "./views/Index";
+import pkg from "../package.json";
 
 // ---- ENV ----
 const PORT = Number(process.env.PORT || 8080);
@@ -1495,7 +1496,7 @@ app.get("/style.css", async (c) => {
 app.get("/assets/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/js/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/randomizer/*", serveStatic({ root: PUBLIC_DIR }));
-app.get("/", (c) => c.html(<Index title={APP_NAME} />));
+app.get("/", (c) => c.html(<Index title={APP_NAME} version={pkg.version} />));
 
 // Fallback SPA route: serve index.html for any non-API path,
 // but return 404 for unknown asset-like URLs to avoid MIME-type confusion.
@@ -1506,7 +1507,7 @@ app.notFound((c) => {
   if (/\.[a-zA-Z0-9]+$/.test(p)) {
     return c.text("Not Found", 404);
   }
-  return c.html(<Index title={APP_NAME} />);
+  return c.html(<Index title={APP_NAME} version={pkg.version} />);
   });
 
 // ---- Cron Jobs ----

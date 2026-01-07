@@ -2,9 +2,9 @@
 import { html } from "hono/html";
 import { type Child } from "hono/jsx";
 
-export const Layout = (props: { children: Child; title?: string }) => {
+export const Layout = (props: { children: Child; title?: string; version?: string }) => {
   return (
-    <html lang="en" data-app-version="2.1.1">
+    <html lang="en" data-app-version={props.version || "0.0.0"}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />

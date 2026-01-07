@@ -2,9 +2,9 @@
 import { Layout } from "./Layout";
 import { Modals } from "./components/Modals";
 
-export const Index = (props: { title?: string }) => {
+export const Index = (props: { title?: string; version?: string }) => {
   return (
-    <Layout title={props.title}>
+    <Layout title={props.title} version={props.version}>
       <div className="w-full max-w-4xl bg-[#fdf8e9] shadow-2xl rounded-lg border-4 border-[#8c6b52] border-opacity-80 p-6 sm:p-10 md:p-14 relative flex-grow mx-auto">
         <div className="absolute top-2 left-2 w-12 h-12 border-t-4 border-l-4 border-[#a58467]"></div>
         <a

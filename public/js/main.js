@@ -341,16 +341,16 @@ async function handleLogout() {
 function updateGuestUI() {
     const isGuest = !isSchikkoSessionActive;
 
-    document.querySelectorAll('[data-action="add-stripe"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
-    document.querySelectorAll('[data-action="toggle-menu"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
-    document.querySelectorAll('[data-action="toggle-stripe-menu"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
+    document.querySelectorAll('[data-action="add-stripe"]').forEach(btn => btn.classList.toggle('hidden', isGuest));
+    document.querySelectorAll('[data-action="toggle-menu"]').forEach(btn => btn.classList.toggle('hidden', isGuest));
+    document.querySelectorAll('[data-action="toggle-stripe-menu"]').forEach(btn => btn.classList.toggle('hidden', isGuest));
     
-    if (editRulesBtn) editRulesBtn.style.display = isGuest ? 'none' : 'inline-flex';
-    if (bulkEditBtn) bulkEditBtn.style.display = isGuest ? 'none' : 'inline-flex';
-    if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'flex';
-    if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
-    if (editCalendarBtn) editCalendarBtn.style.display = isGuest ? 'none' : 'inline-flex';
-    if (openDrinkRequestsBtn) openDrinkRequestsBtn.style.display = isGuest ? 'none' : 'inline-flex';
+    if (editRulesBtn) editRulesBtn.classList.toggle('hidden', isGuest);
+    if (bulkEditBtn) bulkEditBtn.classList.toggle('hidden', isGuest);
+    if (addDecreeBtn) addDecreeBtn.classList.toggle('hidden', isGuest);
+    if (addBtn) addBtn.classList.toggle('hidden', isGuest);
+    if (editCalendarBtn) editCalendarBtn.classList.toggle('hidden', isGuest);
+    if (openDrinkRequestsBtn) openDrinkRequestsBtn.classList.toggle('hidden', isGuest);
 
     // Logbook trigger is only visible for Schikko
     if (openLogbookBtn) {
