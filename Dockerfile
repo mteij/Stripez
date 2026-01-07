@@ -14,4 +14,4 @@ COPY public ./public
 ENV NODE_ENV=production
 EXPOSE 8080
 
-CMD ["bun", "run", "src/server.ts"]
+CMD ["bun", "run", "src/server.tsx"]
