@@ -11,13 +11,15 @@ import {
     setPersonRole, logActivity, getSchikkoStatus, getSchikkoInfo,
     setSchikko, loginSchikko, confirmSchikko, getCalendarDataProxy, getOracleJudgement,
     // drink requests
-    requestDrink, listDrinkRequests, approveDrinkRequest, rejectDrinkRequest
+    requestDrink, listDrinkRequests, approveDrinkRequest, rejectDrinkRequest,
+    // bulk
+    bulkUpdateRules
 } from './api.js';
 import {
     renderLedger, showStatsModal, closeMenus, renderRules,
     renderUpcomingEvent, renderFullAgenda, showAgendaModal,
     showAlert, showConfirm, showPrompt, showSchikkoLoginModal,
-    showSetSchikkoModal, showRuleEditModal, renderAppCountdown,
+    showSetSchikkoModal, showRuleEditModal, showBulkEditRulesModal, renderAppCountdown,
     showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading,
     setStripeTotals
 } from './ui.js';
@@ -58,6 +60,11 @@ const closeStatsModalBtn = document.getElementById('close-stats-modal');
 const statsModal = document.getElementById('stats-modal');
 const rulesListOl = document.getElementById('rules-list');
 const editRulesBtn = document.getElementById('edit-rules-btn');
+const bulkEditBtn = document.getElementById('bulk-edit-btn');
+const bulkEditRulesModal = document.getElementById('bulk-edit-rules-modal');
+const closeBulkEditModalBtn = document.getElementById('close-bulk-edit-modal');
+const bulkEditSaveBtn = document.getElementById('bulk-edit-save-btn');
+const bulkEditCancelBtn = document.getElementById('bulk-edit-cancel-btn');
 const addDecreeBtn = document.getElementById('add-decree-btn');
 const showDecreesContainer = document.getElementById('show-decrees-container');
 const decreesContent = document.getElementById('decrees-content');
@@ -339,6 +346,7 @@ function updateGuestUI() {
     document.querySelectorAll('[data-action="toggle-stripe-menu"]').forEach(btn => btn.style.display = isGuest ? 'none' : 'inline-flex');
     
     if (editRulesBtn) editRulesBtn.style.display = isGuest ? 'none' : 'inline-flex';
+    if (bulkEditBtn) bulkEditBtn.style.display = isGuest ? 'none' : 'inline-flex';
     if (addDecreeBtn) addDecreeBtn.style.display = isGuest ? 'none' : 'flex';
     if (addBtn) addBtn.style.display = isGuest ? 'none' : 'flex';
     if (editCalendarBtn) editCalendarBtn.style.display = isGuest ? 'none' : 'inline-flex';
@@ -1469,6 +1477,40 @@ editRulesBtn?.addEventListener('click', async () => {
     rulesListOl.classList.toggle('rules-list-editing');
     editRulesBtn.textContent = rulesListOl.classList.contains('rules-list-editing') ? 'Finish Editing' : 'Edit Decrees';
     handleRenderRules();
+});
+
+bulkEditBtn?.addEventListener('click', async () => {
+    const isConfirmed = await ensureSchikkoSession();
+    if (isConfirmed) {
+        showBulkEditRulesModal(true, rulesDataCache);
+    }
+});
+closeBulkEditModalBtn?.addEventListener('click', () => showBulkEditRulesModal(false));
+bulkEditCancelBtn?.addEventListener('click', () => showBulkEditRulesModal(false));
+bulkEditSaveBtn?.addEventListener('click', async () => {
+    const textarea = document.getElementById('bulk-rules-input');
+    if (!textarea) return;
+    const text = textarea.value;
+
+    showLoading('Updating decrees...');
+    try {
+        await bulkUpdateRules(text);
+        await logActivity('BULK_UPDATE_RULES', 'Schikko', 'Bulk updated decrees.');
+        showBulkEditRulesModal(false);
+        // We rely on the generic realtime listener to update the rules, but we can optimistically render or fetch fresh.
+        // Actually, realtime listener handles it? 
+        // Let's force a fetch to be responsive.
+        // But main.js has setupRealtimeListener for 'rules'.
+        // So it should update automatically after a short delay or immediately if we could trigger it.
+        // For now, let's just wait for the poller or reload. 
+        // Actually, main.js does not expose a "fetchRules" function easily, it's inside API poller callback.
+        // But we can just rely on the poller.
+    } catch (e) {
+        console.error(e);
+        showAlert('Failed to update decrees: ' + e.message, 'Error');
+    } finally {
+        hideLoading();
+    }
 });
 rulesListOl?.addEventListener('click', async (e) => {
     const target = e.target.closest('[data-rule-action]');

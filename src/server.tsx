@@ -9,15 +9,16 @@ import { request as gaxiosRequest } from "gaxios";
 import net from "net";
 import cron from "node-cron";
 import path from "node:path";
+import { Index } from "./views/Index";
 
 // ---- ENV ----
 const PORT = Number(process.env.PORT || 8080);
-const CORS_ORIGINS = (process.env.CORS_ORIGINS ||
-  "*")
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || "*")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session-secret-change-me";
+const SESSION_SECRET =
+  process.env.SESSION_SECRET || "dev-session-secret-change-me";
 const GEMINI_KEY = process.env.GEMINI_KEY || "";
 const ORACLE_MODEL = process.env.ORACLE_MODEL || "gemini-2.5-flash";
 const ADMIN_KEY = (process.env.ADMIN_KEY || "").trim();
@@ -26,12 +27,23 @@ const ADMIN_KEY = (process.env.ADMIN_KEY || "").trim();
 const APP_NAME = process.env.APP_NAME || "Stripez";
 const APP_YEAR = Number(process.env.APP_YEAR || new Date().getFullYear());
 // Drink request policy (default: require Schikko approval)
-const DRINK_REQUIRE_APPROVAL = parseBool(process.env.DRINK_REQUIRE_APPROVAL, true);
+const DRINK_REQUIRE_APPROVAL = parseBool(
+  process.env.DRINK_REQUIRE_APPROVAL,
+  true
+);
 
 // Event config and cleanup behavior
-const STRIPEZ_DEFAULT_DURATION_DAYS = Math.max(1, Number(process.env.STRIPEZ_DEFAULT_DURATION_DAYS || 3));
-const STRIPEZ_UNSET_DELAY_HOURS = Math.max(0, Number(process.env.STRIPEZ_UNSET_DELAY_HOURS || 6));
-const STRIPEZ_CLEANUP_ACTION = String(process.env.STRIPEZ_CLEANUP_ACTION || "NOTHING").toUpperCase();
+const STRIPEZ_DEFAULT_DURATION_DAYS = Math.max(
+  1,
+  Number(process.env.STRIPEZ_DEFAULT_DURATION_DAYS || 3)
+);
+const STRIPEZ_UNSET_DELAY_HOURS = Math.max(
+  0,
+  Number(process.env.STRIPEZ_UNSET_DELAY_HOURS || 6)
+);
+const STRIPEZ_CLEANUP_ACTION = String(
+  process.env.STRIPEZ_CLEANUP_ACTION || "NOTHING"
+).toUpperCase();
 
 // ---- APP ----
 const app = new Hono();
@@ -40,7 +52,8 @@ const app = new Hono();
 app.use(
   "/api/*",
   cors({
-    origin: (origin) => (!origin ? "*" : CORS_ORIGINS.includes(origin) ? origin : CORS_ORIGINS[0]),
+    origin: (origin) =>
+      !origin ? "*" : CORS_ORIGINS.includes(origin) ? origin : CORS_ORIGINS[0],
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"],
     credentials: true,
@@ -81,7 +94,8 @@ function getCookie(c: any, name: string): string | undefined {
   const cookie = c.req.header("Cookie") || "";
   const parts = cookie.split(";").map((p) => p.trim());
   for (const part of parts) {
-    if (part.startsWith(`${name}=`)) return decodeURIComponent(part.substring(name.length + 1));
+    if (part.startsWith(`${name}=`))
+      return decodeURIComponent(part.substring(name.length + 1));
   }
   return undefined;
 }
@@ -89,7 +103,12 @@ function getCookie(c: any, name: string): string | undefined {
 function setCookie(c: any, name: string, value: string, days = 365) {
   const expires = new Date(Date.now() + days * 86400000).toUTCString();
   const secure = c.req.url.startsWith("https:") ? " Secure;" : "";
-  c.header("Set-Cookie", `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires};${secure}`);
+  c.header(
+    "Set-Cookie",
+    `${name}=${encodeURIComponent(
+      value
+    )}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires};${secure}`
+  );
 }
 
 function jsonDate(d: Date | string | number | null | undefined) {
@@ -119,7 +138,9 @@ function timingSafeStrEq(a: string, b: string) {
 
 // Env boolean parsing with sane defaults
 function parseBool(v: any, def = false) {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "false" || s === "0" || s === "no" || s === "off") return false;
   if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
   return def;
@@ -140,7 +161,9 @@ function verifyPassword(password: string, salt: string, hash: string) {
 const B32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 function base32Encode(bytes: Uint8Array): string {
-  let bits = 0, value = 0, output = "";
+  let bits = 0,
+    value = 0,
+    output = "";
   for (let i = 0; i < bytes.length; i++) {
     value = (value << 8) | bytes[i];
     bits += 8;
@@ -156,8 +179,11 @@ function base32Encode(bytes: Uint8Array): string {
 }
 
 function base32Decode(str: string): Uint8Array {
-  const clean = String(str || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
-  let bits = 0, value = 0;
+  const clean = String(str || "")
+    .toUpperCase()
+    .replace(/[^A-Z2-7]/g, "");
+  let bits = 0,
+    value = 0;
   const out: number[] = [];
   for (let i = 0; i < clean.length; i++) {
     const idx = B32_ALPHABET.indexOf(clean[i]);
@@ -178,7 +204,10 @@ function hotp(secret: Uint8Array, counter: number, digits = 6): string {
     buf[i] = counter & 0xff;
     counter = Math.floor(counter / 256);
   }
-  const hmac = crypto.createHmac("sha1", Buffer.from(secret)).update(buf).digest();
+  const hmac = crypto
+    .createHmac("sha1", Buffer.from(secret))
+    .update(buf)
+    .digest();
   const offset = hmac[hmac.length - 1] & 0x0f;
   const code =
     ((hmac[offset] & 0x7f) << 24) |
@@ -189,7 +218,13 @@ function hotp(secret: Uint8Array, counter: number, digits = 6): string {
   return String(code % mod).padStart(digits, "0");
 }
 
-function totpVerify(secretBase32: string, token: string, window = 1, step = 30, digits = 6): boolean {
+function totpVerify(
+  secretBase32: string,
+  token: string,
+  window = 1,
+  step = 30,
+  digits = 6
+): boolean {
   const secret = base32Decode(secretBase32);
   const counter = Math.floor(Date.now() / 1000 / step);
   const norm = String(token || "").replace(/\s+/g, "");
@@ -201,7 +236,11 @@ function totpVerify(secretBase32: string, token: string, window = 1, step = 30, 
   return false;
 }
 
-function makeOtpAuthUrl(opts: { secretBase32: string; account: string; issuer: string }): string {
+function makeOtpAuthUrl(opts: {
+  secretBase32: string;
+  account: string;
+  issuer: string;
+}): string {
   const issuer = opts.issuer;
   const account = opts.account;
   const label = `${issuer}:${account}`;
@@ -215,9 +254,16 @@ function makeOtpAuthUrl(opts: { secretBase32: string; account: string; issuer: s
   return `otpauth://totp/${encodeURIComponent(label)}?${params.toString()}`;
 }
 
-async function pushThrottle(key: string, limit: number, windowMs: number): Promise<boolean> {
+async function pushThrottle(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<boolean> {
   const cutoff = Date.now() - windowMs;
-  let attemptsJson = get<{ attempts: string }>("SELECT attempts FROM throttles WHERE key = ?", [key])?.attempts;
+  let attemptsJson = get<{ attempts: string }>(
+    "SELECT attempts FROM throttles WHERE key = ?",
+    [key]
+  )?.attempts;
   let attempts: string[] = [];
   if (attemptsJson) {
     try {
@@ -242,7 +288,6 @@ async function pushThrottle(key: string, limit: number, windowMs: number): Promi
 
 // ---- Mail (Resend) ----
 
-
 // ---- Auth: Anonymous UID ----
 app.post("/api/auth/anon", async (c) => {
   let uid = getCookie(c, "uid");
@@ -255,9 +300,11 @@ app.post("/api/auth/anon", async (c) => {
 
 // ---- Schikko: Status / Info ----
 app.get("/api/schikko/status", async (c) => {
-  const y = new Date().getFullYear();
+  const y = APP_YEAR;
   const key = yearKey(y);
-  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
+  const row =
+    get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) ||
+    null;
   let exists = !!row;
   let verified = false;
   if (row) {
@@ -272,15 +319,61 @@ app.get("/api/schikko/status", async (c) => {
 app.get("/api/schikko/info", async (c) => {
   const y = new Date().getFullYear();
   const key = yearKey(y);
-  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
+  const row =
+    get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) ||
+    null;
   if (!row) return c.json({ name: null, expires: null });
   let data: any = {};
   try {
     data = JSON.parse(row.data || "{}");
   } catch {}
-  const expiry = new Date(y, 11, 31, 23, 59, 59);
+
+  // Calculate strict expiry: defaults to End of Year, but uses Stripez event+delay if configured
+  let expiry = new Date(y, 11, 31, 23, 59, 59); // Default: Dec 31st 23:59:59
+
+  // Check if Stripez event is configured
+  const stripeConfRow =
+    get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") ||
+    null;
+  if (stripeConfRow) {
+    try {
+      const sData = JSON.parse(stripeConfRow.data || "{}");
+      if (sData.date) {
+        const startISO = new Date(String(sData.date));
+        if (!Number.isNaN(startISO.getTime())) {
+          // Replicate logic from cron: local midnight start + duration + delay
+          const startLocal = new Date(
+            startISO.getFullYear(),
+            startISO.getMonth(),
+            startISO.getDate()
+          );
+          const durDays = Math.max(
+            1,
+            Number(sData.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS)
+          );
+          const endLocal = new Date(
+            startLocal.getTime() + durDays * 24 * 60 * 60 * 1000
+          );
+          // Deadline includes the unset delay
+          const deadline = new Date(
+            endLocal.getTime() + STRIPEZ_UNSET_DELAY_HOURS * 60 * 60 * 1000
+          );
+          
+          // If the event deadline is valid (and possibly earlier than year end), use it.
+          // Note: Logic allows it to be next year if the event is late in the year, 
+          // but usually we want the earliest "unset" trigger. 
+          // However, the cron job for Jan 1st is separate. 
+          // Let's assume the event-based expiry is the interesting one for the user.
+          expiry = deadline;
+        }
+      }
+    } catch {}
+  }
+
   const verified = !!data.verified;
-  const name = verified ? ([data.firstName, data.lastName].filter(Boolean).join(" ").trim() || null) : null;
+  const name = verified
+    ? [data.firstName, data.lastName].filter(Boolean).join(" ").trim() || null
+    : null;
   return c.json({ name, expires: verified ? expiry.toISOString() : null });
 });
 
@@ -290,22 +383,35 @@ app.post("/api/schikko/set", async (c) => {
   const firstName = String(body.firstName || "").trim();
   const lastName = String(body.lastName || "").trim();
 
-  if (!firstName || !lastName) return c.json({ error: "invalid-argument" }, 400);
+  if (!firstName || !lastName)
+    return c.json({ error: "invalid-argument" }, 400);
 
-  const y = new Date().getFullYear();
+  const y = APP_YEAR;
   const key = yearKey(y);
   const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
-  if (exists) return c.json({ error: "already-exists", message: `A Schikko is already set for ${y}.` }, 409);
+  if (exists)
+    return c.json(
+      {
+        error: "already-exists",
+        message: `A Schikko is already set for ${y}.`,
+      },
+      409
+    );
 
   // Generate a new TOTP secret (not persisted yet — requires immediate verification)
   const rawSecret = crypto.randomBytes(20); // 160-bit
   const secretBase32 = base32Encode(rawSecret);
   const issuer = `${APP_NAME} ${y}`;
-  const account = [firstName, lastName].filter(Boolean).join(" ").trim() || "Schikko";
+  const account =
+    [firstName, lastName].filter(Boolean).join(" ").trim() || "Schikko";
   const otpauthUrl = makeOtpAuthUrl({ secretBase32, account, issuer });
 
   // Return the OTP setup details; client must confirm with a valid 2FA code to finalize
-  return c.json({ success: true, otp: { secret: secretBase32, otpauthUrl }, needsConfirmation: true });
+  return c.json({
+    success: true,
+    otp: { secret: secretBase32, otpauthUrl },
+    needsConfirmation: true,
+  });
 });
 
 app.post("/api/schikko/confirm", async (c) => {
@@ -319,20 +425,33 @@ app.post("/api/schikko/confirm", async (c) => {
     return c.json({ error: "invalid-argument" }, 400);
   }
 
-  const y = new Date().getFullYear();
+  const y = APP_YEAR;
   const key = yearKey(y);
   const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
-  if (exists) return c.json({ error: "already-exists", message: `A Schikko is already set for ${y}.` }, 409);
+  if (exists)
+    return c.json(
+      {
+        error: "already-exists",
+        message: `A Schikko is already set for ${y}.`,
+      },
+      409
+    );
 
   // Verify the provided TOTP code against the provided secret
   const ok = totpVerify(secretBase32, code, 1, 30, 6);
   if (!ok) return c.json({ success: false, error: "invalid-2fa" }, 401);
 
   try {
-    run(
-      `INSERT INTO config (key, data, updated_at) VALUES (?, ?, ?)`,
-      [key, JSON.stringify({ firstName, lastName, totpSecret: secretBase32, verified: true }), nowIso()]
-    );
+    run(`INSERT INTO config (key, data, updated_at) VALUES (?, ?, ?)`, [
+      key,
+      JSON.stringify({
+        firstName,
+        lastName,
+        totpSecret: secretBase32,
+        verified: true,
+      }),
+      nowIso(),
+    ]);
     return c.json({ success: true });
   } catch (e) {
     return c.json({ error: "internal" }, 500);
@@ -352,23 +471,26 @@ app.post("/api/schikko/login", async (c) => {
   const uid = getCookie(c, "uid");
   if (!uid) return c.json({ error: "unauthenticated" }, 401);
 
-  const y = new Date().getFullYear();
+  const y = APP_YEAR;
   const key = yearKey(y);
-  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) || null;
+  const row =
+    get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) ||
+    null;
   // Allow break-glass ADMIN_KEY login even if no Schikko is set
   if (!row) {
     if (ADMIN_KEY && timingSafeStrEq(provided, ADMIN_KEY)) {
       const sessionId = randomId("s");
       const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
-      run(`INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`, [
-        sessionId,
-        uid,
-        nowIso(),
-        expiresAt.toISOString(),
-      ]);
+      run(
+        `INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`,
+        [sessionId, uid, nowIso(), expiresAt.toISOString()]
+      );
       return c.json({ success: true, sessionId, expiresAtMs: +expiresAt });
     }
-    return c.json({ error: "not-found", message: `No Schikko set for ${y}.` }, 404);
+    return c.json(
+      { error: "not-found", message: `No Schikko set for ${y}.` },
+      404
+    );
   }
 
   let data: any = {};
@@ -399,7 +521,12 @@ app.post("/api/schikko/login", async (c) => {
     if (ok) {
       const { salt, hash } = hashPassword(provided);
       run(`UPDATE config SET data = ?, updated_at = ? WHERE key = ?`, [
-        JSON.stringify({ ...data, passwordHash: hash, passwordSalt: salt, password: undefined }),
+        JSON.stringify({
+          ...data,
+          passwordHash: hash,
+          passwordSalt: salt,
+          password: undefined,
+        }),
         nowIso(),
         key,
       ]);
@@ -421,18 +548,18 @@ app.post("/api/schikko/login", async (c) => {
 
   const sessionId = randomId("s");
   const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
-  run(`INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`, [
-    sessionId,
-    uid,
-    nowIso(),
-    expiresAt.toISOString(),
-  ]);
+  run(
+    `INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`,
+    [sessionId, uid, nowIso(), expiresAt.toISOString()]
+  );
   return c.json({ success: true, sessionId, expiresAtMs: +expiresAt });
 });
 
- // ---- Config (calendar/stripez) ----
+// ---- Config (calendar/stripez) ----
 app.get("/api/config/calendar", async (c) => {
-  const row = get<{ data: string }>("SELECT data FROM config WHERE key='calendar'") || null;
+  const row =
+    get<{ data: string }>("SELECT data FROM config WHERE key='calendar'") ||
+    null;
   if (!row) return c.json({ url: null });
   try {
     const data = JSON.parse(row.data || "{}");
@@ -444,7 +571,8 @@ app.get("/api/config/calendar", async (c) => {
 
 app.post("/api/config/calendar", async (c) => {
   const { url } = await c.req.json();
-  if (!url || typeof url !== "string") return c.json({ error: "invalid-argument" }, 400);
+  if (!url || typeof url !== "string")
+    return c.json({ error: "invalid-argument" }, 400);
   run(
     `INSERT INTO config (key, data, updated_at)
      VALUES ('calendar', ?, ?)
@@ -455,11 +583,17 @@ app.post("/api/config/calendar", async (c) => {
 });
 
 app.get("/api/config/stripez", async (c) => {
-  const row = get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") || null;
-  if (!row) return c.json({ date: null, durationDays: STRIPEZ_DEFAULT_DURATION_DAYS });
+  const row =
+    get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") ||
+    null;
+  if (!row)
+    return c.json({ date: null, durationDays: STRIPEZ_DEFAULT_DURATION_DAYS });
   try {
     const data = JSON.parse(row.data || "{}");
-    const durationDays = Math.max(1, Number(data.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
+    const durationDays = Math.max(
+      1,
+      Number(data.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS)
+    );
     return c.json({ date: data.date || null, durationDays });
   } catch {
     return c.json({ date: null, durationDays: STRIPEZ_DEFAULT_DURATION_DAYS });
@@ -469,8 +603,12 @@ app.get("/api/config/stripez", async (c) => {
 app.post("/api/config/stripez", async (c) => {
   const { dateString, durationDays } = await c.req.json();
   const d = new Date(String(dateString || ""));
-  if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
-  const dur = Math.max(1, Number(durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
+  if (Number.isNaN(d.getTime()))
+    return c.json({ error: "invalid-argument" }, 400);
+  const dur = Math.max(
+    1,
+    Number(durationDays || STRIPEZ_DEFAULT_DURATION_DAYS)
+  );
   run(
     `INSERT INTO config (key, data, updated_at)
      VALUES ('stripez', ?, ?)
@@ -495,13 +633,21 @@ app.get("/api/punishments", async (c) => {
   const people = all<{ id: string; name: string; role: string | null }>(
     `SELECT id, name, role FROM people ORDER BY LOWER(name) ASC`
   );
-  const stripes = all<{ person_id: string; ts: string; kind: "normal" | "drunk" }>(
-    `SELECT person_id, ts, kind FROM stripes`
-  );
+  const stripes = all<{
+    person_id: string;
+    ts: string;
+    kind: "normal" | "drunk";
+  }>(`SELECT person_id, ts, kind FROM stripes`);
 
   const byId: Record<string, any> = {};
   for (const p of people) {
-    byId[p.id] = { id: p.id, name: p.name, role: p.role ?? undefined, stripes: [] as string[], drunkStripes: [] as string[] };
+    byId[p.id] = {
+      id: p.id,
+      name: p.name,
+      role: p.role ?? undefined,
+      stripes: [] as string[],
+      drunkStripes: [] as string[],
+    };
   }
   for (const s of stripes) {
     const rec = byId[s.person_id];
@@ -519,7 +665,14 @@ app.get("/api/punishments", async (c) => {
 });
 
 app.get("/api/rules", async (c) => {
-  const rows = all<{ id: string; text: string; order: number; tags: string; created_at: string; updated_at: string }>(
+  const rows = all<{
+    id: string;
+    text: string;
+    order: number;
+    tags: string;
+    created_at: string;
+    updated_at: string;
+  }>(
     `SELECT id, text, "order", tags, created_at, updated_at FROM rules ORDER BY "order" ASC`
   );
   return c.json(
@@ -541,10 +694,20 @@ app.get("/api/rules", async (c) => {
 });
 
 app.get("/api/activity", async (c) => {
-  const sinceDays = Number(new URL(c.req.url).searchParams.get("sinceDays") || 30);
+  const sinceDays = Number(
+    new URL(c.req.url).searchParams.get("sinceDays") || 30
+  );
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - (Number.isFinite(sinceDays) ? sinceDays : 30));
-  const rows = all<{ id: string; action: string; actor: string; details: string; timestamp: string }>(
+  cutoff.setDate(
+    cutoff.getDate() - (Number.isFinite(sinceDays) ? sinceDays : 30)
+  );
+  const rows = all<{
+    id: string;
+    action: string;
+    actor: string;
+    details: string;
+    timestamp: string;
+  }>(
     `SELECT id, action, actor, details, timestamp
      FROM activity_log
      WHERE timestamp >= ?
@@ -557,8 +720,10 @@ app.get("/api/activity", async (c) => {
 // ---- Calendar Proxy (with SSRF hardening) ----
 function isPrivateOrDisallowedHost(hostname: string): boolean {
   const lower = String(hostname || "").toLowerCase();
-  if (lower === "localhost" || lower === "127.0.0.1" || lower === "::1") return true;
-  if (lower.endsWith(".internal") || lower === "metadata.google.internal") return true;
+  if (lower === "localhost" || lower === "127.0.0.1" || lower === "::1")
+    return true;
+  if (lower.endsWith(".internal") || lower === "metadata.google.internal")
+    return true;
 
   const ipv4Private =
     /^(10\.([0-9]{1,3}\.){2}[0-9]{1,3})$/.test(lower) ||
@@ -582,19 +747,42 @@ app.post("/api/calendar/proxy", async (c) => {
 
   const body = await c.req.json().catch(() => ({}));
   const url = body?.url as string | undefined;
-  if (!url || typeof url !== "string") return c.json({ error: { status: "INVALID_ARGUMENT", message: "Missing 'url'." } }, 400);
+  if (!url || typeof url !== "string")
+    return c.json(
+      { error: { status: "INVALID_ARGUMENT", message: "Missing 'url'." } },
+      400
+    );
 
   let u: URL;
   try {
     u = new URL(url);
   } catch {
-    return c.json({ error: { status: "INVALID_ARGUMENT", message: "Invalid URL." } }, 400);
+    return c.json(
+      { error: { status: "INVALID_ARGUMENT", message: "Invalid URL." } },
+      400
+    );
   }
   if (!["http:", "https:"].includes(u.protocol)) {
-    return c.json({ error: { status: "INVALID_ARGUMENT", message: "Only http(s) URLs are allowed." } }, 400);
+    return c.json(
+      {
+        error: {
+          status: "INVALID_ARGUMENT",
+          message: "Only http(s) URLs are allowed.",
+        },
+      },
+      400
+    );
   }
   if (isPrivateOrDisallowedHost(u.hostname)) {
-    return c.json({ error: { status: "INVALID_ARGUMENT", message: "Target host is not allowed." } }, 400);
+    return c.json(
+      {
+        error: {
+          status: "INVALID_ARGUMENT",
+          message: "Target host is not allowed.",
+        },
+      },
+      400
+    );
   }
 
   try {
@@ -608,13 +796,38 @@ app.post("/api/calendar/proxy", async (c) => {
       },
       maxContentLength: 1000000,
     });
-    const ct = String(resp.headers?.["content-type"] || resp.headers?.["Content-Type"] || "").toLowerCase();
-    if (ct && !(ct.startsWith("text/calendar") || ct.startsWith("text/plain") || ct.startsWith("text/"))) {
-      return c.json({ error: { status: "INVALID_ARGUMENT", message: "Unsupported content type from target host." } }, 400);
+    const ct = String(
+      resp.headers?.["content-type"] || resp.headers?.["Content-Type"] || ""
+    ).toLowerCase();
+    if (
+      ct &&
+      !(
+        ct.startsWith("text/calendar") ||
+        ct.startsWith("text/plain") ||
+        ct.startsWith("text/")
+      )
+    ) {
+      return c.json(
+        {
+          error: {
+            status: "INVALID_ARGUMENT",
+            message: "Unsupported content type from target host.",
+          },
+        },
+        400
+      );
     }
     return c.json({ icalData: resp.data });
   } catch (e) {
-    return c.json({ error: { status: "INTERNAL", message: "Could not fetch calendar data." } }, 500);
+    return c.json(
+      {
+        error: {
+          status: "INTERNAL",
+          message: "Could not fetch calendar data.",
+        },
+      },
+      500
+    );
   }
 });
 
@@ -663,9 +876,16 @@ A user has described the following transgression:
 
   let result: any;
   try {
+    console.log(`[Oracle] Attempting to use model: ${modelName}`);
     result = await model.generateContent(fullPrompt);
+    console.log(`[Oracle] Success with model: ${modelName}`);
   } catch (primaryError: any) {
+    console.error(
+      `[Oracle] Error with model ${modelName}:`,
+      primaryError.message
+    );
     if (modelName !== "gemini-1.5-flash-latest") {
+      console.log(`[Oracle] Falling back to gemini-1.5-flash-latest`);
       modelName = "gemini-1.5-flash-latest";
       model = genAI.getGenerativeModel({ model: modelName });
       result = await model.generateContent(fullPrompt);
@@ -677,11 +897,27 @@ A user has described the following transgression:
   const judgementText = String(result.response.text()).trim();
   let parsed: any;
   try {
-    const fenced = judgementText.match(/```json[\s\S]*?```/i) || judgementText.match(/```[\s\S]*?```/);
-    const jsonString = (fenced ? fenced[0].replace(/```json/i, '').replace(/```/g, '').trim() : judgementText);
+    const fenced =
+      judgementText.match(/```json[\s\S]*?```/i) ||
+      judgementText.match(/```[\s\S]*?```/);
+    const jsonString = fenced
+      ? fenced[0]
+          .replace(/```json/i, "")
+          .replace(/```/g, "")
+          .trim()
+      : judgementText;
     parsed = JSON.parse(jsonString);
   } catch (e) {
-    return c.json({ error: { status: "INVALID_ARGUMENT", message: "Oracle returned non-JSON judgement", judgement: judgementText } }, 400);
+    return c.json(
+      {
+        error: {
+          status: "INVALID_ARGUMENT",
+          message: "Oracle returned non-JSON judgement",
+          judgement: judgementText,
+        },
+      },
+      400
+    );
   }
 
   // Levenshtein/light name snap
@@ -696,11 +932,18 @@ A user has described the following transgression:
             : Math.min(m[i - 1][j - 1] + 1, m[i][j - 1] + 1, m[i - 1][j] + 1);
     return m[b.length][a.length];
   }
-  if (Array.isArray(ledgerNames) && parsed.person && String(parsed.person).toLowerCase() !== "someone") {
+  if (
+    Array.isArray(ledgerNames) &&
+    parsed.person &&
+    String(parsed.person).toLowerCase() !== "someone"
+  ) {
     let closest = parsed.person;
     let min = -1;
     for (const name of ledgerNames) {
-      const d = lev(String(parsed.person).toLowerCase(), String(name).toLowerCase());
+      const d = lev(
+        String(parsed.person).toLowerCase(),
+        String(name).toLowerCase()
+      );
       if (min === -1 || d < min) {
         min = d;
         closest = name;
@@ -716,10 +959,15 @@ A user has described the following transgression:
 async function requireValidSession(c: any, sessionId: string) {
   const uid = getCookie(c, "uid");
   if (!uid) return { ok: false, code: 401, error: "unauthenticated" };
-  const row = get<{ id: string; uid: string; expires_at: string }>("SELECT id, uid, expires_at FROM sessions WHERE id = ?", [
-    sessionId,
-  ]);
-  if (!row || row.uid !== uid || new Date(row.expires_at).getTime() <= Date.now())
+  const row = get<{ id: string; uid: string; expires_at: string }>(
+    "SELECT id, uid, expires_at FROM sessions WHERE id = ?",
+    [sessionId]
+  );
+  if (
+    !row ||
+    row.uid !== uid ||
+    new Date(row.expires_at).getTime() <= Date.now()
+  )
     return { ok: false, code: 403, error: "permission-denied" };
   return { ok: true };
 }
@@ -727,14 +975,19 @@ async function requireValidSession(c: any, sessionId: string) {
 app.post("/api/schikko/action", async (c) => {
   const body = await c.req.json();
   const { action, sessionId, ...data } = body || {};
-  if (typeof action !== "string" || !action) return c.json({ error: "invalid-argument" }, 400);
+  if (typeof action !== "string" || !action)
+    return c.json({ error: "invalid-argument" }, 400);
 
   const session = await requireValidSession(c, String(sessionId || ""));
   if (!session.ok) return c.json({ error: session.error }, session.code);
 
   // Rate limit per-uid
   const uid = getCookie(c, "uid")!;
-  const allowed = await pushThrottle(`schikko_action_throttle_${uid}`, 60, 60 * 1000);
+  const allowed = await pushThrottle(
+    `schikko_action_throttle_${uid}`,
+    60,
+    60 * 1000
+  );
   if (!allowed) return c.json({ error: "resource-exhausted" }, 429);
 
   try {
@@ -753,7 +1006,10 @@ app.post("/api/schikko/action", async (c) => {
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
         for (let i = 0; i < count; i++) {
           const ts = new Date(Date.now() + i).toISOString();
-          run(`INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'normal')`, [docId, ts]);
+          run(
+            `INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'normal')`,
+            [docId, ts]
+          );
         }
         return c.json({ ok: true });
       }
@@ -763,7 +1019,10 @@ app.post("/api/schikko/action", async (c) => {
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
         for (let i = 0; i < count; i++) {
           const ts = new Date(Date.now() + i).toISOString();
-          run(`INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'drunk')`, [docId, ts]);
+          run(
+            `INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'drunk')`,
+            [docId, ts]
+          );
         }
         return c.json({ ok: true });
       }
@@ -777,8 +1036,16 @@ app.post("/api/schikko/action", async (c) => {
         if (last?.id) run(`DELETE FROM stripes WHERE id = ?`, [last.id]);
 
         // Ensure drunk <= normal
-        const n = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'normal'`, [docId])?.c || 0;
-        const d = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'drunk'`, [docId])?.c || 0;
+        const n =
+          get<{ c: number }>(
+            `SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'normal'`,
+            [docId]
+          )?.c || 0;
+        const d =
+          get<{ c: number }>(
+            `SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'drunk'`,
+            [docId]
+          )?.c || 0;
         if (d > n) {
           const toRemove = d - n;
           const rows = all<{ id: number }>(
@@ -787,7 +1054,10 @@ app.post("/api/schikko/action", async (c) => {
           );
           if (rows.length) {
             const qs = rows.map(() => "?").join(", ");
-            run(`DELETE FROM stripes WHERE id IN (${qs})`, rows.map((r) => r.id));
+            run(
+              `DELETE FROM stripes WHERE id IN (${qs})`,
+              rows.map((r) => r.id)
+            );
           }
         }
         return c.json({ ok: true });
@@ -795,7 +1065,8 @@ app.post("/api/schikko/action", async (c) => {
       case "renamePerson": {
         const docId = String(data.docId || "");
         const newName = String(data.newName || "").trim();
-        if (!docId || !newName) return c.json({ error: "invalid-argument" }, 400);
+        if (!docId || !newName)
+          return c.json({ error: "invalid-argument" }, 400);
         run(`UPDATE people SET name = ? WHERE id = ?`, [newName, docId]);
         return c.json({ ok: true });
       }
@@ -807,12 +1078,19 @@ app.post("/api/schikko/action", async (c) => {
       }
       case "setPersonRole": {
         const docId = String(data.docId || "");
-        const role = typeof data.role === "string" ? String(data.role || "").trim() : "";
+        const role =
+          typeof data.role === "string" ? String(data.role || "").trim() : "";
         const allowedRoles = ["Schikko", APP_NAME, "Board", "Activist"];
         let value: string | null = null;
         if (role) {
-          const match = allowedRoles.find((r) => r.toLowerCase() === role.toLowerCase());
-          if (!match) return c.json({ error: "invalid-argument", message: "Invalid role" }, 400);
+          const match = allowedRoles.find(
+            (r) => r.toLowerCase() === role.toLowerCase()
+          );
+          if (!match)
+            return c.json(
+              { error: "invalid-argument", message: "Invalid role" },
+              400
+            );
           value = match;
         }
         run(`UPDATE people SET role = ? WHERE id = ?`, [value, docId]);
@@ -823,7 +1101,8 @@ app.post("/api/schikko/action", async (c) => {
       case "addRule": {
         const text = String(data.text || "").trim();
         const order = Number(data.order);
-        if (!text || !Number.isFinite(order)) return c.json({ error: "invalid-argument" }, 400);
+        if (!text || !Number.isFinite(order))
+          return c.json({ error: "invalid-argument" }, 400);
         const id = randomId("r");
         const ts = nowIso();
         run(
@@ -841,18 +1120,96 @@ app.post("/api/schikko/action", async (c) => {
       case "updateRuleOrder": {
         const r1 = data.rule1;
         const r2 = data.rule2;
-        if (!r1?.id || !r2?.id) return c.json({ error: "invalid-argument" }, 400);
-        run(`UPDATE rules SET "order" = ?, updated_at = ? WHERE id = ?`, [r2.order, nowIso(), r1.id]);
-        run(`UPDATE rules SET "order" = ?, updated_at = ? WHERE id = ?`, [r1.order, nowIso(), r2.id]);
+        if (!r1?.id || !r2?.id)
+          return c.json({ error: "invalid-argument" }, 400);
+        run(`UPDATE rules SET "order" = ?, updated_at = ? WHERE id = ?`, [
+          r2.order,
+          nowIso(),
+          r1.id,
+        ]);
+        run(`UPDATE rules SET "order" = ?, updated_at = ? WHERE id = ?`, [
+          r1.order,
+          nowIso(),
+          r2.id,
+        ]);
         return c.json({ ok: true });
       }
       case "updateRule": {
         const docId = String(data.docId || "");
         const text = String(data.text || "");
-        const tags = Array.isArray(data.tags) ? data.tags.map((t: any) => String(t)) : [];
+        const tags = Array.isArray(data.tags)
+          ? data.tags.map((t: any) => String(t))
+          : [];
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
-        run(`UPDATE rules SET text = ?, tags = ?, updated_at = ? WHERE id = ?`, [text, JSON.stringify(tags), nowIso(), docId]);
+        run(
+          `UPDATE rules SET text = ?, tags = ?, updated_at = ? WHERE id = ?`,
+          [text, JSON.stringify(tags), nowIso(), docId]
+        );
         return c.json({ ok: true });
+      }
+
+      // Bulk update rules (replaces all)
+      case "bulkUpdateRules": {
+        const rulesText = String(data.rulesText || "");
+        
+        // Parse the text into lines
+        const lines = rulesText
+          .split(/\r?\n/)
+          .map(l => l.trim())
+          .filter(Boolean);
+
+        // Transactional replacement
+        const now = nowIso();
+        
+        try {
+            // Using a transaction would be ideal but for this simple setup we'll just run commands sequentially
+            // and hope for the best. SQLite in WAL mode is pretty robust.
+            
+            // 1. Delete all existing rules
+            run(`DELETE FROM rules`);
+            
+            // 2. Insert new rules
+            let order = 0;
+            const newIds: string[] = [];
+            
+            for (const line of lines) {
+                order++;
+                const id = randomId("r");
+                
+                // Extract tags (format: #tag1 #tag2 at the end or anywhere really, but let's grab all hashtags)
+                const tagRegex = /#(\w+)/g;
+                const matches = [...line.matchAll(tagRegex)];
+                const tags = matches.map(m => m[1]);
+                
+                // Remove tags from text for cleaner display, or keep them? 
+                // Plan said: "parser that looks for tags ... so they can be preserved/added"
+                // Let's strip them from the stored text so they don't show up twice in UI if the UI displays tags separately.
+                const cleanText = line.replace(tagRegex, '').trim(); 
+                
+                // If the line was ONLY tags, skip it or treat as empty rule? 
+                // If cleanText is empty, use the original line (maybe they just want a rule named "#YOLO")
+                const finalText = cleanText || line;
+
+                run(
+                  `INSERT INTO rules (id, text, "order", tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+                  [id, finalText, order, JSON.stringify(tags), now, now]
+                );
+                newIds.push(id);
+            }
+            
+            // 3. Log the action
+            const uid = getCookie(c, "uid") || "unknown";
+             run(
+                `INSERT INTO activity_log (id, action, actor, details, timestamp) VALUES (?, ?, ?, ?, ?)`,
+                [randomId("log"), "BULK_UPDATE_RULES", "Schikko", `Updated decrees (set ${lines.length} rules).`, now]
+              );
+            
+            return c.json({ ok: true, count: lines.length });
+            
+        } catch(e) {
+             console.error("Bulk update failed:", e);
+             return c.json({ error: "internal", message: "Failed to update rules." }, 500);
+        }
       }
 
       // Drunk stripes
@@ -881,9 +1238,13 @@ app.post("/api/schikko/action", async (c) => {
       }
       case "saveStripezDate": {
         const dateString = String(data.dateString || "");
-        const durationDays = Math.max(1, Number(data.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
+        const durationDays = Math.max(
+          1,
+          Number(data.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS)
+        );
         const d = new Date(dateString);
-        if (Number.isNaN(d.getTime())) return c.json({ error: "invalid-argument" }, 400);
+        if (Number.isNaN(d.getTime()))
+          return c.json({ error: "invalid-argument" }, 400);
         run(
           `INSERT INTO config (key, data, updated_at)
            VALUES ('stripez', ?, ?)
@@ -906,7 +1267,15 @@ app.post("/api/schikko/action", async (c) => {
 
       // Drink requests admin (Schikko only)
       case "listDrinkRequests": {
-        const rows = all<{ id: string; person_id: string; amount: number; status: string; requested_by: string; created_at: string; person_name: string }>(`
+        const rows = all<{
+          id: string;
+          person_id: string;
+          amount: number;
+          status: string;
+          requested_by: string;
+          created_at: string;
+          person_name: string;
+        }>(`
           SELECT dr.id, dr.person_id, dr.amount, dr.status, dr.requested_by, dr.created_at, p.name AS person_name
           FROM drink_requests dr
           JOIN people p ON p.id = dr.person_id
@@ -919,22 +1288,45 @@ app.post("/api/schikko/action", async (c) => {
         const reqId = String(data.requestId || "").trim();
         if (!reqId) return c.json({ error: "invalid-argument" }, 400);
 
-        const req = get<{ id: string; person_id: string; amount: number; status: string }>(
+        const req = get<{
+          id: string;
+          person_id: string;
+          amount: number;
+          status: string;
+        }>(
           `SELECT id, person_id, amount, status FROM drink_requests WHERE id = ?`,
           [reqId]
         );
         if (!req) return c.json({ error: "not-found" }, 404);
-        if (req.status !== "pending") return c.json({ error: "failed-precondition", message: "Request is not pending." }, 409);
+        if (req.status !== "pending")
+          return c.json(
+            {
+              error: "failed-precondition",
+              message: "Request is not pending.",
+            },
+            409
+          );
 
-        const n = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'normal'`, [req.person_id])?.c || 0;
-        const d = get<{ c: number }>(`SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'drunk'`, [req.person_id])?.c || 0;
+        const n =
+          get<{ c: number }>(
+            `SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'normal'`,
+            [req.person_id]
+          )?.c || 0;
+        const d =
+          get<{ c: number }>(
+            `SELECT COUNT(*) as c FROM stripes WHERE person_id = ? AND kind = 'drunk'`,
+            [req.person_id]
+          )?.c || 0;
         const available = Math.max(0, n - d);
         const desired = Math.max(1, Number(req.amount || 0));
         const toApply = Math.min(available, desired);
 
         for (let i = 0; i < toApply; i++) {
           const ts = new Date(Date.now() + i).toISOString();
-          run(`INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'drunk')`, [req.person_id, ts]);
+          run(
+            `INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'drunk')`,
+            [req.person_id, ts]
+          );
         }
         const uid = getCookie(c, "uid") || "unknown";
         run(
@@ -951,9 +1343,19 @@ app.post("/api/schikko/action", async (c) => {
       case "rejectDrinkRequest": {
         const reqId = String(data.requestId || "").trim();
         if (!reqId) return c.json({ error: "invalid-argument" }, 400);
-        const exists = get<{ id: string; status: string }>(`SELECT id, status FROM drink_requests WHERE id = ?`, [reqId]);
+        const exists = get<{ id: string; status: string }>(
+          `SELECT id, status FROM drink_requests WHERE id = ?`,
+          [reqId]
+        );
         if (!exists) return c.json({ error: "not-found" }, 404);
-        if (exists.status !== "pending") return c.json({ error: "failed-precondition", message: "Request is not pending." }, 409);
+        if (exists.status !== "pending")
+          return c.json(
+            {
+              error: "failed-precondition",
+              message: "Request is not pending.",
+            },
+            409
+          );
         const uid = getCookie(c, "uid") || "unknown";
         run(
           `UPDATE drink_requests
@@ -968,7 +1370,10 @@ app.post("/api/schikko/action", async (c) => {
       }
 
       default:
-        return c.json({ error: "invalid-argument", message: `Unknown action: ${action}` }, 400);
+        return c.json(
+          { error: "invalid-argument", message: `Unknown action: ${action}` },
+          400
+        );
     }
   } catch (e) {
     return c.json({ error: "internal" }, 500);
@@ -978,7 +1383,8 @@ app.post("/api/schikko/action", async (c) => {
 // ---- Activity logging endpoint (client writes logs directly) ----
 app.post("/api/activity", async (c) => {
   const { action, actor, details } = await c.req.json();
-  if (!action || !actor || !details) return c.json({ error: "invalid-argument" }, 400);
+  if (!action || !actor || !details)
+    return c.json({ error: "invalid-argument" }, 400);
   const id = randomId("log");
   run(
     `INSERT INTO activity_log (id, action, actor, details, timestamp) VALUES (?, ?, ?, ?, ?)`,
@@ -996,23 +1402,43 @@ app.post("/api/drink/request", async (c) => {
 
   const uid = getCookie(c, "uid");
   if (!uid) return c.json({ error: "unauthenticated" }, 401);
-  if (!personId || amount <= 0) return c.json({ error: "invalid-argument" }, 400);
+  if (!personId || amount <= 0)
+    return c.json({ error: "invalid-argument" }, 400);
 
   // Person must exist
   const exists = !!get("SELECT 1 FROM people WHERE id = ?", [personId]);
   if (!exists) return c.json({ error: "not-found" }, 404);
 
   // Throttle per uid
-  const allowed = await pushThrottle(`drink_request_${uid}`, 20, 10 * 60 * 1000);
+  const allowed = await pushThrottle(
+    `drink_request_${uid}`,
+    20,
+    10 * 60 * 1000
+  );
   if (!allowed) return c.json({ error: "resource-exhausted" }, 429);
 
   const id = randomId("req");
+  const autoApprove = !DRINK_REQUIRE_APPROVAL; // If approval not required, auto-approve
+  const status = autoApprove ? "approved" : "pending";
+  const applied = autoApprove ? amount : 0;
+
   run(
     `INSERT INTO drink_requests (id, person_id, amount, status, requested_by, created_at, applied)
-     VALUES (?, ?, ?, 'pending', ?, ?, 0)`,
-    [id, personId, amount, uid, nowIso()]
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, personId, amount, status, uid, nowIso(), applied]
   );
-  return c.json({ ok: true, id });
+
+  if (autoApprove) {
+    for (let i = 0; i < amount; i++) {
+        const ts = new Date(Date.now() + i).toISOString();
+        run(
+          `INSERT INTO stripes (person_id, ts, kind) VALUES (?, ?, 'drunk')`,
+          [personId, ts]
+        );
+    }
+  }
+
+  return c.json({ ok: true, id, status, applied });
 });
 
 // ---- Static assets ----
@@ -1037,7 +1463,7 @@ app.get("/manifest.json", async (c) => {
     description: "The official ledger for the Rules of Schikko.",
     icons: [
       { src: "/assets/icon-192.png", type: "image/png", sizes: "192x192" },
-      { src: "/assets/icon-512.png", type: "image/png", sizes: "512x512" }
+      { src: "/assets/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
     screenshots: [
       {
@@ -1045,16 +1471,16 @@ app.get("/manifest.json", async (c) => {
         sizes: "1280x720",
         type: "image/png",
         form_factor: "wide",
-        label: "The Ledger of Punishments on Desktop"
+        label: "The Ledger of Punishments on Desktop",
       },
       {
         src: "/assets/screenshot-mobile.png",
         sizes: "540x720",
         type: "image/png",
         form_factor: "narrow",
-        label: "The Ledger of Punishments on Mobile"
-      }
-    ]
+        label: "The Ledger of Punishments on Mobile",
+      },
+    ],
   };
   return c.json(manifest);
 });
@@ -1068,7 +1494,7 @@ app.get("/style.css", async (c) => {
 app.get("/assets/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/js/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/randomizer/*", serveStatic({ root: PUBLIC_DIR }));
-app.get("/", serveStatic({ path: path.join(PUBLIC_DIR, "index.html") }));
+app.get("/", (c) => c.html(<Index title={APP_NAME} />));
 
 // Fallback SPA route: serve index.html for any non-API path,
 // but return 404 for unknown asset-like URLs to avoid MIME-type confusion.
@@ -1079,11 +1505,8 @@ app.notFound((c) => {
   if (/\.[a-zA-Z0-9]+$/.test(p)) {
     return c.text("Not Found", 404);
   }
-  const file = Bun.file(path.join(PUBLIC_DIR, "index.html"));
-  return new Response(file, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+  return c.html(<Index title={APP_NAME} />);
   });
-});
 
 // ---- Cron Jobs ----
 // Annual Schikko reset: 0 0 1 1 * (Jan 1st 00:00)
@@ -1106,68 +1529,86 @@ cron.schedule(
     run(`DELETE FROM activity_log WHERE timestamp < ?`, [cutoff.toISOString()]);
   },
   { timezone: "Europe/Amsterdam" }
- );
- 
- // Auto-unset Schikko after Stripez event ends (+ delay), with optional cleanup
- cron.schedule(
-   "*/10 * * * *",
-   async () => {
-     try {
-       const confRow = get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") || null;
-       if (!confRow) return;
-       let conf: any = {};
-       try {
-         conf = JSON.parse(confRow.data || "{}");
-       } catch {}
-       const dateIso = conf.date;
-       if (!dateIso) return;
-       const startISO = new Date(String(dateIso));
-       if (Number.isNaN(startISO.getTime())) return;
-       // Local midnight start
-       const startLocal = new Date(startISO.getFullYear(), startISO.getMonth(), startISO.getDate());
-       const durDays = Math.max(1, Number(conf.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS));
-       const endLocal = new Date(startLocal.getTime() + durDays * 24 * 60 * 60 * 1000);
-       const deadline = new Date(endLocal.getTime() + STRIPEZ_UNSET_DELAY_HOURS * 60 * 60 * 1000);
-       if (Date.now() < +deadline) return;
- 
-       const currentKey = yearKey(new Date().getFullYear());
-       const schikkoExists = !!get("SELECT 1 FROM config WHERE key = ?", [currentKey]);
-       if (!schikkoExists) return; // already unset or not set at all
- 
-       // Unset Schikko for the year
-       run(`DELETE FROM config WHERE key = ?`, [currentKey]);
- 
-       switch (STRIPEZ_CLEANUP_ACTION) {
-         case "NUKE":
-           run(`DELETE FROM people`);
-           run(`DELETE FROM stripes`);
-           run(`DELETE FROM rules`);
-           run(`DELETE FROM activity_log`);
-           break;
-         case "KEEP_DECREES":
-           run(`DELETE FROM people`);
-           run(`DELETE FROM stripes`);
-           break;
-         case "KEEP_LEDGER":
-           run(`DELETE FROM rules`);
-           break;
-         case "REMOVE_STRIPES_ONLY":
-           run(`DELETE FROM stripes`);
-           break;
-         case "NOTHING":
-         default:
-           // do nothing
-           break;
-       }
-       console.log("[Stripez] Auto-unset Schikko and applied cleanup:", STRIPEZ_CLEANUP_ACTION);
-     } catch (e) {
-       console.error("[Stripez] Auto-unset job failed:", e);
-     }
-   },
-   { timezone: "Europe/Amsterdam" }
- );
- 
- // ---- Bootstrap & Serve ----
+);
+
+// Auto-unset Schikko after Stripez event ends (+ delay), with optional cleanup
+cron.schedule(
+  "*/10 * * * *",
+  async () => {
+    try {
+      const confRow =
+        get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") ||
+        null;
+      if (!confRow) return;
+      let conf: any = {};
+      try {
+        conf = JSON.parse(confRow.data || "{}");
+      } catch {}
+      const dateIso = conf.date;
+      if (!dateIso) return;
+      const startISO = new Date(String(dateIso));
+      if (Number.isNaN(startISO.getTime())) return;
+      // Local midnight start
+      const startLocal = new Date(
+        startISO.getFullYear(),
+        startISO.getMonth(),
+        startISO.getDate()
+      );
+      const durDays = Math.max(
+        1,
+        Number(conf.durationDays || STRIPEZ_DEFAULT_DURATION_DAYS)
+      );
+      const endLocal = new Date(
+        startLocal.getTime() + durDays * 24 * 60 * 60 * 1000
+      );
+      const deadline = new Date(
+        endLocal.getTime() + STRIPEZ_UNSET_DELAY_HOURS * 60 * 60 * 1000
+      );
+      if (Date.now() < +deadline) return;
+
+      const currentKey = yearKey(new Date().getFullYear());
+      const schikkoExists = !!get("SELECT 1 FROM config WHERE key = ?", [
+        currentKey,
+      ]);
+      if (!schikkoExists) return; // already unset or not set at all
+
+      // Unset Schikko for the year
+      run(`DELETE FROM config WHERE key = ?`, [currentKey]);
+
+      switch (STRIPEZ_CLEANUP_ACTION) {
+        case "NUKE":
+          run(`DELETE FROM people`);
+          run(`DELETE FROM stripes`);
+          run(`DELETE FROM rules`);
+          run(`DELETE FROM activity_log`);
+          break;
+        case "KEEP_DECREES":
+          run(`DELETE FROM people`);
+          run(`DELETE FROM stripes`);
+          break;
+        case "KEEP_LEDGER":
+          run(`DELETE FROM rules`);
+          break;
+        case "REMOVE_STRIPES_ONLY":
+          run(`DELETE FROM stripes`);
+          break;
+        case "NOTHING":
+        default:
+          // do nothing
+          break;
+      }
+      console.log(
+        "[Stripez] Auto-unset Schikko and applied cleanup:",
+        STRIPEZ_CLEANUP_ACTION
+      );
+    } catch (e) {
+      console.error("[Stripez] Auto-unset job failed:", e);
+    }
+  },
+  { timezone: "Europe/Amsterdam" }
+);
+
+// ---- Bootstrap & Serve ----
 migrate();
 
 Bun.serve({

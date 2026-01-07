@@ -244,6 +244,10 @@ async function updateRuleInFirestore(docId, text, tags) {
   return callSchikkoAction('updateRule', { docId, text: String(text || '').trim(), tags });
 }
 
+async function bulkUpdateRules(rulesText) {
+  return callSchikkoAction('bulkUpdateRules', { rulesText: String(rulesText || '') });
+}
+
 async function deleteLogFromFirestore(docIds) {
   return callSchikkoAction('deleteLog', { docIds });
 }
@@ -339,6 +343,7 @@ export {
   deleteRuleFromFirestore,
   updateRuleOrderInFirestore,
   updateRuleInFirestore,
+  bulkUpdateRules,
   deleteLogFromFirestore,
   // activity
   logActivity,

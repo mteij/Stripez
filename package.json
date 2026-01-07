@@ -1,12 +1,12 @@
 {
   "name": "stripez",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "private": true,
   "description": "Stripez - Bun.js API + static site with SQLite (Dockerized).",
   "type": "module",
   "scripts": {
-    "dev": "bun run src/server.ts",
-    "start": "bun run src/server.ts",
+    "dev": "bun run src/server.tsx",
+    "start": "bun run src/server.tsx",
     "check": "echo \"No type checking configured (Bun transpiles TS).\""
   },
   "dependencies": {
@@ -17,5 +17,8 @@
   },
   "engines": {
     "bun": ">=1.1.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.5"
   }
 }

@@ -1299,4 +1299,25 @@ function setStripeTotals(total, drunk) {
     updateStripeOMeterUI(appLiveNow === true);
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, renderAppCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };
+function showBulkEditRulesModal(show, currentRules = []) {
+    const modal = document.getElementById('bulk-edit-rules-modal');
+    if (!modal) return;
+
+    if (show) {
+        modal.classList.remove('hidden');
+        const textarea = document.getElementById('bulk-rules-input');
+        if (textarea) {
+            // Populate textarea only if showing for the first time or refreshes needed
+            // For now, always populate from source
+            textarea.value = currentRules.map(r => {
+                const tags = (r.tags || []).map(t => '#' + t).join(' ');
+                return r.text + (tags ? ' ' + tags : '');
+            }).join('\n');
+            textarea.focus();
+        }
+    } else {
+        modal.classList.add('hidden');
+    }
+}
+
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, showBulkEditRulesModal, renderAppCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };

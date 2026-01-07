@@ -3,330 +3,335 @@
 /* --- List Randomizer Styles --- */
 /* General styles for the list output */
 #list-output {
-    min-height: 60px; /* Ensure a visible area even when empty */
-    font-family: 'MedievalSharp', cursive; /* Consistent with theme */
-    color: #4a3024; /* Dark text for readability */
-    background-color: #e9e2d7; /* Lighter paper-like background */
-    border: 2px solid #b9987e; /* Thematic border */
-    border-radius: 8px;
-    padding: 1rem;
-    white-space: pre-wrap; /* Preserves line breaks from textarea */
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); /* Subtle inner shadow */
+  min-height: 60px; /* Ensure a visible area even when empty */
+  font-family: "MedievalSharp", cursive; /* Consistent with theme */
+  color: #4a3024; /* Dark text for readability */
+  background-color: #e9e2d7; /* Lighter paper-like background */
+  border: 2px solid #b9987e; /* Thematic border */
+  border-radius: 8px;
+  padding: 1rem;
+  white-space: pre-wrap; /* Preserves line breaks from textarea */
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle inner shadow */
 }
 
 /* Styling for the ordered list within the output for shuffled items */
 #list-output .list-output-ol {
-    list-style: decimal; /* Use standard decimal numbers */
-    padding-left: 1.5rem; /* Indent for numbers */
-    margin-top: 0.5rem;
-    font-size: 1.1rem;
-    line-height: 1.6;
+  list-style: decimal; /* Use standard decimal numbers */
+  padding-left: 1.5rem; /* Indent for numbers */
+  margin-top: 0.5rem;
+  font-size: 1.1rem;
+  line-height: 1.6;
 }
 
 #list-output .list-output-ol li {
-    margin-bottom: 0.25rem;
-    color: #5c3d2e; /* Darker brown for list items */
+  margin-bottom: 0.25rem;
+  color: #5c3d2e; /* Darker brown for list items */
 }
 
 #list-output h3 {
-    font-family: 'Cinzel Decorative', serif; /* Thematic heading font */
-    font-size: 1.8rem;
-    color: #5c3d2e;
-    margin-bottom: 0.8rem;
-    border-bottom: 1px dashed #b9987e; /* Thematic separator */
-    padding-bottom: 0.5rem;
+  font-family: "Cinzel Decorative", serif; /* Thematic heading font */
+  font-size: 1.8rem;
+  color: #5c3d2e;
+  margin-bottom: 0.8rem;
+  border-bottom: 1px dashed #b9987e; /* Thematic separator */
+  padding-bottom: 0.5rem;
 }
 
 /* Styling for picked random item */
 #list-output p.text-xl.font-bold {
-    color: #c0392b; /* Prominent color for the picked item */
-    font-family: 'Cinzel Decorative', serif;
-    text-align: center;
-    margin-top: 1rem;
-    font-size: 2.2rem;
-    letter-spacing: 0.05em;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+  color: #c0392b; /* Prominent color for the picked item */
+  font-family: "Cinzel Decorative", serif;
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 2.2rem;
+  letter-spacing: 0.05em;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 /* --- Punishment Wheel Styles (Enhanced) --- */
 .wheel-container {
-    position: relative;
-    width: 320px;
-    height: 320px;
-    margin: 0 auto;
-    transition: transform 0.3s ease;
+  position: relative;
+  width: 320px;
+  height: 320px;
+  margin: 0 auto;
+  transition: transform 0.3s ease;
 }
 
 .wheel-container:hover {
-    transform: scale(1.02);
+  transform: scale(1.02);
 }
 
 #wheel-canvas {
-    width: 320px;
-    height: 320px;
-    border: 4px solid #8c6b52;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 45%, #f5eeda 0%, #e9e2d7 70%, #e5dccf 100%);
-    box-shadow:
-        inset 0 2px 8px rgba(0,0,0,0.18),
-        0 6px 16px rgba(0,0,0,0.22),
-        0 0 20px rgba(140, 107, 82, 0.3);
-    display: block;
-    cursor: pointer;
-    transition: box-shadow 0.3s ease;
+  width: 320px;
+  height: 320px;
+  border: 4px solid #8c6b52;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 45% 45%,
+    #f5eeda 0%,
+    #e9e2d7 70%,
+    #e5dccf 100%
+  );
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.18),
+    0 6px 16px rgba(0, 0, 0, 0.22), 0 0 20px rgba(140, 107, 82, 0.3);
+  display: block;
+  cursor: pointer;
+  transition: box-shadow 0.3s ease;
 }
 
 #wheel-canvas:hover {
-    box-shadow:
-        inset 0 2px 8px rgba(0,0,0,0.18),
-        0 8px 20px rgba(0,0,0,0.25),
-        0 0 30px rgba(140, 107, 82, 0.4);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.18),
+    0 8px 20px rgba(0, 0, 0, 0.25), 0 0 30px rgba(140, 107, 82, 0.4);
 }
 
 /* Enhanced top pointer at 12 o'clock */
 .wheel-pointer {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 14px solid transparent;
-    border-right: 14px solid transparent;
-    border-bottom: 22px solid #c0392b; /* red tip */
-    filter: drop-shadow(0 3px 3px rgba(0,0,0,0.4));
-    z-index: 10;
-    transition: all 0.3s ease;
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-bottom: 22px solid #c0392b; /* red tip */
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.4));
+  z-index: 10;
+  transition: all 0.3s ease;
 }
 
 .wheel-pointer::after {
-    content: '';
-    position: absolute;
-    top: 22px;
-    left: -8px;
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-top: 12px solid #8c6b52;
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 12px solid #8c6b52;
 }
 
 /* Spin button enhancements */
 #wheel-spin-btn {
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 #wheel-spin-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 #wheel-spin-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 #wheel-spin-btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none;
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Result display enhancement */
 #wheel-result {
-    font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 /* Responsive design improvements */
 @media (max-width: 480px) {
-    .wheel-container {
-        width: 280px;
-        height: 280px;
-    }
-    #wheel-canvas {
-        width: 280px;
-        height: 280px;
-    }
+  .wheel-container {
+    width: 280px;
+    height: 280px;
+  }
+  #wheel-canvas {
+    width: 280px;
+    height: 280px;
+  }
 }
 
 @media (max-width: 380px) {
-    .wheel-container {
-        width: 240px;
-        height: 240px;
-    }
-    #wheel-canvas {
-        width: 240px;
-        height: 240px;
-    }
-    .wheel-pointer {
-        border-left-width: 12px;
-        border-right-width: 12px;
-        border-bottom-width: 18px;
-        top: -8px;
-    }
-    .wheel-pointer::after {
-        border-left-width: 6px;
-        border-right-width: 6px;
-        border-top-width: 10px;
-        top: 18px;
-        left: -6px;
-    }
+  .wheel-container {
+    width: 240px;
+    height: 240px;
+  }
+  #wheel-canvas {
+    width: 240px;
+    height: 240px;
+  }
+  .wheel-pointer {
+    border-left-width: 12px;
+    border-right-width: 12px;
+    border-bottom-width: 18px;
+    top: -8px;
+  }
+  .wheel-pointer::after {
+    border-left-width: 6px;
+    border-right-width: 6px;
+    border-top-width: 10px;
+    top: 18px;
+    left: -6px;
+  }
 }
 
 /* Animation for spinning state */
 .wheel-container.spinning {
-    animation: wheelGlow 2s ease-in-out infinite;
+  animation: wheelGlow 2s ease-in-out infinite;
 }
 
 @keyframes wheelGlow {
-    0%, 100% {
-        filter: brightness(1);
-    }
-    50% {
-        filter: brightness(1.1);
-    }
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.1);
+  }
 }
 
 /* --- Randomizer Hub Preview Cards --- */
 .randomizer-card {
-    perspective: 1000px;
+  perspective: 1000px;
 }
 
 .randomizer-card .bg-gradient-to-br {
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .randomizer-card .bg-gradient-to-br::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s ease;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
 }
 
 .randomizer-card:hover .bg-gradient-to-br::before {
-    left: 100%;
+  left: 100%;
 }
 
 .randomizer-card:hover .bg-gradient-to-br {
-    background: linear-gradient(to bottom right, #f0e9dc, #d5ccc0);
-    border-color: #8c6b52;
+  background: linear-gradient(to bottom right, #f0e9dc, #d5ccc0);
+  border-color: #8c6b52;
 }
 
 .randomizer-card .text-5xl {
-    transition: transform 0.3s ease;
+  transition: transform 0.3s ease;
 }
 
 .randomizer-card:hover .text-5xl {
-    transform: scale(1.1) rotate(5deg);
+  transform: scale(1.1) rotate(5deg);
 }
 
 .randomizer-card h3 {
-    transition: color 0.3s ease;
+  transition: color 0.3s ease;
 }
 
 .randomizer-card:hover h3 {
-    color: #8c6b52;
+  color: #8c6b52;
 }
 
 .randomizer-card .space-y-2 {
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
 }
 
 .randomizer-card:hover .space-y-2 {
-    opacity: 1;
+  opacity: 1;
 }
 
 .randomizer-card .w-2 {
-    transition: all 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .randomizer-card:hover .w-2 {
-    transform: scale(1.2);
-    box-shadow: 0 0 8px rgba(192, 57, 43, 0.5);
+  transform: scale(1.2);
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.5);
 }
 
 /* Enhanced button styles for cards */
 .randomizer-card button {
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 .randomizer-card button::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: rgba(140, 107, 82, 0.3);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: width 0.6s ease, height 0.6s ease;
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(140, 107, 82, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
 }
 
 .randomizer-card button:hover::before {
-    width: 300px;
-    height: 300px;
+  width: 300px;
+  height: 300px;
 }
 
 .randomizer-card button:active {
-    transform: scale(0.98);
+  transform: scale(0.98);
 }
 
 /* Responsive adjustments for cards */
 @media (max-width: 768px) {
-    .randomizer-card {
-        margin-bottom: 1rem;
-    }
-    
-    .randomizer-card .text-5xl {
-        font-size: 3rem;
-    }
-    
-    .randomizer-card h3 {
-        font-size: 1.1rem;
-    }
-    
-    .randomizer-card p {
-        font-size: 0.85rem;
-    }
+
+
+  .randomizer-card .text-5xl {
+    font-size: 3rem;
+  }
+
+  .randomizer-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .randomizer-card p {
+    font-size: 0.85rem;
+  }
 }
 
 /* Animation for card entrance */
 @keyframes cardSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .randomizer-card {
-    animation: cardSlideIn 0.5s ease forwards;
+  animation: cardSlideIn 0.5s ease forwards;
 }
 
 .randomizer-card:nth-child(1) {
-    animation-delay: 0.1s;
+  animation-delay: 0.1s;
 }
 
 .randomizer-card:nth-child(2) {
-    animation-delay: 0.2s;
+  animation-delay: 0.2s;
 }
 
 .randomizer-card:nth-child(3) {
-    animation-delay: 0.3s;
+  animation-delay: 0.3s;
 }
