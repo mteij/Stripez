@@ -1,3 +1,4 @@
+/** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
 import { type Child } from "hono/jsx";
 

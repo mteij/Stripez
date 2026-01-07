@@ -1,4 +1,4 @@
-
+/** @jsxImportSource hono/jsx */
 export const Modals = () => {
   return (
     <>

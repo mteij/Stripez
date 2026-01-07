@@ -1,3 +1,4 @@
+/** @jsxImportSource hono/jsx */
 import { Layout } from "./Layout";
 import { Modals } from "./components/Modals";
 
