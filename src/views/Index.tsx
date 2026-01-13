@@ -220,7 +220,7 @@ export const Index = (props: { title?: string; version?: string }) => {
             <datalist id="ledger-names"></datalist>
             <button
               id="add-btn"
-              className="btn-ancient w-[56px] h-[56px] flex items-center justify-center rounded-md text-3xl font-bold hidden"
+              className="btn-ancient w-[56px] h-[56px] flex-shrink-0 flex items-center justify-center rounded-md text-3xl font-bold hidden"
               title="Inscribe Name"
             >
               +
