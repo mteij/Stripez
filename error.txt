@@ -1,0 +1,16 @@
+[0m[1m146 |[0m 
+[0m[1m147 |[0m [0m[2m// ---- Bootstrap & Serve ----[0m
+[0m[1m148 |[0m migrate()[0m[2m;[0m
+[0m[1m149 |[0m setupCronJobs()[0m[2m;[0m
+[0m[1m150 |[0m 
+[0m[1m151 |[0m Bun[0m[3m[1m.serve[0m({
+          [31m[1m^[0m
+[0m[31merror[0m[2m:[0m [1mFailed to start server. Is port 8080 in use?[0m
+ syscall[0m[2m:[0m [0m[32m"listen"[0m[0m[2m,[0m
+   errno[0m[2m:[0m [0m[33m0[0m[0m[2m,[0m
+    code[0m[2m:[0m [32m"EADDRINUSE"[0m
+
+[0m      [2mat [0m[0m[36mC:\Users\Michi\Documents\GitHub\schikko-rules\src\server.tsx[0m[2m:[0m[33m151[0m[2m:[33m5[0m
+[0m      [2mat [0m[0m[1m[3mloadAndEvaluateModule[0m[2m ([0m[0m[36m[0m[33m2[0m[2m:[33m1[0m[2m)[0m
+[0m
+[2mBun v1.2.19 (Windows x64)[0m
