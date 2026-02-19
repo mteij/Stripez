@@ -1,6 +1,6 @@
 {
   "name": "stripez",
-  "version": "3.0.3",
+  "version": "4.0.0",
   "private": true,
   "description": "Stripez - Bun.js API + static site with SQLite (Dockerized).",
   "type": "module",
@@ -10,10 +10,10 @@
     "check": "echo \"No type checking configured (Bun transpiles TS).\""
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "gaxios": "^6.7.1",
     "hono": "^4.10.4",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "openai": "^6.22.0"
   },
   "engines": {
     "bun": ">=1.1.0"

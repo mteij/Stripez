@@ -229,7 +229,16 @@ function handleDiceSpin() {
 
     if (_isSchikko) {
         dicePunishmentAssignContainer.classList.remove('hidden');
-    }
+    } else {
+             // For non-Schikko users, show a Done button to close
+            const doneBtn = document.createElement('button');
+            doneBtn.className = 'btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg mt-4';
+            doneBtn.textContent = 'Done';
+            doneBtn.onclick = () => {
+                document.getElementById('dice-randomizer-modal').classList.add('hidden');
+            };
+            diceResultsContainer.appendChild(doneBtn);
+        }
 
     const currentSelection = assignPersonSelect.value;
     assignPersonSelect.innerHTML = '<option value="">Select a Transgressor...</option>';
@@ -246,24 +255,44 @@ function handleDiceSpin() {
 
 
     assignStripesBtn.onclick = async () => {
+        console.log('[Dice] Assign button clicked');
         const selectedPersonId = assignPersonSelect.value;
         const stripesToAdd = totalResult;
 
         if (selectedPersonId && stripesToAdd >= 0) {
+            console.log(`[Dice] Assigning ${stripesToAdd} stripes to ${selectedPersonId}`);
             if (_addStripeToPersonFn && _showAlertFn) {
-                for (let i = 0; i < stripesToAdd; i++) {
-                    await _addStripeToPersonFn(selectedPersonId);
+                const assignedName = assignPersonSelect.options[assignPersonSelect.selectedIndex].text;
+                try {
+                    for (let i = 0; i < stripesToAdd; i++) {
+                        await _addStripeToPersonFn(selectedPersonId);
+                    }
+                    console.log('[Dice] Stripes added via API');
+                } catch (e) {
+                    console.error('[Dice] Failed to add stripes:', e);
+                    if(_showAlertFn) await _showAlertFn(`Failed to add stripes: ${e.message}`, "Error");
+                    return;
                 }
-                await _showAlertFn(`${stripesToAdd} stripes assigned to ${assignPersonSelect.options[assignPersonSelect.selectedIndex].text}!`, "Success!");
                 
                 assignPersonSelect.value = '';
                 dicePunishmentAssignContainer.classList.add('hidden');
                 diceResultsContainer.innerHTML = '';
-                document.getElementById('dice-randomizer-modal').classList.add('hidden');
+                // Close modal BEFORE alert
+                console.log('[Dice] Closing modal before alert');
+                const modal = document.getElementById('dice-randomizer-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none'; // Force hide just in case
+                }
+
+                console.log('[Dice] Showing success alert');
+                await _showAlertFn(`${stripesToAdd} stripes assigned to ${assignedName}!`, "Success!");
             } else {
+                console.error('[Dice] Missing dependencies', { _addStripeToPersonFn: !!_addStripeToPersonFn, _showAlertFn: !!_showAlertFn });
                 if(_showAlertFn) await _showAlertFn("Error: Cannot assign stripes.", "Error");
             }
         } else {
+            console.warn('[Dice] Invalid selection or amount');
             if(_showAlertFn) await _showAlertFn('Please select a person.', "Missing Information");
         }
     };
@@ -358,7 +387,7 @@ export async function rollDiceAndAssign(diceValues, targetPerson, addStripeFn, l
         // Force the modal open, on top, and focus it
         diceRandomizerModal.classList.remove('hidden');
         try { diceRandomizerModal.style.display = 'flex'; } catch (_) {}
-        try { diceRandomizerModal.style.zIndex = '1000'; } catch (_) {}
+        try { diceRandomizerModal.style.zIndex = '200000'; } catch (_) {}
         try { diceRandomizerModal.setAttribute('aria-hidden', 'false'); } catch (_) {}
         try {
             const focusEl = document.getElementById('dice-spin-btn') || diceRandomizerModal;

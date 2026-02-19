@@ -352,15 +352,57 @@ export {
 };
 
 // --- Oracle judgement ---
-async function getOracleJudgement(promptText, rules = [], ledgerNames = []) {
+// --- Oracle judgement ---
+async function getOracleJudgement(promptText, rules = [], ledgerNames = [], onChunk = null, signal = null) {
   const res = await fetch(`${API_BASE}/api/oracle/judgement`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ promptText, rules, ledgerNames }),
+    signal
   });
+
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json(); // { judgement }
+
+  // Reader for streaming
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    fullText += chunk;
+    if (onChunk && typeof onChunk === 'function') {
+      onChunk(chunk);
+    }
+  }
+
+  // Parse result from fullText (extract JSON block)
+  const jsonMatch = fullText.match(/```json([\s\S]*?)```/);
+  let judgement = null;
+
+  if (jsonMatch && jsonMatch[1]) {
+      try {
+          judgement = JSON.parse(jsonMatch[1]);
+      } catch (e) {
+          console.error("Failed to parse Oracle JSON:", e);
+      }
+  }
+
+  // If parsing failed (or no code block), try parsing the whole thing if it looks like JSON
+  if (!judgement) {
+      try {
+          judgement = JSON.parse(fullText);
+      } catch (_) {}
+  }
+
+  if (!judgement) {
+     throw new Error("The Oracle spoke, but the decree (JSON) was illegible.");
+  }
+
+  return { judgement, fullText };
 }
 
 // separate export to avoid touching the main export list above

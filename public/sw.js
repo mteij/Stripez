@@ -1,7 +1,7 @@
-const CACHE_NAME = 'schikko-rules-cache-v10';
+const CACHE_NAME = 'schikko-rules-cache-v11';
 const urlsToCache = [
   '/',
-  '/index.html',
+  // '/index.html', // Removed: server generates this, not a static file
   '/style.css',
   '/js/main.js',
   '/js/api.js',
@@ -33,7 +33,7 @@ self.addEventListener('install', event => {
   })());
 });
 
-// Cache only same-origin GET requests; bypass caching for API and non-GET to avoid Cache.put POST errors
+// Cache strategies
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
@@ -48,21 +48,37 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Network-First for HTML navigation (ensure freshness)
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then(networkResponse => {
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(req, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          return caches.match(req);
+        })
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate for other assets (CSS/JS/etc)
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.match(req).then(response => {
+      return cache.match(req).then(cachedResponse => {
         const fetchPromise = fetch(req).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200) {
-            // Only cache safe GET requests
             cache.put(req, networkResponse.clone());
           }
           return networkResponse;
         }).catch(err => {
           console.error('Fetch failed', err);
-          // Fallback to cache if available
-          return response;
+          return cachedResponse;
         });
-        return response || fetchPromise;
+        return cachedResponse || fetchPromise;
       });
     })
   );

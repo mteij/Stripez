@@ -516,7 +516,8 @@ export const Modals = () => {
 
       <div
         id="generic-alert-modal"
-        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
+        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop"
+        style={{ zIndex: 300000 }}
       >
         <div className="bg-[#fdf8e9] w-full max-w-md p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
           <h2
@@ -539,7 +540,8 @@ export const Modals = () => {
 
       <div
         id="generic-confirm-modal"
-        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-60 modal-backdrop"
+        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop"
+        style={{ zIndex: 300001 }}
       >
         <div className="bg-[#fdf8e9] w-full max-w-md p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
           <h2
@@ -570,7 +572,8 @@ export const Modals = () => {
 
       <div
         id="generic-prompt-modal"
-        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
+        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop"
+        style={{ zIndex: 300002 }}
       >
         <div className="bg-[#fdf8e9] w-full max-w-md p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
           <h2
@@ -606,7 +609,8 @@ export const Modals = () => {
 
       <div
         id="schikko-login-modal"
-        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
+        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop"
+        style={{ zIndex: 300000 }}
       >
         <div className="bg-[#fdf8e9] w-full max-w-md p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
           <h2 className="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">
@@ -640,7 +644,8 @@ export const Modals = () => {
 
       <div
         id="set-schikko-modal"
-        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
+        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop"
+        style={{ zIndex: 300000 }}
       >
         <div className="bg-[#fdf8e9] w-full max-w-md p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
           <h2 className="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">
@@ -682,7 +687,8 @@ export const Modals = () => {
 
       <div
         id="totp-setup-modal"
-        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
+        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop"
+        style={{ zIndex: 300000 }}
       >
         <div className="bg-[#fdf8e9] w-full max-w-md p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
           <button

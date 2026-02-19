@@ -3,9 +3,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
+import { streamText } from "hono/streaming";
 import { db, migrate, randomId, all, get, run, nowIso } from "./db";
 import crypto from "crypto";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { request as gaxiosRequest } from "gaxios";
 import net from "net";
 import cron from "node-cron";
@@ -21,8 +22,9 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS || "*")
   .filter(Boolean);
 const SESSION_SECRET =
   process.env.SESSION_SECRET || "dev-session-secret-change-me";
-const GEMINI_KEY = process.env.GEMINI_KEY || "";
-const ORACLE_MODEL = process.env.ORACLE_MODEL || "gemini-2.5-flash";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+const ORACLE_MODEL = process.env.ORACLE_MODEL || "gpt-4o-mini";
 const ADMIN_KEY = (process.env.ADMIN_KEY || "").trim();
 
 // Branding
@@ -66,11 +68,11 @@ app.use(
 // Security headers (CSP mirrors firebase.json, minus Firebase APIs)
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://www.gstatic.com https://www.googletagmanager.com https://apis.google.com",
+  "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://www.gstatic.com https://www.googletagmanager.com https://apis.google.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com blob: data:",
+  "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com blob: data: https://cloudflareinsights.com",
   "frame-src 'self' https://apis.google.com https://schikko-rules.firebaseapp.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -625,7 +627,7 @@ app.get("/api/config/app", async (c) => {
   return c.json({
     name: APP_NAME,
     year: APP_YEAR,
-    hasOracle: Boolean(GEMINI_KEY),
+    hasOracle: Boolean(OPENAI_API_KEY),
     requireApprovalForDrinks: Boolean(DRINK_REQUIRE_APPROVAL),
   });
 });
@@ -833,128 +835,93 @@ app.post("/api/calendar/proxy", async (c) => {
   }
 });
 
-// ---- Oracle (Gemini) ----
+// ---- Oracle (OpenAI Compatible) ----
 app.post("/api/oracle/judgement", async (c) => {
   const { promptText, rules, ledgerNames } = await c.req.json();
-  if (!GEMINI_KEY) return c.json({ error: "GEMINI_KEY not configured" }, 500);
+  if (!OPENAI_API_KEY) return c.json({ error: "OPENAI_API_KEY not configured" }, 500);
   if (!promptText) return c.json({ error: "invalid-argument" }, 400);
 
   const sanitizedPrompt = String(promptText).replace(/`/g, "'");
 
-  const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-  let modelName = ORACLE_MODEL || "gemini-2.5-flash";
-  let model = genAI.getGenerativeModel({ model: modelName });
+  const openai = new OpenAI({
+    apiKey: OPENAI_API_KEY,
+    baseURL: OPENAI_BASE_URL,
+  });
 
   const rulesText = (Array.isArray(rules) ? rules : [])
     .map((rule: any, i: number) => `${i + 1}. ${rule.text}`)
     .join("\n");
 
-  const fullPrompt = `You are an ancient, wise, and slightly dramatic Oracle for a game called "Schikko Rules". Your task is to pass judgement on a transgression described by a user. You must determine the broken rules and their individual penalties. You will output your judgement as a JSON string, wrapped in a markdown code block (e.g., \`\`\`json { ... } \`\`\`). Do NOT output anything else outside the code block.
+  // Format known names for context
+  const knownNames = Array.isArray(ledgerNames) && ledgerNames.length > 0 
+    ? ledgerNames.join(", ") 
+    : "None known";
+
+  const systemPrompt = `You are an ancient, wise, and slightly dramatic Oracle for a game called "Schikko Rules". Your task is to pass judgement on a transgression described by a user.
+  
+The known subjects in the ledger are: ${knownNames}. 
+
+First, you must speak your thoughts aloud. Generate 3-5 short, fragmented, mystical thoughts or observations about the situation.
+Then, you must output your final judgement as a JSON object wrapped in a markdown code block (e.g., \`\`\`json ... \`\`\`).
 
 The JSON must have the following structure:
 {
-  "person": "string",
-  "penalties": [
-    {"type": "stripes", "amount": number},
-    {"type": "dice", "value": number}
-  ],
-  "rulesBroken": [number, ...],
-  "innocent": boolean
+  "judgements": [
+    {
+        "person": "Name from ledger or 'Unknown'",
+        "explanation": "Specific verdict for this person (1 sentence)",
+        "penalties": [
+            {"type": "stripes", "amount": number},
+            {"type": "dice", "value": number}
+        ],
+        "rulesBroken": [number, number, ...],
+        "innocent": boolean
+    }
+  ]
 }
 
-IMPORTANT:
-- The "penalties" array must contain an object for each individual penalty. Do NOT sum them.
-- If multiple dice rolls are required, create a separate "dice" penalty object for each roll. For example, a penalty to roll a d20 and two d6s would result in: "penalties": [{"type": "dice", "value": 20}, {"type": "dice", "value": 6}, {"type": "dice", "value": 6}].
-- If no rules are broken, set "innocent" to true and the "penalties" array can be empty.
+IMPORTANT GUIDELINES:
+- **Multiple People**: If multiple people are mentioned and at fault, create a separate object in the "judgements" array for EACH person.
+- **"Everyone"**: If the user says "everyone" or implies the whole group is at fault, generate a separate judgement object for EACH name in the "known subjects" list. Do NOT just return one object saying "Everyone".
+- **Specifics**: If one person broke Rule 1 and another broke Rule 2, specify this correctly in their respective objects.
+- **Innocence**: If someone is mentioned but innocent, set "innocent": true for them.
+- **Penalties**: "stripes" adds a penalty mark (default). "dice" means they must roll a die.
+- **IMPORTANT**: Do NOT assign a "dice" penalty unless the violated rule EXPLICITLY mentions rolling a die. If in doubt, use "stripes".
+- **Rules**: List the rule numbers broken.
 
 Here are the official "Schikko's Decrees":
 ---
 ${rulesText}
----
-A user has described the following transgression:
+---`;
+
+  const userPrompt = `A user has described the following transgression:
 ---
 "${sanitizedPrompt}"
 ---`;
 
-  let result: any;
   try {
-    console.log(`[Oracle] Attempting to use model: ${modelName}`);
-    result = await model.generateContent(fullPrompt);
-    console.log(`[Oracle] Success with model: ${modelName}`);
-  } catch (primaryError: any) {
-    console.error(
-      `[Oracle] Error with model ${modelName}:`,
-      primaryError.message
-    );
-    if (modelName !== "gemini-1.5-flash-latest") {
-      console.log(`[Oracle] Falling back to gemini-1.5-flash-latest`);
-      modelName = "gemini-1.5-flash-latest";
-      model = genAI.getGenerativeModel({ model: modelName });
-      result = await model.generateContent(fullPrompt);
-    } else {
-      throw primaryError;
-    }
-  }
+    const stream = await openai.chat.completions.create({
+      model: ORACLE_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      stream: true,
+    });
 
-  const judgementText = String(result.response.text()).trim();
-  let parsed: any;
-  try {
-    const fenced =
-      judgementText.match(/```json[\s\S]*?```/i) ||
-      judgementText.match(/```[\s\S]*?```/);
-    const jsonString = fenced
-      ? fenced[0]
-          .replace(/```json/i, "")
-          .replace(/```/g, "")
-          .trim()
-      : judgementText;
-    parsed = JSON.parse(jsonString);
-  } catch (e) {
-    return c.json(
-      {
-        error: {
-          status: "INVALID_ARGUMENT",
-          message: "Oracle returned non-JSON judgement",
-          judgement: judgementText,
-        },
-      },
-      400
-    );
-  }
-
-  // Levenshtein/light name snap
-  function lev(a: string, b: string) {
-    const m = Array.from({ length: b.length + 1 }, (_, i) => [i]);
-    for (let j = 0; j <= a.length; j++) m[0][j] = j;
-    for (let i = 1; i <= b.length; i++)
-      for (let j = 1; j <= a.length; j++)
-        m[i][j] =
-          b.charAt(i - 1) === a.charAt(j - 1)
-            ? m[i - 1][j - 1]
-            : Math.min(m[i - 1][j - 1] + 1, m[i][j - 1] + 1, m[i - 1][j] + 1);
-    return m[b.length][a.length];
-  }
-  if (
-    Array.isArray(ledgerNames) &&
-    parsed.person &&
-    String(parsed.person).toLowerCase() !== "someone"
-  ) {
-    let closest = parsed.person;
-    let min = -1;
-    for (const name of ledgerNames) {
-      const d = lev(
-        String(parsed.person).toLowerCase(),
-        String(name).toLowerCase()
-      );
-      if (min === -1 || d < min) {
-        min = d;
-        closest = name;
+    return streamText(c, async (streamWriter) => {
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          await streamWriter.write(content);
+        }
       }
-    }
-    if (min >= 0 && min < 3) parsed.person = closest;
-  }
+    });
 
-  return c.json({ judgement: parsed });
+  } catch (error: any) {
+    console.error("[Oracle] Error:", error.message);
+    return c.json({ error: "internal", message: error.message }, 500);
+  }
 });
 
 // ---- Schikko Mutations (Authorization via session) ----
@@ -1496,7 +1463,10 @@ app.get("/style.css", async (c) => {
 app.get("/assets/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/js/*", serveStatic({ root: PUBLIC_DIR }));
 app.get("/randomizer/*", serveStatic({ root: PUBLIC_DIR }));
-app.get("/", (c) => c.html(<Index title={APP_NAME} version={pkg.version} />));
+app.get("/", (c) => {
+  c.header("Cache-Control", "no-cache, no-store, must-revalidate");
+  return c.html(<Index title={APP_NAME} version={pkg.version} />);
+});
 
 // Fallback SPA route: serve index.html for any non-API path,
 // but return 404 for unknown asset-like URLs to avoid MIME-type confusion.
@@ -1507,8 +1477,9 @@ app.notFound((c) => {
   if (/\.[a-zA-Z0-9]+$/.test(p)) {
     return c.text("Not Found", 404);
   }
+  c.header("Cache-Control", "no-cache, no-store, must-revalidate");
   return c.html(<Index title={APP_NAME} version={pkg.version} />);
-  });
+});
 
 // ---- Cron Jobs ----
 // Annual Schikko reset: 0 0 1 1 * (Jan 1st 00:00)

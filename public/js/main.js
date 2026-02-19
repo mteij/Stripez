@@ -944,6 +944,116 @@ function createActionButtons(parsedJudgement) {
 }
 
 
+
+// Helper to avoid XSS
+function escapeHTML(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// --- Ethereal Whispers Logic ---
+let whisperInterval = null;
+let blobInteractionHandler = null;
+
+function spawnWhispers(overlay) {
+    const words = [
+        "Likken", "Schikken", "Likken of Schikken?", "STREEPJESSS", "STRIPESSS", 
+        "NICAT", "3.2.1. NICAT", "BUCOM'vo", "Hype",
+        "JUSTICE", "VERDICT", "PENALTY", "DECISION", "FATE", "SILENCE", "TRUTH"
+    ];
+
+    whisperInterval = setInterval(() => {
+        if (!document.body.contains(overlay)) {
+            clearInterval(whisperInterval);
+            return;
+        }
+
+        const whisper = document.createElement('span');
+        whisper.className = 'oracle-whisper';
+        whisper.textContent = words[Math.floor(Math.random() * words.length)];
+        
+        // Random position
+        const x = Math.random() * 90; // 0-90% width
+        const y = 60 + Math.random() * 40; // Start from bottom half
+        
+        whisper.style.left = `${x}%`;
+        whisper.style.top = `${y}%`;
+        // Random scale variance
+        whisper.style.fontSize = `${0.8 + Math.random() * 1}rem`;
+        
+        overlay.appendChild(whisper);
+
+        // Cleanup individual whisper after animation
+        setTimeout(() => {
+            if (whisper.parentNode) whisper.parentNode.removeChild(whisper);
+        }, 4000);
+
+    }, 400); // Spawn every 400ms
+}
+
+
+// --- Ethereal Particles Logic ---
+let particleInterval = null;
+
+function spawnParticles(container) {
+    if (!container) return;
+    
+    // Create a canvas-like effect with DOM nodes for simplicity and "div" feel
+    particleInterval = setInterval(() => {
+        if (!document.body.contains(container)) {
+            clearInterval(particleInterval);
+            return;
+        }
+
+        const particle = document.createElement('div');
+        particle.className = 'oracle-particle';
+        
+        // Random size
+        const size = 2 + Math.random() * 4;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        
+        // Spawn near center + random offset
+        // const angle = Math.random() * Math.PI * 2;
+        // const dist = 50 + Math.random() * 50; // spawn inside/near the blob
+        // const startX = 300 + Math.cos(angle) * dist; // 300 is half of 600px container
+        // const startY = 300 + Math.sin(angle) * dist;
+        
+        // Actually, let's spawn them from the center 50% 50% and drift out
+        particle.style.left = '50%';
+        particle.style.top = '50%';
+        
+        // Random direction
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = 50 + Math.random() * 100; // px distance
+        const duration = 1500 + Math.random() * 1500; // ms
+        
+        // Set custom variables for animation (or just use WAAPI/transitions if simple)
+        // Let's use WAAPI for performance and randomness
+        container.appendChild(particle);
+        
+        const keyframes = [
+            { transform: `translate(-50%, -50%) scale(1)`, opacity: 0.8 },
+            { transform: `translate(calc(-50% + ${Math.cos(angle) * velocity}px), calc(-50% + ${Math.sin(angle) * velocity}px)) scale(0)`, opacity: 0 }
+        ];
+        
+        const animation = particle.animate(keyframes, {
+            duration: duration,
+            easing: 'ease-out'
+        });
+        
+        animation.onfinish = () => {
+             if (particle.parentNode) particle.parentNode.removeChild(particle);
+        };
+        
+    }, 100); // 10 particles per second
+}
+
+
 async function handleGeminiSubmit() {
     const inputText = geminiInput.value.trim();
     if (inputText === '') {
@@ -952,86 +1062,341 @@ async function handleGeminiSubmit() {
         return;
     }
 
-    geminiOutput.innerHTML = '';
-    geminiActionButtonsContainer.innerHTML = '';
+    // --- ZOOM TRANSITION LOGIC ---
+    // 1. Get the current modal's position
+    const modalContent = geminiModal.querySelector('.modal-content');
+    const rect = modalContent.getBoundingClientRect();
 
-    geminiSubmitBtn.disabled = true;
-    geminiSubmitBtn.textContent = 'Consulting...';
-    geminiOutput.classList.add('hidden');
+    // 2. Hide the original modal immediately (visually replaced by overlay)
+    geminiModal.classList.add('hidden');
+    geminiInput.value = ''; // Clear input
+
+    // 3. Create Overlay starting at Modal's position
+    const overlay = document.createElement('div');
+    overlay.className = 'oracle-fullscreen-overlay oracle-zoom-transition';
+    
+    // Apply initial coordinates
+    overlay.style.top = `${rect.top}px`;
+    overlay.style.left = `${rect.left}px`;
+    overlay.style.width = `${rect.width}px`;
+    overlay.style.height = `${rect.height}px`;
+    overlay.style.transform = 'none'; // Override centering transform if any
+    
+    // Copy the refined background to match perfectly before expanding
+    overlay.style.background = getComputedStyle(modalContent).background;
+    overlay.style.borderColor = getComputedStyle(modalContent).borderColor;
+    overlay.style.borderWidth = getComputedStyle(modalContent).borderWidth;
+
+    document.body.appendChild(overlay);
+
+    // 4. Force Reflow to ensure start position is registered
+    overlay.getBoundingClientRect();
+
+    // 5. Animate to Fullscreen
+    requestAnimationFrame(() => {
+        overlay.classList.add('oracle-zoom-fullscreen');
+        // Reset specific styles to allow CSS class to take over for fullscreen vars if needed
+        // But we kept !important in CSS so it should override inline styles
+    });
+
+    // 6. Inject Void Content (Hidden initially)
+        overlay.innerHTML = `
+        <div class="oracle-content-center" style="opacity: 0; transition: opacity 1s ease 0.6s; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+             <div class="oracle-thinking-text slide-in-bottom" style="text-align: center;">CONSULTING THE ORACLE...</div>
+        </div>
+        `;
+    
+    const centerContent = overlay.querySelector('.oracle-content-center');
+
+    // 7. Reveal Void Content after zoom finishes (approx 0.8s)
+    setTimeout(() => {
+        centerContent.style.opacity = '1';
+        
+        // Start effects now that we are fullscreen
+        spawnWhispers(overlay); 
+    }, 600);
+
+
+    // --- CLOSE BUTTON ---
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.className = 'absolute top-4 right-4 text-white text-4xl hover:text-red-500 z-50 transition-colors focus:outline-none';
+    closeBtn.style.zIndex = '100'; 
+    closeBtn.title = "Cancel Oracle Consultation";
+    overlay.appendChild(closeBtn);
+
+    const controller = new AbortController();
+    
+    closeBtn.onclick = () => {
+        controller.abort();
+        overlay.remove();
+        clearInterval(whisperInterval);
+        clearInterval(particleInterval);
+        geminiModal.classList.add('hidden');
+    };
+    // --------------------
 
     try {
         const result = await getOracleJudgement(
             inputText,
             rulesDataCache,
-            ledgerDataCache.map(person => person.name)
+            ledgerDataCache.map(person => person.name),
+            null, // No visual callback for thoughts
+            controller.signal
         );
 
-        const parsedJudgement = result.judgement;
+        // --- ARTIFICIAL DELAY ---
+        // Just a small delay to let the whispers vibe before judgement
+        await new Promise(r => setTimeout(r, 1500));
+
+        const rawJudgement = result.judgement;
+        let judgements = [];
         
-        let displayMessage = '';
-        if (parsedJudgement.innocent) {
-            displayMessage = `The Oracle declares ${parsedJudgement.person || 'Someone'} innocent. No rules broken.`;
+        // Normalize to array
+        if (rawJudgement.judgements && Array.isArray(rawJudgement.judgements)) {
+            judgements = rawJudgement.judgements;
+        } else if (Array.isArray(rawJudgement)) {
+            judgements = rawJudgement;
         } else {
-            let totalStripes = 0;
-            const diceRollsSummary = [];
-            
-            if (Array.isArray(parsedJudgement.penalties)) {
-                parsedJudgement.penalties.forEach(penalty => {
-                    if (penalty.type === 'stripes' && typeof penalty.amount === 'number') {
-                        totalStripes += penalty.amount;
-                    } else if (penalty.type === 'dice' && typeof penalty.value === 'number') {
-                        diceRollsSummary.push(`d${penalty.value}`);
-                    }
-                });
-            }
-
-            const penaltyParts = [];
-            if (totalStripes > 0) {
-                penaltyParts.push(`${totalStripes} stripes`);
-            }
-            if (diceRollsSummary.length > 0) {
-                penaltyParts.push(`rolls: ${diceRollsSummary.join(', ')}`);
-            }
-            
-            const ruleNumbers = parsedJudgement.rulesBroken || [];
-            let rulesText = '';
-            if (ruleNumbers.length > 0) {
-                rulesText = ` (Broken Rule${ruleNumbers.length > 1 ? 's' : ''}: ${ruleNumbers.join(', ')})`;
-            }
-
-            if (penaltyParts.length > 0) {
-                displayMessage = `Judgement for ${parsedJudgement.person || 'Someone'}: ${penaltyParts.join(' and ')}${rulesText}.`;
-            } else {
-                displayMessage = `The Oracle has spoken for ${parsedJudgement.person || 'Someone'}${rulesText}. No explicit punishments were calculated.`;
-            }
+            // Fallback for single object or legacy format
+            judgements = [rawJudgement];
         }
 
-        geminiOutput.textContent = displayMessage; 
-        geminiOutput.classList.remove('hidden');
+        // --- Client-side Name Matching (moved from server) ---
+        // We need to do this for EACH judgement now
+        judgements.forEach(j => {
+             // ... (Keep existing Levenshtein logic if needed, or rely on server context) ...
+             // For now, let's assume the Oracle uses the names we sent it, or close enough.
+             // We can try to match `j.person` to `ledgerDataCache`
+             if (j.person && j.person.toLowerCase() !== 'unknown') {
+                 // Simple exact/partial match for now to find the ID
+                 const match = ledgerDataCache.find(p => p.name.toLowerCase() === j.person.toLowerCase());
+                 if (match) {
+                     j._personId = match.id;
+                     j._personName = match.name;
+                 } else {
+                     // Try fuzzy?
+                     // For now, leave as is. User can manually acknowledge if name is wrong.
+                 }
+             }
+        });
+        // -----------------------------------------------------
 
-        createActionButtons(parsedJudgement);
+        // Show Result in Center
+        clearInterval(whisperInterval);
+        clearInterval(particleInterval);
+        
+        // Instantly remove all whispers
+        document.querySelectorAll('.oracle-whisper').forEach(el => el.remove());
+        
+        // Add vignette/darkening effect
+        overlay.classList.add('oracle-result-vignette');
+
+        // Build HTML for verdicts
+        let verdictsHtml = '';
+        
+        if (judgements.length === 0) {
+             verdictsHtml = `<div class="text-red-400 italic">The Oracle stares in silence. (No judgement returned)</div>`;
+        } else {
+             verdictsHtml = `<div class="flex flex-col gap-6 w-full max-w-4xl mx-auto">`;
+             
+             // Filter out innocent people
+             const guiltyJudgements = judgements.filter(j => !j.innocent);
+
+             if (guiltyJudgements.length === 0) {
+                 verdictsHtml += `
+                    <div class="text-center p-8 border border-[#5c3d2e] bg-black/40 rounded-lg">
+                        <h3 class="text-3xl text-green-400 font-cinzel-decorative font-bold mb-4">Peace Reigns</h3>
+                        <p class="text-xl text-[#fdf8e9] italic">The Oracle finds no fault in anyone.</p>
+                    </div>
+                 `;
+             } else {
+                 guiltyJudgements.forEach((j, index) => {
+                     const isLast = index === guiltyJudgements.length - 1;
+                     const personName = j._personName || j.person || 'Unknown Subject';
+                     
+                     let verdictText = '';
+                     // guilty logic already implied by filter
+                     let penalties = [];
+                     if (j.penalties) {
+                         j.penalties.forEach(p => {
+                             if (p.type === 'stripes') penalties.push(`${p.amount} Stripe${p.amount > 1 ? 's' : ''}`);
+                             if (p.type === 'dice') penalties.push(`Roll d${p.value}`);
+                         });
+                     }
+                     verdictText = `<span class="text-red-500 font-bold">GUILTY</span>: <span class="text-gray-200">${penalties.join(', ') || 'Condemned'}</span>`;
+                     
+                     if (j.rulesBroken && j.rulesBroken.length > 0) {
+                         verdictText += ` <span class="text-sm text-gray-400 block mt-1">(Rule${j.rulesBroken.length > 1 ? 's' : ''} ${j.rulesBroken.join(', ')})</span>`;
+                     }
+    
+                     verdictsHtml += `
+                        <div class="bg-black/40 border border-[#5c3d2e] p-6 rounded-lg relative overflow-hidden slide-in-bottom" style="animation-delay: ${index * 0.2}s">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-3xl text-gradient-gold font-cinzel-decorative font-bold">${escapeHTML(personName)}</h3>
+                                <div class="text-xl font-serif">${verdictText}</div>
+                            </div>
+                            <p class="text-gray-300 italic border-l-2 border-[#5c3d2e] pl-4 leading-relaxed">
+                                "${escapeHTML(j.explanation || 'The Oracle has spoken.')}"
+                            </p>
+                        </div>
+                     `;
+                 });
+             }
+             verdictsHtml += `</div>`;
+        }
+
+        centerContent.innerHTML = `
+            <div class="mb-6 slide-in-bottom stagger-reveal w-full">
+                 <div class="mb-8 text-center">
+                    <h2 class="text-5xl font-cinzel-decorative mb-2 font-bold tracking-wider text-gradient-gold">The Oracle Has Spoken</h2>
+                    <div class="h-px w-48 bg-gradient-to-r from-transparent via-[#ffd700] to-transparent mx-auto mb-6 opacity-70"></div>
+                 </div>
+
+                 ${verdictsHtml}
+            </div>
+            <div id="oracle-overlay-actions" class="flex flex-wrap justify-center gap-4 mt-8"></div>
+        `;
+        
+        // Re-attach action buttons
+        const actionContainer = document.getElementById('oracle-overlay-actions');
+        
+        // Helper to close overlay
+        const closeOverlay = () => {
+             if (blobInteractionHandler) {
+                window.removeEventListener('mousemove', blobInteractionHandler);
+            }
+            document.body.removeChild(overlay);
+            geminiInput.value = '';
+        };
+
+        if (actionContainer) {
+             if (!isSchikkoSessionActive) {
+                    const btn = document.createElement('button');
+                     btn.className = 'btn-punishment px-6 py-3 rounded-md text-xl font-bold';
+                    btn.textContent = 'Acknowledge';
+                    btn.onclick = closeOverlay;
+                    actionContainer.appendChild(btn);
+             } else {
+                 if (judgements.length === 0) {
+                      const btn = document.createElement('button');
+                      btn.className = 'btn-ancient px-6 py-3 rounded-md text-xl font-bold';
+                      btn.textContent = 'Leave in Confusion';
+                      btn.onclick = closeOverlay;
+                      actionContainer.appendChild(btn);
+                 } else {
+                     // Generate buttons for EACH judgement
+                     let anyoneGuilty = false;
+                     let allResolved = true; // placeholder if we wanted to track state, but for now simple buttons
+
+                     judgements.forEach(j => {
+                         const personName = j._personName || j.person || 'Unknown';
+                         
+                         if (!j._personId) {
+                              // Unknown person
+                              // Maybe just a generic acknowledge or ignore?
+                              // For now, separate button just in case
+                         } else if (j.innocent) {
+                              // Innocent - maybe no action needed, or a "Clear [Name]" button? 
+                              // Usually we just ignore innocents in the actions, they are safe.
+                         } else {
+                             // Guilty!
+                             anyoneGuilty = true;
+                             let totalStripes = 0;
+                             let diceRolls = [];
+                             
+                             if (j.penalties) {
+                                 j.penalties.forEach(p => {
+                                     if (p.type === 'stripes') totalStripes += (p.amount || 0);
+                                     if (p.type === 'dice') diceRolls.push(p.value);
+                                 });
+                             }
+                             
+                             const hasStripes = totalStripes > 0;
+                             const hasDice = diceRolls.length > 0;
+                             
+                            const btnBase = 'btn-oracle-action px-6 py-3 rounded-lg text-lg font-bold tracking-wide m-2';
+
+                             if (hasStripes || hasDice) {
+                                 const btn = document.createElement('button');
+                                 btn.className = btnBase;
+                                 
+                                 let label = `Punish ${personName}`;
+                                 if (hasStripes) label += ` (+${totalStripes})`;
+                                 if (hasDice) label += ` (🎲)`;
+                                 
+                                 btn.textContent = label;
+                                 
+                                 btn.onclick = async () => {
+                                     // Disable button to prevent double click
+                                     btn.disabled = true;
+                                     // Use new done class instead of opacity
+                                     btn.classList.add('done');
+                                     
+                                     if (hasStripes) {
+                                         await addStripeToPerson(j._personId, totalStripes);
+                                         await logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed ${totalStripes} stripe(s) to ${personName}.`);
+                                     }
+                                     
+                                     if (hasDice) {
+                                          await logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed a dice roll for ${personName}.`);
+                                          // Trigger dice modal? 
+                                          // Problem: Multiple dice modals might conflict. 
+                                          // For now, just trigger it. The user will handle one by one.
+                                          setTimeout(() => {
+                                              const event = new CustomEvent('open-dice-modal', { 
+                                                  detail: { diceValues: diceRolls, personId: j._personId } 
+                                              });
+                                              window.dispatchEvent(event);
+                                          }, 200);
+                                     }
+                                     
+                                     // Visual feedback
+                                     btn.textContent = `${personName} Punished.`;
+                                     
+                                     // If we want to close overlay only when ALL dealt with? 
+                                     // Simpler: Keep overlay open until user clicks explicit "Close" or "Done" button
+                                 };
+                                 actionContainer.appendChild(btn);
+                             }
+                         }
+                     });
+                     
+                     // Helper "Done" / "Acknowledge" button to close
+                     const doneBtn = document.createElement('button');
+                     doneBtn.className = 'btn-ancient px-8 py-3 rounded-lg text-xl font-bold tracking-wide ml-4';
+                     doneBtn.textContent = anyoneGuilty ? 'Done' : 'Acknowledge';
+                     doneBtn.onclick = closeOverlay;
+                     actionContainer.appendChild(doneBtn);
+                 }
+             }
+        }
 
     } catch (error) {
         console.error("Error calling Oracle function:", error);
-        let errorMessage = `The Oracle is silent. An error occurred: ${error.message}`;
-        if (error.code && error.details) {
-            errorMessage = `Oracle error (${error.code}): ${error.message}`;
-            if (typeof error.details === 'string' && error.details.startsWith('{')) {
-                try {
-                    const detailObj = JSON.parse(error.details);
-                    if (detailObj.judgement) {
-                         errorMessage += ` Raw AI response: ${detailObj.judgement}`;
-                    }
-                } catch (parseError) {}
-            }
+        clearInterval(whisperInterval);
+        if (blobInteractionHandler) {
+            window.removeEventListener('mousemove', blobInteractionHandler);
         }
-        geminiOutput.textContent = errorMessage;
-        geminiOutput.classList.remove('hidden');
-    } finally {
-        geminiSubmitBtn.disabled = false;
-        geminiSubmitBtn.textContent = 'Consult the Oracle';
+        
+        let errorMessage = `The Oracle is silent. An error occurred: ${error.message}`;
+        centerContent.innerHTML = `
+            <div class="mb-6">
+                <h2 class="text-3xl text-red-600 font-cinzel-decorative mb-4 font-bold">The Void Rejects You</h2>
+                <p class="text-red-300">${escapeHTML(errorMessage)}</p>
+            </div>
+            <button id="oracle-error-close" class="btn-ancient px-6 py-3 rounded-md text-xl font-bold">Flee</button>
+        `;
+        const closeErrBtn = document.getElementById('oracle-error-close');
+        if(closeErrBtn) {
+            closeErrBtn.onclick = () => {
+                document.body.removeChild(overlay);
+            };
+        }
+        geminiModal.classList.remove('hidden');
     }
 }
+
 
 
 
@@ -1720,6 +2085,7 @@ randomizerHubModal?.addEventListener('click', (e) => {
             break;
         case 'dice':
             diceRandomizerModal.classList.remove('hidden');
+            try { diceRandomizerModal.style.zIndex = '200000'; } catch (_) {}
             initDiceRandomizer(ledgerDataCache, addStripeToPerson, showAlert, isSchikkoSessionActive);
             break;
         case 'wheel':
@@ -1751,6 +2117,8 @@ openDiceRandomizerFromHubBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     randomizerHubModal.classList.add('hidden');
     diceRandomizerModal.classList.remove('hidden');
+    // Enforce z-index for hub opening too
+    try { diceRandomizerModal.style.zIndex = '200000'; } catch (_) {}
     initDiceRandomizer(ledgerDataCache, addStripeToPerson, showAlert, isSchikkoSessionActive);
 });
 
