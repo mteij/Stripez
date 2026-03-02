@@ -133,12 +133,22 @@ export function setupEventListeners() {
         });
     }
 
-    if(dom.showDecreesBtn) dom.showDecreesBtn.addEventListener('click', () => {
-        const isHidden = dom.decreesContent.classList.contains('hidden');
-        if (isHidden) {
+    if(dom.showDecreesBtn) dom.showDecreesBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use a custom class instead of Tailwind's hidden
+        const isExpanded = dom.decreesContent.classList.contains('decrees-visible');
+        
+        if (!isExpanded) {
+            // Show decrees
             dom.decreesContent.classList.remove('hidden');
+            dom.decreesContent.classList.add('decrees-visible');
             dom.showDecreesBtn.setAttribute('data-state', 'expanded');
+            handleRenderRules();
         } else {
+            // Hide decrees
+            dom.decreesContent.classList.remove('decrees-visible');
             dom.decreesContent.classList.add('hidden');
             dom.showDecreesBtn.setAttribute('data-state', 'collapsed');
             if (dom.rulesListOl.classList.contains('rules-list-editing')) {

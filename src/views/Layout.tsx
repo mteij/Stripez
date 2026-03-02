@@ -584,7 +584,7 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
           }}
         />
         <script
-          src="/js/main.js?v=1.4"
+          src="/js/main.js"
           type="module"
           data-critical="true"
         ></script>

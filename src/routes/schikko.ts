@@ -632,6 +632,31 @@ app.post("/action", async (c) => {
         return c.json({ ok: true });
       }
 
+      case "updateConsecutiveBreaks": {
+        const docId = String(data.docId || "");
+        const count = Math.max(0, Number(data.count || 0));
+        const ruleText = typeof data.ruleText === "string" ? String(data.ruleText || "").trim() : "";
+        if (!docId) return c.json({ error: "invalid-argument" }, 400);
+        
+        const ts = nowIso();
+        run(
+          `UPDATE people SET consecutive_breaks = ?, last_rule_broken = ? WHERE id = ?`,
+          [count, ruleText, docId]
+        );
+        return c.json({ ok: true });
+      }
+
+      case "resetConsecutiveBreaks": {
+        const docId = String(data.docId || "");
+        if (!docId) return c.json({ error: "invalid-argument" }, 400);
+        
+        run(
+          `UPDATE people SET consecutive_breaks = 0, last_rule_broken = NULL WHERE id = ?`,
+          [docId]
+        );
+        return c.json({ ok: true });
+      }
+
       default:
         return c.json(
           { error: "invalid-argument", message: `Unknown action: ${action}` },

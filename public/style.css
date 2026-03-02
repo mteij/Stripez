@@ -200,20 +200,16 @@ body {
 /* Keep layout stable when toggling Schikko's Decrees */
 #decrees-content {
     transition: opacity 200ms ease;
+    display: none;               /* Default hidden */
 }
 #decrees-content.hidden {
-    display: block;              /* keep space reserved */
-    opacity: 0;                  /* visually hidden */
-    height: 0;
-    overflow: hidden;
-    padding-top: 0;
-    padding-bottom: 0;
-    margin-top: 0;
+    display: none;
 }
-#decrees-content:not(.hidden) {
+#decrees-content.decrees-visible {
+    display: block;
     opacity: 1;
-    height: auto;
-    padding-top: 1.5rem;         /* match existing spacing visually */
+    visibility: visible;
+    padding-top: 1.5rem;
 }
 
 /* New Calendar Styles */

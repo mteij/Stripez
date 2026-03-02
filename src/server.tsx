@@ -3,7 +3,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
-import { migrate } from "./db";
+import { migrate, seedDefaultRules } from "./db";
 import path from "node:path";
 import { Index } from "./views/Index";
 import pkg from "../package.json";
@@ -146,6 +146,7 @@ app.notFound((c) => {
 
 // ---- Bootstrap & Serve ----
 migrate();
+seedDefaultRules();
 setupCronJobs();
 
 Bun.serve({

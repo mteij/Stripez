@@ -202,6 +202,14 @@ async function addStripeToPerson(docId, count = 1) {
   return callSchikkoAction('addStripe', { docId, count });
 }
 
+async function updateConsecutiveBreaks(docId, count, ruleText) {
+  return callSchikkoAction('updateConsecutiveBreaks', { docId, count, ruleText });
+}
+
+async function resetConsecutiveBreaks(docId) {
+  return callSchikkoAction('resetConsecutiveBreaks', { docId });
+}
+
 async function addDrunkStripeToPerson(docId, count = 1) {
   return callSchikkoAction('addDrunkStripe', { docId, count: Math.max(1, Number(count || 1)) });
 }
@@ -345,6 +353,9 @@ export {
   updateRuleInFirestore,
   bulkUpdateRules,
   deleteLogFromFirestore,
+  // consecutive breaks
+  updateConsecutiveBreaks,
+  resetConsecutiveBreaks,
   // activity
   logActivity,
   // realtime
@@ -353,12 +364,12 @@ export {
 
 // --- Oracle judgement ---
 // --- Oracle judgement ---
-async function getOracleJudgement(promptText, rules = [], ledgerNames = [], onChunk = null, signal = null) {
+async function getOracleJudgement(promptText, rules = [], ledgerNames = [], consecutiveBreaks = null, onChunk = null, signal = null) {
   const res = await fetch(`${API_BASE}/api/oracle/judgement`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ promptText, rules, ledgerNames }),
+    body: JSON.stringify({ promptText, rules, ledgerNames, consecutiveBreaks }),
     signal
   });
 

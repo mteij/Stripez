@@ -64,9 +64,26 @@ export function migrate() {
     CREATE TABLE IF NOT EXISTS people (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      role TEXT
+      role TEXT,
+      consecutive_breaks INTEGER NOT NULL DEFAULT 0,
+      last_rule_broken TEXT
     );
   `);
+  
+  // Add columns to existing database if they don't exist (SQLite workaround)
+  // Check if the column exists by querying PRAGMA
+  const tableInfo = db.prepare("PRAGMA table_info(people)").all();
+  const columns = tableInfo.map((col: any) => col.name);
+  
+  if (!columns.includes('consecutive_breaks')) {
+    db.exec(`ALTER TABLE people ADD COLUMN consecutive_breaks INTEGER DEFAULT 0`);
+    // Update existing rows to have 0
+    db.exec(`UPDATE people SET consecutive_breaks = 0 WHERE consecutive_breaks IS NULL`);
+  }
+  
+  if (!columns.includes('last_rule_broken')) {
+    db.exec(`ALTER TABLE people ADD COLUMN last_rule_broken TEXT`);
+  }
 
   // stripes (ts stored as ISO TEXT)
   db.exec(`
@@ -150,4 +167,25 @@ export function migrate() {
     CREATE INDEX IF NOT EXISTS idx_drink_requests_status_created ON drink_requests(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_drink_requests_person ON drink_requests(person_id);
   `);
+}
+
+// Seed default rules if the rules table is empty
+export function seedDefaultRules() {
+  const existingRules = all<{ id: string }>('SELECT id FROM rules LIMIT 1');
+  if (existingRules.length > 0) return; // Already seeded
+
+  const now = nowIso();
+  const defaultRules = [
+    { id: randomId('rule'), text: 'The Schikko is chosen by sacred overbidding, each soul raising the burden until one alone dares bear it.', order: 1 },
+    { id: randomId('rule'), text: 'All must obey the Schikko\'s decrees, for his word is law within the circle.', order: 2 },
+    { id: randomId('rule'), text: 'He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the event until penance is made.', order: 3 },
+  ];
+
+  for (const rule of defaultRules) {
+    run(
+      `INSERT INTO rules (id, text, "order", tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      [rule.id, rule.text, rule.order, '[]', now, now]
+    );
+  }
+  console.log('[DB] Seeded default rules');
 }

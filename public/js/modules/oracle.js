@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { dom } from './dom.js';
-import { getOracleJudgement, addStripeToPerson, logActivity } from '../api.js';
+import { getOracleJudgement, addStripeToPerson, logActivity, updateConsecutiveBreaks, resetConsecutiveBreaks } from '../api.js';
 import { rollDiceAndAssign } from '../../randomizer/randomizer.js';
 import { showAlert } from '../ui.js';
 
@@ -168,6 +168,12 @@ export function createActionButtons(parsedJudgement) {
         stripesBtn.onclick = async (e) => {
             e.stopPropagation();
             await addStripeToPerson(person.id, totalStripes);
+            
+            // Update consecutive breaks
+            const currentBreaks = person.consecutiveBreaks || 0;
+            const newBreaks = currentBreaks + 1;
+            await updateConsecutiveBreaks(person.id, newBreaks, parsedJudgement.rulesBroken?.join(', ') || '');
+            
             logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed ${totalStripes} stripe(s) to ${person.name}.`);
             dom.geminiModal.classList.add('hidden');
         };
@@ -176,10 +182,16 @@ export function createActionButtons(parsedJudgement) {
         const diceBtn = document.createElement('button');
         diceBtn.className = 'btn-punishment font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg';
         diceBtn.textContent = `Roll Dice for ${person.name}`;
-        diceBtn.onclick = (e) => {
+        diceBtn.onclick = async (e) => {
             e.stopPropagation();
             logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed a dice roll for ${person.name}.`);
-            rollDiceAndAssign(diceRolls, person, addStripeToPerson, state.ledgerDataCache, showAlert); 
+            
+            // Update consecutive breaks for dice penalty too
+            const currentBreaks = person.consecutiveBreaks || 0;
+            const newBreaks = currentBreaks + 1;
+            await updateConsecutiveBreaks(person.id, newBreaks, parsedJudgement.rulesBroken?.join(', ') || '');
+            
+            rollDiceAndAssign(diceRolls, person, addStripeToPerson, state.ledgerDataCache, showAlert);
             dom.geminiModal.classList.add('hidden');
         };
         dom.geminiActionButtonsContainer.appendChild(diceBtn);
@@ -190,6 +202,12 @@ export function createActionButtons(parsedJudgement) {
         combinedBtn.onclick = async (e) => {
             e.stopPropagation();
             await addStripeToPerson(person.id, totalStripes);
+            
+            // Update consecutive breaks
+            const currentBreaks = person.consecutiveBreaks || 0;
+            const newBreaks = currentBreaks + 1;
+            await updateConsecutiveBreaks(person.id, newBreaks, parsedJudgement.rulesBroken?.join(', ') || '');
+            
             logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed ${totalStripes} stripe(s) to ${person.name}.`);
             logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle also decreed a dice roll for ${person.name}.`);
             rollDiceAndAssign(diceRolls, person, addStripeToPerson, state.ledgerDataCache, showAlert, state.isSchikkoSessionActive);
@@ -273,11 +291,24 @@ export async function handleGeminiSubmit() {
     };
 
     try {
+        // Build consecutive breaks map from ledger data
+        const consecutiveBreaks = {};
+        if (state.ledgerDataCache && Array.isArray(state.ledgerDataCache)) {
+            state.ledgerDataCache.forEach(person => {
+                if (person.consecutiveBreaks > 0) {
+                    consecutiveBreaks[person.name.toLowerCase()] = {
+                        count: person.consecutiveBreaks || 0,
+                        lastRule: person.lastRuleBroken || null
+                    };
+                }
+            });
+        }
+
         const result = await getOracleJudgement(
             inputText,
             state.rulesDataCache,
             state.ledgerDataCache.map(person => person.name),
-            null,
+            consecutiveBreaks,
             controller.signal
         );
 
@@ -426,6 +457,18 @@ export async function handleGeminiSubmit() {
                                      btn.disabled = true;
                                      btn.classList.add('done');
                                      
+                                     // Get current consecutive breaks for this person
+                                     const person = state.ledgerDataCache.find(p => p.id === j._personId);
+                                     const currentBreaks = person?.consecutiveBreaks || 0;
+                                     const newBreaks = currentBreaks + 1;
+                                     
+                                     // Build rule text from rulesBroken
+                                     let ruleText = '';
+                                     if (j.rulesBroken && j.rulesBroken.length > 0) {
+                                         const ruleNumbers = j.rulesBroken.join(', ');
+                                         ruleText = `Rule ${ruleNumbers}`;
+                                     }
+                                     
                                      if (hasStripes) {
                                          await addStripeToPerson(j._personId, totalStripes);
                                          await logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed ${totalStripes} stripe(s) to ${personName}.`);
@@ -434,12 +477,16 @@ export async function handleGeminiSubmit() {
                                      if (hasDice) {
                                           await logActivity('ORACLE_JUDGEMENT', 'Schikko', `The Oracle decreed a dice roll for ${personName}.`);
                                           setTimeout(() => {
-                                              const event = new CustomEvent('open-dice-modal', { 
-                                                  detail: { diceValues: diceRolls, personId: j._personId } 
+                                              const event = new CustomEvent('open-dice-modal', {
+                                                  detail: { diceValues: diceRolls, personId: j._personId }
                                               });
                                               window.dispatchEvent(event);
                                           }, 200);
                                      }
+                                     
+                                     // Update consecutive breaks count
+                                     await updateConsecutiveBreaks(j._personId, newBreaks, ruleText);
+                                     await logActivity('ORACLE_JUDGEMENT', 'Schikko', `${personName} now has ${newBreaks} consecutive rule break${newBreaks > 1 ? 's' : ''}.`);
                                      
                                      btn.textContent = `${personName} Punished.`;
                                  };

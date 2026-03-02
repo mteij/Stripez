@@ -6,7 +6,7 @@ import { OPENAI_API_KEY, OPENAI_BASE_URL, ORACLE_MODEL } from "../config";
 const app = new Hono();
 
 app.post("/judgement", async (c) => {
-  const { promptText, rules, ledgerNames } = await c.req.json();
+  const { promptText, rules, ledgerNames, consecutiveBreaks } = await c.req.json();
   if (!OPENAI_API_KEY) return c.json({ error: "OPENAI_API_KEY not configured" }, 500);
   if (!promptText) return c.json({ error: "invalid-argument" }, 400);
 
@@ -22,13 +22,27 @@ app.post("/judgement", async (c) => {
     .join("\n");
 
   // Format known names for context
-  const knownNames = Array.isArray(ledgerNames) && ledgerNames.length > 0 
-    ? ledgerNames.join(", ") 
+  const knownNames = Array.isArray(ledgerNames) && ledgerNames.length > 0
+    ? ledgerNames.join(", ")
     : "None known";
+
+  // Format consecutive breaks information
+  let consecutiveBreaksContext = "";
+  if (consecutiveBreaks && typeof consecutiveBreaks === 'object') {
+    const breakEntries = Object.entries(consecutiveBreaks)
+      .filter(([_, data]: [string, any]) => data && data.count > 0)
+      .map(([name, data]: [string, any]) => {
+        return `${name}: ${data.count} consecutive break${data.count > 1 ? 's' : ''} (last: "${data.lastRule || 'unknown'}")`;
+      });
+    
+    if (breakEntries.length > 0) {
+      consecutiveBreaksContext = `\n\nCONSECUTIVE RULE BREAKS (this session):\n${breakEntries.join('\n')}\n\nThe Oracle should consider that some subjects have broken rules multiple times in a row. This should result in ENHANCED PUNISHMENT - increase penalties significantly for repeat offenders!`;
+    }
+  }
 
   const systemPrompt = `You are an ancient, wise, and slightly dramatic Oracle for a game called "Schikko Rules". Your task is to pass judgement on a transgression described by a user.
   
-The known subjects in the ledger are: ${knownNames}. 
+The known subjects in the ledger are: ${knownNames}.${consecutiveBreaksContext}
 
 First, you must speak your thoughts aloud. Generate 3-5 short, fragmented, mystical thoughts or observations about the situation.
 Then, you must output your final judgement as a JSON object wrapped in a markdown code block (e.g., \`\`\`json ... \`\`\`).
@@ -44,7 +58,8 @@ The JSON must have the following structure:
             {"type": "dice", "value": number}
         ],
         "rulesBroken": [number, number, ...],
-        "innocent": boolean
+        "innocent": boolean,
+        "consecutiveBreaks": number (how many times this person has broken rules in a row)
     }
   ]
 }
@@ -57,6 +72,7 @@ IMPORTANT GUIDELINES:
 - **Penalties**: "stripes" adds a penalty mark (default). "dice" means they must roll a die.
 - **IMPORTANT**: Do NOT assign a "dice" penalty unless the violated rule EXPLICITLY mentions rolling a die. If in doubt, use "stripes".
 - **Rules**: List the rule numbers broken.
+- **CONSECUTIVE BREAKS**: When someone has broken rules multiple times in a row, you MUST significantly increase their punishment! At least double the stripes for 2+ consecutive breaks, triple for 3+, etc. This is crucial - repeat offenders must be punished more severely!
 
 Here are the official "Schikko's Decrees":
 ---

@@ -7,8 +7,8 @@ import { DRINK_REQUIRE_APPROVAL } from "../config";
 const app = new Hono();
 
 app.get("/punishments", async (c) => {
-  const people = all<{ id: string; name: string; role: string | null }>(
-    `SELECT id, name, role FROM people ORDER BY LOWER(name) ASC`
+  const people = all<{ id: string; name: string; role: string | null; consecutive_breaks: number; last_rule_broken: string | null }>(
+    `SELECT id, name, role, consecutive_breaks, last_rule_broken FROM people ORDER BY LOWER(name) ASC`
   );
   const stripes = all<{
     person_id: string;
@@ -24,6 +24,8 @@ app.get("/punishments", async (c) => {
       role: p.role ?? undefined,
       stripes: [] as string[],
       drunkStripes: [] as string[],
+      consecutiveBreaks: p.consecutive_breaks || 0,
+      lastRuleBroken: p.last_rule_broken || null,
     };
   }
   for (const s of stripes) {
