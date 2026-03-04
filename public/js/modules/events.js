@@ -5,7 +5,7 @@ import {
     addRuleToFirestore, updateRuleInFirestore, addStripeToPerson, getStripezDate, removeLastDrunkStripeFromPerson,
     setPersonRole, bulkUpdateRules, deleteRuleFromFirestore, updateRuleOrderInFirestore, deleteLogFromFirestore,
     approveDrinkRequest, rejectDrinkRequest, requestDrink, addDrunkStripeToPerson, getCalendarConfig, saveCalendarUrl,
-    saveStripezDate
+    saveStripezDate, listDrinkRequests
 } from '../api.js';
 import { 
     showConfirm, showPrompt, showLoading, hideLoading, showAlert, showRuleEditModal,
@@ -179,8 +179,8 @@ export function setupEventListeners() {
                             const button = e.target.closest('[data-action="toggle-menu"]');
                             const rect = button.getBoundingClientRect();
                             menu.style.position = 'fixed';
-                            menu.style.top = `${rect.bottom + window.scrollY}px`;
-                            menu.style.right = `${window.innerWidth - rect.right + window.scrollX}px`;
+                            menu.style.top = `${rect.bottom}px`;
+                            menu.style.right = `${window.innerWidth - rect.right}px`;
                             menu.style.zIndex = '99999';
                             if (menu.parentNode !== document.body) document.body.appendChild(menu);
                             menu.classList.remove('hidden');
@@ -195,8 +195,8 @@ export function setupEventListeners() {
                             const button = e.target.closest('[data-action="toggle-stripe-menu"]');
                             const rect = button.getBoundingClientRect();
                             menu.style.position = 'fixed';
-                            menu.style.top = `${rect.bottom + window.scrollY}px`;
-                            menu.style.right = `${window.innerWidth - rect.right + window.scrollX}px`;
+                            menu.style.top = `${rect.bottom}px`;
+                            menu.style.right = `${window.innerWidth - rect.right}px`;
                             menu.style.zIndex = '99999';
                             if (menu.parentNode !== document.body) document.body.appendChild(menu);
                             menu.classList.remove('hidden');
