@@ -151,7 +151,6 @@ export async function updateAppFooter() {
     dom.appInfoFooter.innerHTML = `
         <div class="mb-2 italic text-sm text-[#8c6b52]">${schikkoInfoText}</div>
         <div>Decrees last amended: ${dateString}</div>
-        <div class="mt-1 text-sm opacity-75">Rules and decisions are final. Resistance is futile.</div>
     `;
 
     const versionSpan = document.getElementById('app-version');
