@@ -5,11 +5,12 @@ import {
     addRuleToFirestore, updateRuleInFirestore, addStripeToPerson, getStripezDate, removeLastDrunkStripeFromPerson,
     setPersonRole, bulkUpdateRules, deleteRuleFromFirestore, updateRuleOrderInFirestore, deleteLogFromFirestore,
     approveDrinkRequest, rejectDrinkRequest, requestDrink, addDrunkStripeToPerson, getCalendarConfig, saveCalendarUrl,
-    saveStripezDate, listDrinkRequests
+    saveStripezDate, listDrinkRequests, setSchikko
 } from '../api.js';
 import { 
     showConfirm, showPrompt, showLoading, hideLoading, showAlert, showRuleEditModal,
-    showBulkEditRulesModal, showStatsModal, showLogbookModal, showAgendaModal
+    showBulkEditRulesModal, showStatsModal, showLogbookModal, showAgendaModal,
+    showSchikkoLoginModal
 } from '../ui.js';
 import { ensureSchikkoSession } from './auth.js';
 import { handleRender, handleRenderRules, handleRenderLogbook } from './render.js';
@@ -218,12 +219,14 @@ export function setupEventListeners() {
                     if (await ensureSchikkoSession()) {
                         const person = state.ledgerDataCache.find(p => p.id === id);
                         if (person) {
-                            showLoading('Saving stripe...');
                             try {
+                                if (!person.stripes) person.stripes = [];
+                                person.stripes.push({ createdAt: new Date() });
+                                import('./render.js').then(m => m.handleRender());
                                 await addStripeToPerson(id);
                                 await logActivity('ADD_STRIPE', actor, `Added 1 stripe to ${person.name}.`);
-                            } finally {
-                                hideLoading();
+                            } catch (e) {
+                                console.error('Optimistic update failed', e);
                             }
                         }
                     }
@@ -283,12 +286,15 @@ export function setupEventListeners() {
                     if (await ensureSchikkoSession()) {
                         const person = state.ledgerDataCache.find(p => p.id === id);
                         if (person) {
-                            showLoading('Reverting...');
                             try {
+                                if (person.stripes && person.stripes.length > 0) {
+                                    person.stripes.pop();
+                                    import('./render.js').then(m => m.handleRender());
+                                }
                                 await removeLastStripeFromPerson(person);
                                 await logActivity('REMOVE_STRIPE', actor, `Removed the last stripe from ${person.name}.`);
-                            } finally {
-                                hideLoading();
+                            } catch (e) {
+                                console.error('Optimistic remove failed', e);
                             }
                         }
                     }
@@ -297,12 +303,15 @@ export function setupEventListeners() {
                     if (await ensureSchikkoSession()) {
                         const person = state.ledgerDataCache.find(p => p.id === id);
                         if (person) {
-                            showLoading('Reverting...');
                             try {
+                                if (person.drunkStripes && person.drunkStripes.length > 0) {
+                                    person.drunkStripes.pop();
+                                    import('./render.js').then(m => m.handleRender());
+                                }
                                 await removeLastDrunkStripeFromPerson(person);
                                 await logActivity('REMOVE_DRUNK_STRIPE', actor, `Reverted a drunk stripe for ${person.name}.`);
-                            } finally {
-                                hideLoading();
+                            } catch (e) {
+                                console.error('Optimistic remove drunk failed', e);
                             }
                         }
                     }
@@ -317,15 +326,18 @@ export function setupEventListeners() {
                     if (await ensureSchikkoSession()) {
                         const role = target.dataset.role || '';
                         const person = state.ledgerDataCache.find(p => p.id === id);
-                        showLoading('Updating role...');
                         try {
+                            if (person) {
+                                person.role = role;
+                                import('./render.js').then(m => m.handleRender());
+                            }
                             await setPersonRole(id, role);
                             if (person) {
                                 const actionText = role ? `Set role "${role}" for ${person.name}.` : `Cleared role for ${person.name}.`;
                                 await logActivity('SET_ROLE', 'Schikko', actionText);
                             }
-                        } finally {
-                            hideLoading();
+                        } catch (e) {
+                            console.error('Optimistic role set failed', e);
                         }
                     }
                     break;

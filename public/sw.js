@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schikko-rules-cache-v11';
+const CACHE_NAME = 'schikko-rules-cache-v14';
 const urlsToCache = [
   '/',
   // '/index.html', // Removed: server generates this, not a static file
