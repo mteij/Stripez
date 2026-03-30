@@ -44,7 +44,7 @@ app.get("/status", async (c) => {
 });
 
 app.get("/info", async (c) => {
-  const y = new Date().getFullYear();
+  const y = APP_YEAR;
   const key = yearKey(y);
   const row =
     get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) ||
@@ -197,6 +197,8 @@ app.post("/login", async (c) => {
   if (!uid) return c.json({ error: "unauthenticated" }, 401);
 
   let ok = false;
+  let error = "invalid-credentials";
+  let message: string | undefined;
 
   // Option 1: admin key
   if (!ok && body.code) {
@@ -205,30 +207,54 @@ app.post("/login", async (c) => {
   }
 
   // Option 2: Firebase Google idToken
-  if (!ok && body.idToken && FIREBASE_PROJECT_ID) {
-    const claims = await verifyFirebaseToken(String(body.idToken));
-    if (claims && claims.emailVerified) {
-      // Check env-level allowlist first
-      if (ALLOWED_GOOGLE_EMAILS.length > 0 && ALLOWED_GOOGLE_EMAILS.includes(claims.email)) {
-        ok = true;
-      }
-      // Then check the currently stored Schikko identity
-      if (!ok) {
-        const key = yearKey(APP_YEAR);
-        const data = readSchikkoData(key);
-        if (data) {
-          const savedUid = String(data.googleUid || "").trim();
-          const savedEmail = String(data.googleEmail || "")
-            .trim()
-            .toLowerCase();
-          if (savedUid && savedUid === claims.uid) ok = true;
-          if (!ok && savedEmail && savedEmail === claims.email) ok = true;
+  if (!ok && body.idToken) {
+    if (!FIREBASE_PROJECT_ID) {
+      error = "google-auth-not-configured";
+      message = "Google login is not configured on the server.";
+    } else {
+      const claims = await verifyFirebaseToken(String(body.idToken));
+      if (!claims) {
+        error = "google-token-invalid";
+        message = "Google sign-in could not be verified.";
+      } else if (!claims.emailVerified) {
+        error = "google-email-not-verified";
+        message = "The selected Google account does not have a verified email address.";
+      } else {
+        // Check env-level allowlist first
+        if (
+          ALLOWED_GOOGLE_EMAILS.length > 0 &&
+          ALLOWED_GOOGLE_EMAILS.includes(claims.email)
+        ) {
+          ok = true;
+        }
+        // Then check the currently stored Schikko identity
+        if (!ok) {
+          const key = yearKey(APP_YEAR);
+          const data = readSchikkoData(key);
+          if (data?.verified) {
+            const savedUid = String(data.googleUid || "").trim();
+            const savedEmail = String(data.googleEmail || "")
+              .trim()
+              .toLowerCase();
+            if (savedUid && savedUid === claims.uid) ok = true;
+            if (!ok && savedEmail && savedEmail === claims.email) ok = true;
+
+            if (!ok && (savedUid || savedEmail)) {
+              error = "google-account-mismatch";
+              message =
+                "This Google account does not match the account currently linked to Schikko.";
+            } else if (!ok) {
+              error = "google-account-not-linked";
+              message =
+                "The current Schikko does not have a linked Google account yet.";
+            }
+          }
         }
       }
     }
   }
 
-  if (!ok) return c.json({ success: false, error: "invalid-credentials" }, 401);
+  if (!ok) return c.json({ success: false, error, message }, 401);
 
   return c.json({ success: true, ...createSchikkoSession(uid) });
 });

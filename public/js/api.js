@@ -76,25 +76,49 @@ async function setSchikko({ firstName, lastName, idToken }) {
 }
 
 async function loginSchikko(code) {
-  const res = await fetch(`${API_BASE}/api/schikko/login`, {
+  await ensureAnon();
+  let res = await fetch(`${API_BASE}/api/schikko/login`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  let data = await res.json().catch(() => null);
+  if (res.status === 401 && data?.error === 'unauthenticated') {
+    await ensureAnon();
+    res = await fetch(`${API_BASE}/api/schikko/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    data = await res.json().catch(() => null);
+  }
+  if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+  return data;
 }
 
 async function loginSchikkoWithGoogle(idToken) {
-  const res = await fetch(`${API_BASE}/api/schikko/login`, {
+  await ensureAnon();
+  let res = await fetch(`${API_BASE}/api/schikko/login`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  let data = await res.json().catch(() => null);
+  if (res.status === 401 && data?.error === 'unauthenticated') {
+    await ensureAnon();
+    res = await fetch(`${API_BASE}/api/schikko/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    data = await res.json().catch(() => null);
+  }
+  if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+  return data;
 }
 
 // Reads
