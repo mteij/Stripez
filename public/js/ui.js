@@ -997,6 +997,12 @@ function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
     schikkoLoggedIn = !!isSchikko;
 
     if (appCountdownInterval) clearInterval(appCountdownInterval);
+    if (!countdownContainer) {
+        if (liveBadgeEl) liveBadgeEl.classList.add('hidden');
+        appLiveNow = false;
+        updateStripeOMeterUI(false);
+        return;
+    }
 
     // If no date is set, default title to current year and hide LIVE
     if (!appData || !appData.date) {

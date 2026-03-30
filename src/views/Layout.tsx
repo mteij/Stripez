@@ -4,6 +4,7 @@ import { type Child } from "hono/jsx";
 
 export const Layout = (props: { children: Child; title?: string; version?: string }) => {
   const appTitle = props.title || "Loading...";
+  const assetVersion = encodeURIComponent(props.version || "0.0.0");
   return (
     <html lang="en" data-app-version={props.version || "0.0.0"}>
       <head>
@@ -13,7 +14,7 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
         <meta name="application-name" content={appTitle} />
         <meta name="apple-mobile-web-app-title" content={appTitle} />
         <meta name="theme-color" content="#8c6b52" />
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href={`/manifest.json?v=${assetVersion}`} />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -275,8 +276,8 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
           onerror="window.icalJSFallback()"
         ></script>
 
-        <link rel="stylesheet" href="/style.css?v=1.0" />
-        <link rel="stylesheet" href="/randomizer/randomizer.css" />
+        <link rel="stylesheet" href={`/style.css?v=${assetVersion}`} />
+        <link rel="stylesheet" href={`/randomizer/randomizer.css?v=${assetVersion}`} />
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -358,7 +359,9 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
             __html: `
             if ("serviceWorker" in navigator) {
               window.addEventListener("load", () => {
-                navigator.serviceWorker.register("/sw.js").then(
+                navigator.serviceWorker.register("/sw.js?v=${assetVersion}", {
+                  updateViaCache: "none",
+                }).then(
                   (registration) => {
                     console.log(
                       "ServiceWorker registration successful with scope: ",
@@ -566,7 +569,7 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
           }}
         />
         <script
-          src="/js/main.js"
+          src={`/js/main.js?v=${assetVersion}`}
           type="module"
           data-critical="true"
         ></script>

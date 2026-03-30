@@ -78,6 +78,14 @@ app.route("/api/oracle", oracleRoutes);
 
 // ---- Static assets ----
 const PUBLIC_DIR = path.join(import.meta.dir, "..", "public");
+const ASSET_VERSION = encodeURIComponent(pkg.version || "0.0.0");
+
+function withNoStore(headers: HeadersInit = {}) {
+  return {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    ...headers,
+  };
+}
 
 app.get("/favicon.ico", (c) => c.redirect("/favicon.svg", 302));
 app.get("/favicon.svg", (c) => {
@@ -124,10 +132,93 @@ app.get("/apple-touch-icon.png", (c) => {
 });
 // Ensure correct MIME type for Service Worker (Bun runtime)
 app.get("/sw.js", async (c) => {
-  const file = Bun.file(path.join(PUBLIC_DIR, "sw.js"));
-  return new Response(file, {
-    headers: { "Content-Type": "application/javascript; charset=utf-8" },
-  });
+  const swScript = `
+const CACHE_NAME = 'schikko-rules-cache-${ASSET_VERSION}';
+const APP_SHELL = [
+  '/',
+  '/style.css?v=${ASSET_VERSION}',
+  '/js/main.js?v=${ASSET_VERSION}',
+  '/manifest.json?v=${ASSET_VERSION}',
+  '/randomizer/randomizer.css?v=${ASSET_VERSION}',
+  '/randomizer/randomizer.js?v=${ASSET_VERSION}',
+  '/favicon.svg',
+  '/icon-192.png',
+  '/icon-192.svg',
+  '/icon-512.png',
+  '/icon-512.svg',
+  '/apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.all(APP_SHELL.map(async (url) => {
+      try {
+        await cache.add(url);
+      } catch (err) {
+        console.warn('SW: skip caching', url, err && (err.message || err));
+      }
+    }));
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const cacheNames = await caches.keys();
+    await Promise.all(
+      cacheNames.map((cacheName) => cacheName === CACHE_NAME ? null : caches.delete(cacheName))
+    );
+    await self.clients.claim();
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    clients.forEach((client) => client.postMessage({ type: 'reload' }));
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+
+  if (url.origin !== self.location.origin || req.method !== 'GET') return;
+  if (url.pathname.startsWith('/api/')) return;
+
+  const isNavigation = req.mode === 'navigate';
+  const isAppShellAsset =
+    url.pathname.startsWith('/js/') ||
+    url.pathname.startsWith('/randomizer/') ||
+    url.pathname === '/style.css' ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/sw.js';
+
+  if (isNavigation || isAppShellAsset) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const networkResponse = await fetch(req, { cache: 'no-store' });
+        if (networkResponse && networkResponse.ok) {
+          cache.put(req, networkResponse.clone());
+        }
+        return networkResponse;
+      } catch (err) {
+        const cachedResponse = await cache.match(req);
+        if (cachedResponse) return cachedResponse;
+        console.warn('SW: network fetch failed', req.url, err && (err.message || err));
+        return Response.error();
+      }
+    })());
+    return;
+  }
+
+  event.respondWith((async () => {
+    const cachedResponse = await caches.match(req);
+    if (cachedResponse) return cachedResponse;
+    return fetch(req);
+  })());
+});
+`;
+  return c.body(swScript, 200, withNoStore({
+    "Content-Type": "application/javascript; charset=utf-8",
+  }));
 });
 app.get("/manifest.json", async (c) => {
   const name = getAppDisplayName(APP_NAME, APP_YEAR);
@@ -170,14 +261,24 @@ app.get("/manifest.json", async (c) => {
       },
     ],
   };
-  return c.json(manifest);
+  return c.json(manifest, 200, withNoStore());
 });
 // Force correct MIME type for CSS to satisfy X-Content-Type-Options: nosniff
 app.get("/style.css", async (c) => {
   const file = Bun.file(path.join(PUBLIC_DIR, "style.css"));
   return new Response(file, {
-    headers: { "Content-Type": "text/css; charset=utf-8" },
+    headers: withNoStore({ "Content-Type": "text/css; charset=utf-8" }),
   });
+});
+
+app.use("/js/*", async (c, next) => {
+  await next();
+  c.header("Cache-Control", "no-cache, no-store, must-revalidate");
+});
+
+app.use("/randomizer/*", async (c, next) => {
+  await next();
+  c.header("Cache-Control", "no-cache, no-store, must-revalidate");
 });
 
 app.get("/assets/*", serveStatic({ root: PUBLIC_DIR }));

@@ -17,6 +17,18 @@ function readSchikkoData(key: string) {
   }
 }
 
+function getSchikkoIdentity(data: any) {
+  const googleUid = String(data?.googleUid || "").trim();
+  const googleEmail = String(data?.googleEmail || "").trim().toLowerCase();
+  return { googleUid, googleEmail };
+}
+
+function isActiveSchikkoRecord(data: any) {
+  if (!data?.verified) return false;
+  const { googleUid, googleEmail } = getSchikkoIdentity(data);
+  return Boolean(googleUid || googleEmail);
+}
+
 function createSchikkoSession(uid: string) {
   const sessionId = randomId("s");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -37,7 +49,7 @@ app.get("/status", async (c) => {
   if (!row) return c.json({ isSet: false });
   try {
     const data = JSON.parse(row.data || "{}");
-    return c.json({ isSet: Boolean(data.verified) });
+    return c.json({ isSet: isActiveSchikkoRecord(data) });
   } catch {
     return c.json({ isSet: false });
   }
@@ -87,7 +99,7 @@ app.get("/info", async (c) => {
     } catch {}
   }
 
-  const verified = !!data.verified;
+  const verified = isActiveSchikkoRecord(data);
   const name = verified
     ? [data.firstName, data.lastName].filter(Boolean).join(" ").trim() || null
     : null;
@@ -110,7 +122,7 @@ app.post("/set", async (c) => {
   const key = yearKey(y);
   const existingDataRaw = readSchikkoData(key);
   const existingData = existingDataRaw || {};
-  const alreadySet = Boolean(existingDataRaw?.verified);
+  const alreadySet = isActiveSchikkoRecord(existingDataRaw);
 
   const claims =
     idToken && FIREBASE_PROJECT_ID ? await verifyFirebaseToken(idToken) : null;
@@ -134,13 +146,13 @@ app.post("/set", async (c) => {
     );
   }
 
-  const googleEmail = (
-    googleIdentity?.email ||
-    String(existingData.googleEmail || "")
+  const existingIdentity = getSchikkoIdentity(existingData);
+  const googleEmail = String(
+    googleIdentity?.email || existingIdentity.googleEmail || ""
   )
     .trim()
     .toLowerCase();
-  const googleUid = String(googleIdentity?.uid || existingData.googleUid || "").trim();
+  const googleUid = String(googleIdentity?.uid || existingIdentity.googleUid || "").trim();
   const updatedAt = nowIso();
   const payload = {
     firstName,
@@ -152,15 +164,25 @@ app.post("/set", async (c) => {
   };
 
   if (!alreadySet) {
-    run(
-      `INSERT OR IGNORE INTO config (key, data, updated_at)
-       VALUES (?, ?, ?)`,
-      [key, JSON.stringify(payload), updatedAt]
-    );
+    if (existingDataRaw) {
+      run(
+        `INSERT INTO config (key, data, updated_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
+        [key, JSON.stringify(payload), updatedAt]
+      );
+    } else {
+      run(
+        `INSERT OR IGNORE INTO config (key, data, updated_at)
+         VALUES (?, ?, ?)`,
+        [key, JSON.stringify(payload), updatedAt]
+      );
+    }
 
     const saved = readSchikkoData(key);
     if (!saved) return c.json({ error: "internal" }, 500);
-    if (saved.googleUid !== googleUid) {
+    const savedIdentity = getSchikkoIdentity(saved);
+    if (savedIdentity.googleUid !== googleUid) {
       return c.json(
         {
           error: "already-claimed",
@@ -196,6 +218,21 @@ app.post("/login", async (c) => {
   const uid = getCookie(c, "uid");
   if (!uid) return c.json({ error: "unauthenticated" }, 401);
 
+  const currentSchikko = readSchikkoData(yearKey(APP_YEAR));
+  if (!isActiveSchikkoRecord(currentSchikko)) {
+    return c.json(
+      {
+        success: false,
+        error: "schikko-reset-required",
+        message:
+          currentSchikko?.verified
+            ? "The current Schikko was set with an older login method and must be claimed again with Google sign-in."
+            : "No Schikko is currently active. Claim Schikko first before logging in.",
+      },
+      409
+    );
+  }
+
   let ok = false;
   let error = "invalid-credentials";
   let message: string | undefined;
@@ -229,13 +266,10 @@ app.post("/login", async (c) => {
         }
         // Then check the currently stored Schikko identity
         if (!ok) {
-          const key = yearKey(APP_YEAR);
-          const data = readSchikkoData(key);
-          if (data?.verified) {
-            const savedUid = String(data.googleUid || "").trim();
-            const savedEmail = String(data.googleEmail || "")
-              .trim()
-              .toLowerCase();
+          const data = currentSchikko;
+          if (isActiveSchikkoRecord(data)) {
+            const { googleUid: savedUid, googleEmail: savedEmail } =
+              getSchikkoIdentity(data);
             if (savedUid && savedUid === claims.uid) ok = true;
             if (!ok && savedEmail && savedEmail === claims.email) ok = true;
 
@@ -262,6 +296,10 @@ app.post("/login", async (c) => {
 async function requireValidSession(c: any, sessionId: string): Promise<SessionCheckResult> {
   const uid = getCookie(c, "uid");
   if (!uid) return { ok: false, code: 401, error: "unauthenticated" };
+  const currentSchikko = readSchikkoData(yearKey(APP_YEAR));
+  if (!isActiveSchikkoRecord(currentSchikko)) {
+    return { ok: false, code: 403, error: "permission-denied" };
+  }
   const row = get<{ id: string; uid: string; expires_at: string }>(
     "SELECT id, uid, expires_at FROM sessions WHERE id = ?",
     [sessionId]
