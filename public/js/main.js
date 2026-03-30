@@ -192,7 +192,7 @@ export async function updateAppFooter() {
             if (cfg?.firebaseApiKey && cfg?.firebaseProjectId) {
                 window.__firebaseConfig = {
                     apiKey: cfg.firebaseApiKey,
-                    authDomain: `${cfg.firebaseProjectId}.firebaseapp.com`,
+                    authDomain: (cfg?.firebaseAuthDomain && String(cfg.firebaseAuthDomain).trim()) || `${cfg.firebaseProjectId}.firebaseapp.com`,
                     projectId: cfg.firebaseProjectId,
                 };
             }

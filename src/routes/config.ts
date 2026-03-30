@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { get, run, nowIso } from "../db";
-import { APP_NAME, APP_YEAR, DRINK_REQUIRE_APPROVAL, OPENAI_API_KEY, STRIPEZ_DEFAULT_DURATION_DAYS, FIREBASE_API_KEY, FIREBASE_PROJECT_ID } from "../config";
+import { APP_NAME, APP_YEAR, DRINK_REQUIRE_APPROVAL, OPENAI_API_KEY, STRIPEZ_DEFAULT_DURATION_DAYS, FIREBASE_API_KEY, FIREBASE_PROJECT_ID, FIREBASE_AUTH_DOMAIN } from "../config";
 
 const app = new Hono();
 
@@ -74,6 +74,7 @@ app.get("/app", async (c) => {
     requireApprovalForDrinks: Boolean(DRINK_REQUIRE_APPROVAL),
     firebaseApiKey: FIREBASE_API_KEY || null,
     firebaseProjectId: FIREBASE_PROJECT_ID || null,
+    firebaseAuthDomain: FIREBASE_AUTH_DOMAIN || null,
   });
 });
 

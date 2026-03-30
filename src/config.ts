@@ -32,6 +32,15 @@ export const DRINK_REQUIRE_APPROVAL = parseBool(
 // Firebase / Google login
 export const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || "").trim();
 export const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || "").trim();
+export const FIREBASE_AUTH_DOMAIN = (
+  process.env.FIREBASE_AUTH_DOMAIN ||
+  (FIREBASE_PROJECT_ID ? `${FIREBASE_PROJECT_ID}.firebaseapp.com` : "")
+).trim();
+if (FIREBASE_PROJECT_ID && /^\d+$/.test(FIREBASE_PROJECT_ID)) {
+  console.warn(
+    "[Config] FIREBASE_PROJECT_ID looks numeric. Use firebaseConfig.projectId, not the project number or messagingSenderId."
+  );
+}
 // Optional comma-separated Google allowlist for Schikko login overrides.
 export const ALLOWED_GOOGLE_EMAILS = (process.env.ALLOWED_GOOGLE_EMAILS || "")
   .split(",")

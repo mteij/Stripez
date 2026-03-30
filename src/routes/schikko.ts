@@ -108,8 +108,9 @@ app.post("/set", async (c) => {
 
   const y = APP_YEAR;
   const key = yearKey(y);
-  const existingData = readSchikkoData(key) || {};
-  const alreadySet = Boolean(existingData);
+  const existingDataRaw = readSchikkoData(key);
+  const existingData = existingDataRaw || {};
+  const alreadySet = Boolean(existingDataRaw?.verified);
 
   const claims =
     idToken && FIREBASE_PROJECT_ID ? await verifyFirebaseToken(idToken) : null;

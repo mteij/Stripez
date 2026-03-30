@@ -7,7 +7,7 @@ import { migrate, seedDefaultRules } from "./db";
 import path from "node:path";
 import { Index } from "./views/Index";
 import pkg from "../package.json";
-import { PORT, CORS_ORIGINS, APP_NAME, APP_YEAR } from "./config";
+import { PORT, CORS_ORIGINS, APP_NAME, APP_YEAR, FIREBASE_AUTH_DOMAIN } from "./config";
 import { setupCronJobs } from "./cron";
 import { getAppDisplayName, renderAppIconPng, renderAppIconSvg } from "./icon";
 
@@ -35,6 +35,11 @@ app.use(
   })
 );
 
+const frameSrc = ["'self'", "https://apis.google.com"];
+if (FIREBASE_AUTH_DOMAIN) {
+  frameSrc.push(`https://${FIREBASE_AUTH_DOMAIN}`);
+}
+
 // Security headers (CSP mirrors firebase.json, minus Firebase APIs)
 const CSP = [
   "default-src 'self'",
@@ -43,7 +48,7 @@ const CSP = [
   "img-src 'self' data: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com blob: data: https://cloudflareinsights.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
-  "frame-src 'self' https://apis.google.com https://schikko-rules.firebaseapp.com",
+  `frame-src ${frameSrc.join(" ")}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "worker-src 'self' blob:",
