@@ -236,46 +236,6 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
           onerror="window.chartAdapterFallback()"
         ></script>
 
-        {/* ICAL.js with fallback */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-            window.icalJSFallback = function () {
-              console.warn(
-                "ICAL.js CDN blocked, calendar functionality will be limited"
-              );
-              // Create a minimal ICAL object to prevent errors
-              window.ICAL = {
-                parse: function () {
-                  return { components: [] };
-                },
-                Component: function () {
-                  return {
-                    getAllSubcomponents: function () {
-                      return [];
-                    },
-                  };
-                },
-                Event: function () {
-                  return {
-                    isRecurring: function () {
-                      return false;
-                    },
-                  };
-                },
-              };
-            };
-          `,
-          }}
-        />
-        <script
-          src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js"
-          integrity="sha512-0izBc1upGYnrS1u1MX7QR+sjFIxZWxLVdNI7cUoHHCutDr5ENjuQRZuS+v+3NFNGfwHSrPoHzBzED0rV651tGw=="
-          crossorigin="anonymous"
-          referrerpolicy="no-referrer"
-          onerror="window.icalJSFallback()"
-        ></script>
-
         <link rel="stylesheet" href={`/style.css?v=${assetVersion}`} />
         <link rel="stylesheet" href={`/randomizer/randomizer.css?v=${assetVersion}`} />
         <style
@@ -493,11 +453,6 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
                   name: "Chart.js",
                   check: () => typeof window.Chart !== "undefined",
                   fallback: window.chartJSFallback,
-                },
-                {
-                  name: "ICAL.js",
-                  check: () => typeof window.ICAL !== "undefined",
-                  fallback: window.icalJSFallback,
                 },
                 {
                   name: "Confetti",

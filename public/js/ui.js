@@ -212,58 +212,6 @@ function showPrompt(message, defaultValue = '', title = 'An Inquiry!') {
 }
 
 
-function renderUpcomingEvent(event) {
-    const upcomingEventDiv = document.getElementById('upcoming-event');
-    if (event) {
-        const eventDate = new Date(event.startDate);
-        const dateString = eventDate.toLocaleDateString(undefined, {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-        });
-        const timeString = eventDate.toLocaleTimeString(undefined, {
-            hour: '2-digit', minute: '2-digit'
-        });
-        upcomingEventDiv.innerHTML = `<strong>Next Activity:</strong> ${escapeHTML(event.summary || '')} on ${dateString} at ${timeString}`;
-    } else {
-        upcomingEventDiv.innerHTML = 'No upcoming activities found.';
-    }
-}
-
-function renderFullAgenda(events) {
-    const agendaContentDiv = document.getElementById('agenda-content');
-    agendaContentDiv.innerHTML = '';
-
-    if (!events || events.length === 0) {
-        agendaContentDiv.innerHTML = '<p>No upcoming events in the agenda.</p>';
-        return;
-    }
-
-    events.forEach(event => {
-        const eventDiv = document.createElement('div');
-        eventDiv.className = 'p-3 bg-[#e9e2d7] rounded-md border border-[#b9987e]';
-        const startDate = new Date(event.startDate);
-        const endDate = new Date(event.endDate);
-        const dateString = startDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const timeString = `${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
-
-        eventDiv.innerHTML = `
-            <h3 class="text-xl font-bold text-[#5c3d2e]">${escapeHTML(event.summary || '')}</h3>
-            <p class="text-md text-[#6f4e37]">${dateString} at ${timeString}</p>
-            ${event.location ? `<p class="text-sm text-[#6f4e37]">Location: ${escapeHTML(event.location)}</p>` : ''}
-            ${event.description ? `<p class="text-sm mt-2">${escapeHTML(event.description)}</p>` : ''}
-        `;
-        agendaContentDiv.appendChild(eventDiv);
-    });
-}
-
-function showAgendaModal(show) {
-    const agendaModal = document.getElementById('agenda-modal');
-    if (show) {
-        agendaModal.classList.remove('hidden');
-    } else {
-        agendaModal.classList.add('hidden');
-    }
-}
-
 function showLogbookModal(show) {
     const logbookModal = document.getElementById('logbook-modal');
     if (show) {
@@ -1276,7 +1224,6 @@ function updateStripeOMeterUI(isLive) {
     const leftEl = document.getElementById('stripe-meter-left');
     const countsEl = document.getElementById('stripe-meter-counts');
     const countdownWrap = document.getElementById('countdown-container');
-    const calendarSection = document.getElementById('calendar-section');
 
     if (!meter) return;
 
@@ -1284,15 +1231,11 @@ function updateStripeOMeterUI(isLive) {
         // Always show the meter when live
         meter.classList.remove('hidden');
 
-        // Only hide countdown and calendar for non‑Schikko users
+        // Only hide countdown for non‑Schikko users
         const hideForGuests = !schikkoLoggedIn;
         if (countdownWrap) {
             if (hideForGuests) countdownWrap.classList.add('hidden');
             else countdownWrap.classList.remove('hidden');
-        }
-        if (calendarSection) {
-            if (hideForGuests) calendarSection.classList.add('hidden');
-            else calendarSection.classList.remove('hidden');
         }
 
         const total = Math.max(0, stripeTotals.total || 0);
@@ -1304,10 +1247,9 @@ function updateStripeOMeterUI(isLive) {
         if (leftEl) leftEl.textContent = `Stripes left: ${left}`;
         if (countsEl) countsEl.textContent = `Drunk ${drunk} / Total ${total}`;
     } else {
-        // When not live, show countdown and calendar for everyone, hide meter
+        // When not live, show countdown for everyone and hide the meter
         meter.classList.add('hidden');
         if (countdownWrap) countdownWrap.classList.remove('hidden');
-        if (calendarSection) calendarSection.classList.remove('hidden');
     }
 }
 
@@ -1339,4 +1281,4 @@ function showBulkEditRulesModal(show, currentRules = []) {
     }
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, showBulkEditRulesModal, renderAppCountdown, showLogbookModal, showSchikkoSettingsModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };
+export { renderLedger, showStatsModal, closeMenus, renderRules, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, showBulkEditRulesModal, renderAppCountdown, showLogbookModal, showSchikkoSettingsModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };

@@ -5,7 +5,6 @@ export const state = {
     ledgerDataCache: [],
     rulesDataCache: [], // Full, unfiltered rules data
     logbookDataCache: [],
-    calendarEventsCache: [],
     currentSortOrder: 'default',
     currentSearchTerm: '', // For ledger search
     currentRuleSearchTerm: '', // For rules inconsistencies search

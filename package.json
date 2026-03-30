@@ -1,6 +1,6 @@
 {
   "name": "stripez",
-  "version": "4.0.11",
+  "version": "4.1.0",
   "private": true,
   "description": "Stripez - Bun.js API + static site with SQLite (Dockerized).",
   "type": "module",
@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "gaxios": "^6.7.1",
     "hono": "^4.10.4",
     "node-cron": "^3.0.3",
     "openai": "^6.22.0"

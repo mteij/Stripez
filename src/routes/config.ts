@@ -4,32 +4,6 @@ import { APP_NAME, APP_YEAR, DRINK_REQUIRE_APPROVAL, OPENAI_API_KEY, STRIPEZ_DEF
 
 const app = new Hono();
 
-app.get("/calendar", async (c) => {
-  const row =
-    get<{ data: string }>("SELECT data FROM config WHERE key='calendar'") ||
-    null;
-  if (!row) return c.json({ url: null });
-  try {
-    const data = JSON.parse(row.data || "{}");
-    return c.json({ url: data.url || null });
-  } catch {
-    return c.json({ url: null });
-  }
-});
-
-app.post("/calendar", async (c) => {
-  const { url } = await c.req.json();
-  if (!url || typeof url !== "string")
-    return c.json({ error: "invalid-argument" }, 400);
-  run(
-    `INSERT INTO config (key, data, updated_at)
-     VALUES ('calendar', ?, ?)
-     ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
-    [JSON.stringify({ url }), nowIso()]
-  );
-  return c.json({ ok: true });
-});
-
 app.get("/stripez", async (c) => {
   const row =
     get<{ data: string }>("SELECT data FROM config WHERE key='stripez'") ||

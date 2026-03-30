@@ -57,18 +57,6 @@ export const Index = (props: { title?: string; version?: string }) => {
             </div>
           </div>
 
-          <div id="calendar-section" className="calendar-container">
-            <div id="upcoming-event" className="upcoming-event-text">
-              Loading upcoming activities...
-            </div>
-            <button
-              id="full-agenda-btn"
-              className="btn-calendar-icon"
-              title="View Full Agenda"
-            >
-              &#x1F4C5;
-            </button>
-          </div>
         </header>
 
         <main>

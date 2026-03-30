@@ -26,8 +26,6 @@ Stripez is a lightweight system to keep track of stripes. Keep a shared list of 
   - Ordered, taggable, searchable list; inline edit, reorder, and delete (Schikko only)
 - Oracle judgements (optional)
   - Ask the Oracle to judge a transgression; it returns stripes and dice rolls; apply with one click
-- Calendar
-  - Set a public iCal URL; see the next activity and a full agenda (via a hardened proxy)
 - Logbook
   - Every action is logged; smart grouping; 30‑day activity chart; Schikko can delete entries
 
@@ -62,8 +60,6 @@ Minimal env (see .env.example):
 - DRINK_REQUIRE_APPROVAL — when true (default), guests submit drink requests and the Schikko must approve; when false, guests can record drunk stripes themselves (still subject to event timing rules)
 - PORT and DB_FILE — optional overrides
 
-Set the Calendar URL from within the app UI (Schikko only).
-
 ### Drink approval (optional)
 
 If `DRINK_REQUIRE_APPROVAL=true`:
@@ -83,9 +79,9 @@ If `DRINK_REQUIRE_APPROVAL=true`:
     - listDrinkRequests
     - approveDrinkRequest
     - rejectDrinkRequest
-- GET /api/config/calendar, GET /api/config/app
+- GET /api/config/app
   - config/app includes: { name, year, hasOracle, requireApprovalForDrinks }
-- POST /api/oracle/judgement, POST /api/calendar/proxy
+- POST /api/oracle/judgement
 - POST /api/drink/request — create a pending drink request as a guest (when approval is required)
 
 </details>

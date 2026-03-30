@@ -3,27 +3,6 @@ export const Modals = () => {
   return (
     <>
       <div
-        id="agenda-modal"
-        className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
-      >
-        <div className="bg-[#fdf8e9] w-full max-w-3xl p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative modal-content">
-          <button
-            id="close-agenda-modal"
-            className="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700"
-          >
-            &times;
-          </button>
-          <h2 className="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-6">
-            Full Agenda
-          </h2>
-          <div
-            id="agenda-content"
-            className="space-y-4 max-h-[60vh] overflow-y-auto"
-          ></div>
-        </div>
-      </div>
-
-      <div
         id="stats-modal"
         className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
       >
@@ -748,8 +727,7 @@ export const Modals = () => {
               Event Configuration
             </h3>
             <p className="text-sm text-[#6f4e37] mb-4">
-              Update the event timing and the public calendar feed from one
-              place.
+              Update the event timing for the current term.
             </p>
             <div className="flex flex-col gap-3">
               <button
@@ -757,12 +735,6 @@ export const Modals = () => {
                 className="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg"
               >
                 Reschedule Event
-              </button>
-              <button
-                id="schikko-settings-calendar-btn"
-                className="btn-subtle-decree font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg"
-              >
-                Update Calendar Link
               </button>
             </div>
           </div>

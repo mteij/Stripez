@@ -24,10 +24,6 @@ export const dom = {
     ruleTagFilter: document.getElementById('rule-tag-filter'),
     appInfoFooter: document.getElementById('app-info-footer'),
     ledgerNamesDatalist: document.getElementById('ledger-names'),
-    upcomingEventDiv: document.getElementById('upcoming-event'),
-    fullAgendaBtn: document.getElementById('full-agenda-btn'),
-    agendaModal: document.getElementById('agenda-modal'),
-    closeAgendaModalBtn: document.getElementById('close-agenda-modal'),
     setSchikkoBtn: document.getElementById('set-schikko-btn'),
     schikkoLoginContainer: document.getElementById('schikko-login-container'),
     schikkoLoginBtn: document.getElementById('schikko-login-btn'),
@@ -36,7 +32,6 @@ export const dom = {
     closeSchikkoSettingsModalBtn: document.getElementById('close-schikko-settings-modal'),
     schikkoSettingsCloseBtn: document.getElementById('schikko-settings-close-btn'),
     schikkoSettingsEventDateBtn: document.getElementById('schikko-settings-event-date-btn'),
-    schikkoSettingsCalendarBtn: document.getElementById('schikko-settings-calendar-btn'),
     unsetSchikkoBtn: document.getElementById('unset-schikko-btn'),
 
     // Dice randomizer modal and buttons

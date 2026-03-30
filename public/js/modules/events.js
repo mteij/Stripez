@@ -4,19 +4,19 @@ import {
     addNameToLedger, logActivity, renamePersonOnLedger, deletePersonFromLedger, removeLastStripeFromPerson,
     addRuleToFirestore, updateRuleInFirestore, addStripeToPerson, getStripezDate, removeLastDrunkStripeFromPerson,
     setPersonRole, bulkUpdateRules, deleteRuleFromFirestore, updateRuleOrderInFirestore, deleteLogFromFirestore,
-    approveDrinkRequest, rejectDrinkRequest, requestDrink, addDrunkStripeToPerson, getCalendarConfig, saveCalendarUrl,
+    approveDrinkRequest, rejectDrinkRequest, requestDrink, addDrunkStripeToPerson,
     saveStripezDate, listDrinkRequests, getMyDrinkRequests, setSchikko, unsetSchikko
 } from '../api.js';
 import {
     showConfirm, showPrompt, showLoading, hideLoading, showAlert, showRuleEditModal,
-    showBulkEditRulesModal, showStatsModal, showLogbookModal, showAgendaModal,
+    showBulkEditRulesModal, showStatsModal, showLogbookModal,
     showSetSchikkoModal, showSchikkoSettingsModal
 } from '../ui.js';
 import { ensureSchikkoSession, checkSchikkoStatus, updateGuestUI } from './auth.js';
 import { handleRender, handleRenderRules, handleRenderLogbook } from './render.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign, initWheelRandomizer } from '../../randomizer/randomizer.js';
 import { handleGeminiSubmit } from './oracle.js';
-import { loadCalendarData, updateAppFooter, updateDatalist } from '../main.js';
+import { updateAppFooter, updateDatalist } from '../main.js';
 import { signInWithGoogle } from '../firebase-auth.js';
 
 async function handleAddName() {
@@ -912,19 +912,6 @@ export function setupEventListeners() {
         state.currentPersonIdForBulkStripes = null;
     });
 
-    if(dom.schikkoSettingsCalendarBtn) dom.schikkoSettingsCalendarBtn.addEventListener('click', async () => {
-        if(!await ensureSchikkoSession()) return;
-        const config = await getCalendarConfig();
-        const newUrl = await showPrompt('Enter the public iCal URL for the calendar:', config.url || '', 'Update Calendar');
-        if (newUrl) {
-            showLoading('Updating calendar...');
-            try {
-                await saveCalendarUrl(newUrl);
-                await loadCalendarData();
-            } finally { hideLoading(); }
-        }
-    });
-
     if(dom.schikkoSettingsEventDateBtn) dom.schikkoSettingsEventDateBtn.addEventListener('click', async () => {
         if (!await ensureSchikkoSession()) return;
         const currentData = await getStripezDate();
@@ -950,9 +937,6 @@ export function setupEventListeners() {
             }
         }
     });
-
-    if(dom.fullAgendaBtn) dom.fullAgendaBtn.addEventListener('click', () => showAgendaModal(state.calendarEventsCache));
-    if(dom.closeAgendaModalBtn) dom.closeAgendaModalBtn.addEventListener('click', () => dom.agendaModal.classList.add('hidden'));
 
     if(dom.setSchikkoBtn) dom.setSchikkoBtn.addEventListener('click', async () => {
         // Require a session only when overriding an existing Schikko

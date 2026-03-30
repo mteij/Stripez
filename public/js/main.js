@@ -1,9 +1,8 @@
 import {
-    ensureAnon, setupRealtimeListener, getAppConfig, getCalendarConfig,
-    getCalendarDataProxy, getStripezDate, getSchikkoInfo
+    ensureAnon, setupRealtimeListener, getAppConfig, getStripezDate, getSchikkoInfo
 } from './api.js';
 import {
-    renderUpcomingEvent, renderAppCountdown, setStripeTotals, showAlert
+    renderAppCountdown, setStripeTotals, showAlert
 } from './ui.js';
 
 import { state } from './modules/state.js';
@@ -11,65 +10,6 @@ import { dom } from './modules/dom.js';
 import { checkSchikkoStatus, updateGuestUI } from './modules/auth.js';
 import { handleRender, handleRenderRules, handleRenderLogbook } from './modules/render.js';
 import { setupEventListeners } from './modules/events.js';
-
-export async function loadCalendarData() {
-    const config = await getCalendarConfig();
-    if (config && config.url) {
-        try {
-            const result = await getCalendarDataProxy(config.url);
-            const icalData = result.icalData;
-
-            const jcalData = ICAL.parse(icalData);
-            const vcalendar = new ICAL.Component(jcalData);
-            const vevents = vcalendar.getAllSubcomponents('vevent');
-            const now = new Date();
-
-            state.calendarEventsCache = vevents.map(vevent => {
-                const event = new ICAL.Event(vevent);
-                if (event.isRecurring()) {
-                    const iterator = event.iterator();
-                    let next;
-                    const occurrences = [];
-                    while ((next = iterator.next()) && occurrences.length < 100) {
-                        const startJs = next.toJSDate();
-                        const t = ICAL.Time.fromJSDate(startJs);
-                        t.addDuration(event.duration);
-                        const endJs = t.toJSDate();
-                        occurrences.push({
-                            summary: event.summary,
-                            startDate: startJs,
-                            endDate: endJs,
-                            location: event.location,
-                            description: event.description,
-                        });
-                    }
-                    return occurrences;
-                } else {
-                    return {
-                        summary: event.summary,
-                        startDate: event.startDate.toJSDate(),
-                        endDate: event.endDate.toJSDate(),
-                        location: event.location,
-                        description: event.description,
-                    };
-                }
-            }).flat().filter(event => event.endDate > now).sort((a, b) => a.startDate - b.startDate);
-
-            renderUpcomingEvent(state.calendarEventsCache[0]);
-        } catch (error) {
-            console.error('Error fetching or parsing calendar data:', error);
-            if (dom.upcomingEventDiv) dom.upcomingEventDiv.innerHTML = 'Could not load calendar data.';
-        }
-    } else {
-        // Hide the whole calendar section for guests when no URL is configured
-        if (state.isSchikkoSessionActive) {
-            if (dom.upcomingEventDiv) dom.upcomingEventDiv.innerHTML = 'No calendar URL set.';
-        } else {
-            const calSection = document.getElementById('calendar-section');
-            if (calSection) calSection.classList.add('hidden');
-        }
-    }
-}
 
 export async function loadAndRenderAppCountdown() {
     const eventData = await getStripezDate();
@@ -261,7 +201,6 @@ export async function updateAppFooter() {
 
         setupEventListeners();
 
-        loadCalendarData();
         loadAndRenderAppCountdown();
 
         setupRealtimeListener('punishments', (data) => {

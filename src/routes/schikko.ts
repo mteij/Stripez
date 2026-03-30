@@ -570,17 +570,6 @@ app.post("/action", async (c) => {
         return c.json({ ok: true, removed: rows.length });
       }
 
-      case "saveCalendarUrl": {
-        const url = String(data.url || "");
-        if (!url) return c.json({ error: "invalid-argument" }, 400);
-        run(
-          `INSERT INTO config (key, data, updated_at)
-           VALUES ('calendar', ?, ?)
-           ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
-          [JSON.stringify({ url }), nowIso()]
-        );
-        return c.json({ ok: true });
-      }
       case "saveStripezDate": {
         const dateString = String(data.dateString || "");
         const durationDays = Math.max(

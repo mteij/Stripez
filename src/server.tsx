@@ -16,7 +16,6 @@ import authRoutes from "./routes/auth";
 import schikkoRoutes from "./routes/schikko";
 import configRoutes from "./routes/config";
 import dataRoutes from "./routes/data";
-import calendarRoutes from "./routes/calendar";
 import oracleRoutes from "./routes/oracle";
 
 // ---- APP ----
@@ -73,7 +72,6 @@ app.route("/api/auth", authRoutes);
 app.route("/api/schikko", schikkoRoutes);
 app.route("/api/config", configRoutes);
 app.route("/api", dataRoutes);
-app.route("/api/calendar", calendarRoutes);
 app.route("/api/oracle", oracleRoutes);
 
 // ---- Static assets ----

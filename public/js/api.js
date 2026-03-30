@@ -175,22 +175,11 @@ async function getActivity(sinceDays = 30) {
   }));
 }
 
-// Config + Calendar proxy
-async function getCalendarConfig() {
-  const res = await fetch(`${API_BASE}/api/config/calendar`, { credentials: 'include' });
-  if (!res.ok) return { url: null };
-  return res.json();
-}
-
 // App config (branding + oracle availability)
 async function getAppConfig() {
   const res = await fetch(`${API_BASE}/api/config/app`, { credentials: 'include' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json(); // { name, year, hasOracle }
-}
-
-async function saveCalendarUrl(url) {
-  return callSchikkoAction('saveCalendarUrl', { url });
 }
 
 async function getStripezDate() {
@@ -203,17 +192,6 @@ async function getStripezDate() {
 
 async function saveStripezDate(dateString, durationDays) {
   return callSchikkoAction('saveStripezDate', { dateString, durationDays });
-}
-
-async function getCalendarDataProxy(url) {
-  const res = await fetch(`${API_BASE}/api/calendar/proxy`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json(); // { icalData }
 }
 
  // Drink Requests API client
@@ -384,13 +362,9 @@ export {
   getPunishments,
   getRules,
   getActivity,
-  // config/calendar
-  getCalendarConfig,
   getAppConfig,
-  saveCalendarUrl,
   getStripezDate,
   saveStripezDate,
-  getCalendarDataProxy,
   // drink requests
   requestDrink,
   getMyDrinkRequests,
