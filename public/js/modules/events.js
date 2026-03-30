@@ -16,7 +16,7 @@ import { ensureSchikkoSession, checkSchikkoStatus, updateGuestUI } from './auth.
 import { handleRender, handleRenderRules, handleRenderLogbook } from './render.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign, initWheelRandomizer } from '../../randomizer/randomizer.js';
 import { handleGeminiSubmit } from './oracle.js';
-import { updateAppFooter, updateDatalist } from '../main.js';
+import { updateAppFooter, updateDatalist } from './app-ui.js';
 import { signInWithGoogle } from '../firebase-auth.js';
 
 async function handleAddName() {
@@ -119,7 +119,12 @@ async function handleEditRule(docId) {
 
 import { closeMenus } from '../ui.js';
 
+let listenersAttached = false;
+
 export function setupEventListeners() {
+    if (listenersAttached) return;
+    listenersAttached = true;
+
     dom.mainInput.addEventListener('input', () => { state.currentSearchTerm = dom.mainInput.value; handleRender(); });
     if(dom.ruleSearchInput) dom.ruleSearchInput.addEventListener('input', () => { state.currentRuleSearchTerm = dom.ruleSearchInput.value; handleRenderRules(); });
     if(dom.ruleTagFilter) dom.ruleTagFilter.addEventListener('change', (e) => { state.currentTagFilter = e.target.value; handleRenderRules(); });
@@ -1054,7 +1059,7 @@ export function setupEventListeners() {
                 localStorage.removeItem('schikkoSessionId');
                 state.isSchikkoSessionActive = false;
                 import('./auth.js').then(m => m.updateGuestUI());
-                import('../main.js').then(m => m.updateAppFooter());
+                import('./app-ui.js').then(m => m.updateAppFooter());
                 setTimeout(() => { hideLoading(); showAlert("You have logged out.", "Logout Successful"); }, 300);
             }
         } else {

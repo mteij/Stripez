@@ -4,7 +4,7 @@ import { getSchikkoStatus, loginSchikko, loginSchikkoWithGoogle, listDrinkReques
 import { showConfirm, showLoading, hideLoading, showAlert, showSchikkoLoginModal } from '../ui.js';
 import { signInWithGoogle } from '../firebase-auth.js';
 import { handleRender, handleRenderRules } from './render.js';
-import { loadAndRenderAppCountdown, updateAppFooter } from '../main.js';
+import { loadAndRenderAppCountdown, updateAppFooter } from './app-ui.js';
 
 export async function handleLogin() {
     await ensureSchikkoSession();
