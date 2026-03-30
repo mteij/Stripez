@@ -32,19 +32,12 @@ export const Index = (props: { title?: string; version?: string }) => {
           {/* Removed hardcoded Schikko Rules tagline to avoid flashing wrong brand */}
           <div
             id="countdown-container"
-            className="mt-4 flex justify-center items-center gap-2"
+            className="mt-4 flex justify-center items-center"
           >
             <span
               id="countdown"
               className="font-cinzel-decorative text-xl text-red-700"
             ></span>
-            <button
-              id="edit-app-date-btn"
-              className="btn-calendar-icon hidden"
-              title="Edit Event Date"
-            >
-              &#x270E;
-            </button>
           </div>
 
           {/* Stripe‑o‑meter (visible only during the event) */}
@@ -74,13 +67,6 @@ export const Index = (props: { title?: string; version?: string }) => {
               title="View Full Agenda"
             >
               &#x1F4C5;
-            </button>
-            <button
-              id="edit-calendar-btn"
-              className="btn-calendar-icon"
-              title="Edit Calendar Link"
-            >
-              &#x270E;
             </button>
           </div>
         </header>
@@ -250,12 +236,21 @@ export const Index = (props: { title?: string; version?: string }) => {
         <div className="section-divider"></div>
 
         <footer className="text-center mt-12 pt-6">
-          <div id="schikko-login-container" className="mb-4 hidden">
+          <div
+            id="schikko-login-container"
+            className="mb-4 hidden flex items-center justify-center gap-4"
+          >
             <button
               id="schikko-login-btn"
               className="text-[#6f4e37] hover:text-[#5c3d2e] transition-colors duration-300 font-bold underline"
             >
               Schikko Login
+            </button>
+            <button
+              id="schikko-settings-btn"
+              className="text-[#6f4e37] hover:text-[#5c3d2e] transition-colors duration-300 font-bold underline hidden"
+            >
+              Schikko Settings
             </button>
           </div>
           <div id="app-info-footer" className="text-base text-[#4a3024] mt-4"></div>

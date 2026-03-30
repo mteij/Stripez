@@ -2,13 +2,33 @@ import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import OpenAI from "openai";
 import { OPENAI_API_KEY, OPENAI_BASE_URL, ORACLE_MODEL } from "../config";
+import { getCookie } from "../utils/helpers";
+import { pushThrottle } from "../utils/throttle";
 
 const app = new Hono();
+
+// Oracle rate limiting: permissive until misuse (30/hour per uid, 5/min burst cap)
+async function checkOracleRateLimit(uid: string): Promise<{ allowed: boolean; reason?: string }> {
+  const burstOk = await pushThrottle(`oracle_burst_${uid}`, 5, 60 * 1000);
+  if (!burstOk) return { allowed: false, reason: "too-fast" };
+  const hourlyOk = await pushThrottle(`oracle_hourly_${uid}`, 30, 60 * 60 * 1000);
+  if (!hourlyOk) return { allowed: false, reason: "hourly-limit" };
+  return { allowed: true };
+}
 
 app.post("/judgement", async (c) => {
   const { promptText, rules, ledgerNames, consecutiveBreaks } = await c.req.json();
   if (!OPENAI_API_KEY) return c.json({ error: "OPENAI_API_KEY not configured" }, 500);
   if (!promptText) return c.json({ error: "invalid-argument" }, 400);
+
+  const uid = getCookie(c, "uid") || c.req.header("x-forwarded-for") || "anon";
+  const rateCheck = await checkOracleRateLimit(uid);
+  if (!rateCheck.allowed) {
+    const msg = rateCheck.reason === "too-fast"
+      ? "The Oracle demands a moment of silence between each petition."
+      : "The Oracle has grown weary of your endless petitions. Return in an hour.";
+    return c.json({ error: "resource-exhausted", message: msg }, 429);
+  }
 
   const sanitizedPrompt = String(promptText).replace(/`/g, "'");
 

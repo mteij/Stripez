@@ -1,28 +1,46 @@
 import { Hono } from "hono";
 import { all, get, randomId, run, nowIso } from "../db";
 import { getCookie, yearKey, timingSafeStrEq } from "../utils/helpers";
-import { base32Encode, totpVerify, makeOtpAuthUrl, hashPassword, verifyPassword } from "../utils/auth-utils";
 import { pushThrottle } from "../utils/throttle";
-import { APP_NAME, APP_YEAR, ADMIN_KEY, STRIPEZ_DEFAULT_DURATION_DAYS, STRIPEZ_UNSET_DELAY_HOURS } from "../config";
-import crypto from "crypto";
+import { APP_NAME, APP_YEAR, ADMIN_KEY, FIREBASE_PROJECT_ID, ALLOWED_GOOGLE_EMAILS, STRIPEZ_DEFAULT_DURATION_DAYS, STRIPEZ_UNSET_DELAY_HOURS } from "../config";
+import { verifyFirebaseToken } from "../utils/firebase-verify";
 
 const app = new Hono();
 
-app.get("/status", async (c) => {
-  const y = APP_YEAR;
-  const key = yearKey(y);
-  const row =
-    get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) ||
-    null;
-  let exists = !!row;
-  let verified = false;
-  if (row) {
-    try {
-      const data = JSON.parse(row.data || "{}");
-      verified = !!data.verified;
-    } catch {}
+function readSchikkoData(key: string) {
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]);
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data || "{}");
+  } catch {
+    return null;
   }
-  return c.json({ isSet: verified, pending: exists && !verified });
+}
+
+function createSchikkoSession(uid: string) {
+  const sessionId = randomId("s");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  run(
+    `INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`,
+    [sessionId, uid, nowIso(), expiresAt.toISOString()]
+  );
+  return { sessionId, expiresAtMs: +expiresAt };
+}
+
+type SessionCheckResult =
+  | { ok: true }
+  | { ok: false; code: 401 | 403; error: "unauthenticated" | "permission-denied" };
+
+app.get("/status", async (c) => {
+  const key = yearKey(APP_YEAR);
+  const row = get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]);
+  if (!row) return c.json({ isSet: false });
+  try {
+    const data = JSON.parse(row.data || "{}");
+    return c.json({ isSet: Boolean(data.verified) });
+  } catch {
+    return c.json({ isSet: false });
+  }
 });
 
 app.get("/info", async (c) => {
@@ -80,84 +98,96 @@ app.post("/set", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const firstName = String(body.firstName || "").trim();
   const lastName = String(body.lastName || "").trim();
+  const idToken = typeof body.idToken === "string" ? String(body.idToken) : "";
 
   if (!firstName || !lastName)
     return c.json({ error: "invalid-argument" }, 400);
 
+  const uid = getCookie(c, "uid");
+  if (!uid) return c.json({ error: "unauthenticated" }, 401);
+
   const y = APP_YEAR;
   const key = yearKey(y);
-  const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
-  if (exists)
+  const existingData = readSchikkoData(key) || {};
+  const alreadySet = Boolean(existingData);
+
+  const claims =
+    idToken && FIREBASE_PROJECT_ID ? await verifyFirebaseToken(idToken) : null;
+  const googleIdentity =
+    claims && claims.emailVerified
+      ? { email: claims.email, uid: claims.uid }
+      : null;
+
+  // If a Schikko is already set this year, require an active session to override
+  if (alreadySet) {
+    const session = await requireValidSession(c, String(body.sessionId || ""));
+    if (!session.ok) return c.json({ error: session.error }, session.code);
+  } else if (!googleIdentity) {
     return c.json(
       {
-        error: "already-exists",
-        message: `A Schikko is already set for ${y}.`,
+        error: "google-auth-required",
+        message:
+          "Claiming Schikko requires signing in with the Google account of the person taking the role.",
       },
-      409
+      400
+    );
+  }
+
+  const googleEmail = (
+    googleIdentity?.email ||
+    String(existingData.googleEmail || "")
+  )
+    .trim()
+    .toLowerCase();
+  const googleUid = String(googleIdentity?.uid || existingData.googleUid || "").trim();
+  const updatedAt = nowIso();
+  const payload = {
+    firstName,
+    lastName,
+    googleEmail,
+    googleUid,
+    verified: true,
+    claimedAt: updatedAt,
+  };
+
+  if (!alreadySet) {
+    run(
+      `INSERT OR IGNORE INTO config (key, data, updated_at)
+       VALUES (?, ?, ?)`,
+      [key, JSON.stringify(payload), updatedAt]
     );
 
-  const rawSecret = crypto.randomBytes(20);
-  const secretBase32 = base32Encode(rawSecret);
-  const issuer = `${APP_NAME} ${y}`;
-  const account =
-    [firstName, lastName].filter(Boolean).join(" ").trim() || "Schikko";
-  const otpauthUrl = makeOtpAuthUrl({ secretBase32, account, issuer });
+    const saved = readSchikkoData(key);
+    if (!saved) return c.json({ error: "internal" }, 500);
+    if (saved.googleUid !== googleUid) {
+      return c.json(
+        {
+          error: "already-claimed",
+          message:
+            "Someone else claimed Schikko first. Refresh to see the current Schikko.",
+        },
+        409
+      );
+    }
+  } else {
+    run(
+      `INSERT INTO config (key, data, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
+      [key, JSON.stringify(payload), updatedAt]
+    );
+  }
 
+  const session = createSchikkoSession(uid);
   return c.json({
     success: true,
-    otp: { secret: secretBase32, otpauthUrl },
-    needsConfirmation: true,
+    claimedBy: googleEmail || null,
+    ...session,
   });
-});
-
-app.post("/confirm", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const firstName = String(body.firstName || "").trim();
-  const lastName = String(body.lastName || "").trim();
-  const secretBase32 = String(body.secret || "").trim();
-  const code = String(body.code || "").trim();
-
-  if (!firstName || !lastName || !secretBase32 || !code) {
-    return c.json({ error: "invalid-argument" }, 400);
-  }
-
-  const y = APP_YEAR;
-  const key = yearKey(y);
-  const exists = !!get("SELECT 1 FROM config WHERE key = ?", [key]);
-  if (exists)
-    return c.json(
-      {
-        error: "already-exists",
-        message: `A Schikko is already set for ${y}.`,
-      },
-      409
-    );
-
-  const ok = totpVerify(secretBase32, code, 1, 30, 6);
-  if (!ok) return c.json({ success: false, error: "invalid-2fa" }, 401);
-
-  try {
-    run(`INSERT INTO config (key, data, updated_at) VALUES (?, ?, ?)`, [
-      key,
-      JSON.stringify({
-        firstName,
-        lastName,
-        totpSecret: secretBase32,
-        verified: true,
-      }),
-      nowIso(),
-    ]);
-    return c.json({ success: true });
-  } catch (e) {
-    return c.json({ error: "internal" }, 500);
-  }
 });
 
 app.post("/login", async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const providedRaw = body?.code;
-  const provided = typeof providedRaw === "string" ? providedRaw.trim() : "";
-  if (!provided) return c.json({ error: "invalid-argument" }, 400);
 
   const allowed = await pushThrottle("login_throttle", 20, 10 * 60 * 1000);
   if (!allowed) return c.json({ error: "resource-exhausted" }, 429);
@@ -165,86 +195,44 @@ app.post("/login", async (c) => {
   const uid = getCookie(c, "uid");
   if (!uid) return c.json({ error: "unauthenticated" }, 401);
 
-  const y = APP_YEAR;
-  const key = yearKey(y);
-  const row =
-    get<{ data: string }>("SELECT data FROM config WHERE key = ?", [key]) ||
-    null;
-  if (!row) {
-    if (ADMIN_KEY && timingSafeStrEq(provided, ADMIN_KEY)) {
-      const sessionId = randomId("s");
-      const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
-      run(
-        `INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`,
-        [sessionId, uid, nowIso(), expiresAt.toISOString()]
-      );
-      return c.json({ success: true, sessionId, expiresAtMs: +expiresAt });
-    }
-    return c.json(
-      { error: "not-found", message: `No Schikko set for ${y}.` },
-      404
-    );
-  }
-
-  let data: any = {};
-  try {
-    data = JSON.parse(row.data || "{}");
-  } catch {}
-
   let ok = false;
-  let usedTotp = false;
 
-  if (!ok && ADMIN_KEY && timingSafeStrEq(provided, ADMIN_KEY)) {
-    ok = true;
+  // Option 1: admin key
+  if (!ok && body.code) {
+    const code = String(body.code).trim();
+    if (ADMIN_KEY && timingSafeStrEq(code, ADMIN_KEY)) ok = true;
   }
 
-  if (!ok && typeof data.totpSecret === "string" && data.totpSecret) {
-    const passed = totpVerify(data.totpSecret, provided, 1, 30, 6);
-    if (passed) {
-      ok = true;
-      usedTotp = true;
+  // Option 2: Firebase Google idToken
+  if (!ok && body.idToken && FIREBASE_PROJECT_ID) {
+    const claims = await verifyFirebaseToken(String(body.idToken));
+    if (claims && claims.emailVerified) {
+      // Check env-level allowlist first
+      if (ALLOWED_GOOGLE_EMAILS.length > 0 && ALLOWED_GOOGLE_EMAILS.includes(claims.email)) {
+        ok = true;
+      }
+      // Then check the currently stored Schikko identity
+      if (!ok) {
+        const key = yearKey(APP_YEAR);
+        const data = readSchikkoData(key);
+        if (data) {
+          const savedUid = String(data.googleUid || "").trim();
+          const savedEmail = String(data.googleEmail || "")
+            .trim()
+            .toLowerCase();
+          if (savedUid && savedUid === claims.uid) ok = true;
+          if (!ok && savedEmail && savedEmail === claims.email) ok = true;
+        }
+      }
     }
-  } else if (data.passwordHash && data.passwordSalt) {
-    ok = verifyPassword(provided, data.passwordSalt, data.passwordHash);
-  } else if (typeof data.password === "string") {
-    ok = data.password === provided;
-    if (ok) {
-      const { salt, hash } = hashPassword(provided);
-      run(`UPDATE config SET data = ?, updated_at = ? WHERE key = ?`, [
-        JSON.stringify({
-          ...data,
-          passwordHash: hash,
-          passwordSalt: salt,
-          password: undefined,
-        }),
-        nowIso(),
-        key,
-      ]);
-    }
   }
 
-  if (!ok) return c.json({ success: false });
+  if (!ok) return c.json({ success: false, error: "invalid-credentials" }, 401);
 
-  if (usedTotp && !data.verified) {
-    try {
-      run(`UPDATE config SET data = ?, updated_at = ? WHERE key = ?`, [
-        JSON.stringify({ ...data, verified: true }),
-        nowIso(),
-        key,
-      ]);
-    } catch {}
-  }
-
-  const sessionId = randomId("s");
-  const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
-  run(
-    `INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`,
-    [sessionId, uid, nowIso(), expiresAt.toISOString()]
-  );
-  return c.json({ success: true, sessionId, expiresAtMs: +expiresAt });
+  return c.json({ success: true, ...createSchikkoSession(uid) });
 });
 
-async function requireValidSession(c: any, sessionId: string) {
+async function requireValidSession(c: any, sessionId: string): Promise<SessionCheckResult> {
   const uid = getCookie(c, "uid");
   if (!uid) return { ok: false, code: 401, error: "unauthenticated" };
   const row = get<{ id: string; uid: string; expires_at: string }>(
@@ -516,6 +504,27 @@ app.post("/action", async (c) => {
            ON CONFLICT(key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
           [JSON.stringify({ date: d.toISOString(), durationDays }), nowIso()]
         );
+        return c.json({ ok: true });
+      }
+
+      case "unsetSchikko": {
+        const key = yearKey(APP_YEAR);
+        const existing = readSchikkoData(key);
+        if (!existing) return c.json({ ok: true, alreadyUnset: true });
+
+        run(
+          `INSERT INTO activity_log (id, action, actor, details, timestamp) VALUES (?, ?, ?, ?, ?)`,
+          [
+            randomId("log"),
+            "UNSET_SCHIKKO",
+            "Schikko",
+            "Unset the current Schikko and ended all Schikko sessions.",
+            nowIso(),
+          ]
+        );
+
+        run(`DELETE FROM config WHERE key = ?`, [key]);
+        run(`DELETE FROM sessions`);
         return c.json({ ok: true });
       }
 

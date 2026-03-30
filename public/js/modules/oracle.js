@@ -365,7 +365,7 @@ export async function handleGeminiSubmit() {
                      if (j.penalties) {
                          j.penalties.forEach(p => {
                              if (p.type === 'stripes') penalties.push(`${p.amount} Stripe${p.amount > 1 ? 's' : ''}`);
-                             if (p.type === 'dice') penalties.push(`Roll d${p.value}`);
+                             if (p.type === 'dice') penalties.push(`Roll 🎲${p.value}`);
                          });
                      }
                      verdictText = `<span class="text-red-500 font-bold">GUILTY</span>: <span class="text-gray-200">${penalties.join(', ') || 'Condemned'}</span>`;
@@ -390,10 +390,24 @@ export async function handleGeminiSubmit() {
              verdictsHtml += `</div>`;
         }
 
+        // Build verdict heading based on number of people judged
+        let verdictHeading;
+        if (judgements.length === 1) {
+            const solo = judgements[0];
+            const soloName = solo._personName || solo.person || 'The Accused';
+            if (solo.innocent) {
+                verdictHeading = `<h2 class="text-5xl font-cinzel-decorative mb-2 font-bold tracking-wider" style="color:#4ade80">${escapeHTML(soloName)} is Innocent.</h2>`;
+            } else {
+                verdictHeading = `<h2 class="text-5xl font-cinzel-decorative mb-2 font-bold tracking-wider" style="color:#f87171">${escapeHTML(soloName)} is Guilty.</h2>`;
+            }
+        } else {
+            verdictHeading = `<h2 class="text-5xl font-cinzel-decorative mb-2 font-bold tracking-wider text-gradient-gold">The Oracle Has Spoken</h2>`;
+        }
+
         centerContent.innerHTML = `
             <div class="mb-6 slide-in-bottom stagger-reveal w-full">
                  <div class="mb-8 text-center">
-                    <h2 class="text-5xl font-cinzel-decorative mb-2 font-bold tracking-wider text-gradient-gold">The Oracle Has Spoken</h2>
+                    ${verdictHeading}
                     <div class="h-px w-48 bg-gradient-to-r from-transparent via-[#ffd700] to-transparent mx-auto mb-6 opacity-70"></div>
                  </div>
                  ${verdictsHtml}

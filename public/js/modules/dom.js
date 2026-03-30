@@ -25,21 +25,19 @@ export const dom = {
     appInfoFooter: document.getElementById('app-info-footer'),
     ledgerNamesDatalist: document.getElementById('ledger-names'),
     upcomingEventDiv: document.getElementById('upcoming-event'),
-    editCalendarBtn: document.getElementById('edit-calendar-btn'),
     fullAgendaBtn: document.getElementById('full-agenda-btn'),
     agendaModal: document.getElementById('agenda-modal'),
     closeAgendaModalBtn: document.getElementById('close-agenda-modal'),
     setSchikkoBtn: document.getElementById('set-schikko-btn'),
     schikkoLoginContainer: document.getElementById('schikko-login-container'),
     schikkoLoginBtn: document.getElementById('schikko-login-btn'),
-    editAppDateBtn: document.getElementById('edit-app-date-btn'),
-
-    // TOTP setup modal elements
-    totpModal: document.getElementById('totp-setup-modal'),
-    closeTotpModalBtn: document.getElementById('close-totp-setup-modal'),
-    totpQrEl: document.getElementById('totp-qr'),
-    totpSecretEl: document.getElementById('totp-secret'),
-    totpManualEl: document.getElementById('totp-manual'),
+    schikkoSettingsBtn: document.getElementById('schikko-settings-btn'),
+    schikkoSettingsModal: document.getElementById('schikko-settings-modal'),
+    closeSchikkoSettingsModalBtn: document.getElementById('close-schikko-settings-modal'),
+    schikkoSettingsCloseBtn: document.getElementById('schikko-settings-close-btn'),
+    schikkoSettingsEventDateBtn: document.getElementById('schikko-settings-event-date-btn'),
+    schikkoSettingsCalendarBtn: document.getElementById('schikko-settings-calendar-btn'),
+    unsetSchikkoBtn: document.getElementById('unset-schikko-btn'),
 
     // Dice randomizer modal and buttons
     diceRandomizerModal: document.getElementById('dice-randomizer-modal'),

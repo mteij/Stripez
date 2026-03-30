@@ -53,19 +53,26 @@ async function getSchikkoInfo() {
   return res.json();
 }
 
-async function setSchikko({ firstName, lastName }) {
-  const payload = {
-    firstName: String(firstName || '').trim(),
-    lastName: String(lastName || '').trim(),
-  };
+async function setSchikko({ firstName, lastName, idToken }) {
+  // sessionId is optional and only needed when overriding an existing Schikko
+  const sessionId = localStorage.getItem('schikkoSessionId') || undefined;
   const res = await fetch(`${API_BASE}/api/schikko/set`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      firstName: String(firstName || '').trim(),
+      lastName: String(lastName || '').trim(),
+      idToken: String(idToken || '').trim(),
+      sessionId,
+    }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = data?.message || data?.error || `HTTP ${res.status}`;
+    throw new Error(message);
+  }
+  return data;
 }
 
 async function loginSchikko(code) {
@@ -79,18 +86,12 @@ async function loginSchikko(code) {
   return res.json();
 }
 
-async function confirmSchikko({ firstName, lastName, secret, code }) {
-  const payload = {
-    firstName: String(firstName || '').trim(),
-    lastName: String(lastName || '').trim(),
-    secret: String(secret || '').trim(),
-    code: String(code || '').trim(),
-  };
-  const res = await fetch(`${API_BASE}/api/schikko/confirm`, {
+async function loginSchikkoWithGoogle(idToken) {
+  const res = await fetch(`${API_BASE}/api/schikko/login`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ idToken }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -189,9 +190,12 @@ async function getCalendarDataProxy(url) {
  async function approveDrinkRequest(requestId) {
    return callSchikkoAction('approveDrinkRequest', { requestId });
  }
- async function rejectDrinkRequest(requestId) {
-   return callSchikkoAction('rejectDrinkRequest', { requestId });
- }
+async function rejectDrinkRequest(requestId) {
+  return callSchikkoAction('rejectDrinkRequest', { requestId });
+}
+async function unsetSchikko() {
+  return callSchikkoAction('unsetSchikko', {});
+}
  
  // Mutations: ledger/rules/logs
 async function addNameToLedger(name) {
@@ -321,7 +325,7 @@ export {
   getSchikkoInfo,
   setSchikko,
   loginSchikko,
-  confirmSchikko,
+  loginSchikkoWithGoogle,
   // reads
   getPunishments,
   getRules,
@@ -338,6 +342,7 @@ export {
   listDrinkRequests,
   approveDrinkRequest,
   rejectDrinkRequest,
+  unsetSchikko,
   // mutations
   addNameToLedger,
   addStripeToPerson,

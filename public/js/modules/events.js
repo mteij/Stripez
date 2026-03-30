@@ -5,18 +5,19 @@ import {
     addRuleToFirestore, updateRuleInFirestore, addStripeToPerson, getStripezDate, removeLastDrunkStripeFromPerson,
     setPersonRole, bulkUpdateRules, deleteRuleFromFirestore, updateRuleOrderInFirestore, deleteLogFromFirestore,
     approveDrinkRequest, rejectDrinkRequest, requestDrink, addDrunkStripeToPerson, getCalendarConfig, saveCalendarUrl,
-    saveStripezDate, listDrinkRequests, setSchikko
+    saveStripezDate, listDrinkRequests, setSchikko, unsetSchikko
 } from '../api.js';
-import { 
+import {
     showConfirm, showPrompt, showLoading, hideLoading, showAlert, showRuleEditModal,
     showBulkEditRulesModal, showStatsModal, showLogbookModal, showAgendaModal,
-    showSchikkoLoginModal
+    showSetSchikkoModal, showSchikkoSettingsModal
 } from '../ui.js';
-import { ensureSchikkoSession } from './auth.js';
+import { ensureSchikkoSession, checkSchikkoStatus, updateGuestUI } from './auth.js';
 import { handleRender, handleRenderRules, handleRenderLogbook } from './render.js';
 import { initListRandomizer, initDiceRandomizer, rollDiceAndAssign, initWheelRandomizer } from '../../randomizer/randomizer.js';
 import { handleGeminiSubmit } from './oracle.js';
-import { loadCalendarData, updateDatalist } from '../main.js';
+import { loadCalendarData, updateAppFooter, updateDatalist } from '../main.js';
+import { signInWithGoogle } from '../firebase-auth.js';
 
 async function handleAddName() {
     if (!await ensureSchikkoSession()) return;
@@ -828,7 +829,7 @@ export function setupEventListeners() {
         state.currentPersonIdForBulkStripes = null;
     });
 
-    if(dom.editCalendarBtn) dom.editCalendarBtn.addEventListener('click', async () => {
+    if(dom.schikkoSettingsCalendarBtn) dom.schikkoSettingsCalendarBtn.addEventListener('click', async () => {
         if(!await ensureSchikkoSession()) return;
         const config = await getCalendarConfig();
         const newUrl = await showPrompt('Enter the public iCal URL for the calendar:', config.url || '', 'Update Calendar');
@@ -841,7 +842,7 @@ export function setupEventListeners() {
         }
     });
 
-    if(dom.editAppDateBtn) dom.editAppDateBtn.addEventListener('click', async () => {
+    if(dom.schikkoSettingsEventDateBtn) dom.schikkoSettingsEventDateBtn.addEventListener('click', async () => {
         if (!await ensureSchikkoSession()) return;
         const currentData = await getStripezDate();
         let defaultDate = '';
@@ -871,21 +872,110 @@ export function setupEventListeners() {
     if(dom.closeAgendaModalBtn) dom.closeAgendaModalBtn.addEventListener('click', () => dom.agendaModal.classList.add('hidden'));
 
     if(dom.setSchikkoBtn) dom.setSchikkoBtn.addEventListener('click', async () => {
-        if (!await ensureSchikkoSession()) return;
-        const code = await showSchikkoLoginModal("Enter a SECRET CODE to become the new Schikko. Do not lose this. This will reset the ledger for the new year.");
-        if (code) {
-            const confirm = await showConfirm("Are you absolutely sure? This will initialize a new schikko term and clean up the current system settings for the year.", "Confirm Ascension");
-            if (confirm) {
-                showLoading("Establishing term...");
-                try {
-                    await setSchikko(code);
-                } catch (error) {
-                    console.error("Error setting Schikko:", error);
-                    showAlert("Failed to set Schikko. Make sure the secret code matches requirements.", "Error");
-                } finally {
-                    hideLoading();
-                }
+        // Require a session only when overriding an existing Schikko
+        if (state.isSchikkoSetForTheYear && !await ensureSchikkoSession()) return;
+
+        const hasGoogleClaim = Boolean(window.__firebaseConfig?.apiKey && window.__firebaseConfig?.projectId);
+        if (!hasGoogleClaim) {
+            await showAlert(
+                'Google sign-in must be configured before Schikko can be claimed automatically.',
+                'Google Sign-In Required'
+            );
+            return;
+        }
+
+        const info = await showSetSchikkoModal();
+        if (!info || !info.firstName || !info.lastName) return;
+
+        try {
+            showLoading('Connecting Google account...');
+            const googleIdentity = await signInWithGoogle();
+            hideLoading();
+
+            if (!googleIdentity?.idToken || !googleIdentity?.email) {
+                await showAlert('Google sign-in did not return a verified account.', 'Claim Failed');
+                return;
             }
+
+            const confirmed = await showConfirm(
+                `You are about to claim Schikko as ${info.firstName} ${info.lastName} using ${googleIdentity.email}.\n\nOnly continue if you personally chose to become Schikko. The first confirmed claim after a reset wins.`,
+                'Confirm Schikko Claim'
+            );
+            if (!confirmed) return;
+
+            showLoading("Establishing term...");
+            const result = await setSchikko({
+                firstName: info.firstName,
+                lastName: info.lastName,
+                idToken: googleIdentity.idToken,
+            });
+
+            if (result?.sessionId) {
+                localStorage.setItem('schikkoSessionId', result.sessionId);
+                state.isSchikkoSessionActive = true;
+            }
+            state.isSchikkoSetForTheYear = true;
+            if (dom.setSchikkoBtn) dom.setSchikkoBtn.classList.add('hidden');
+            updateGuestUI();
+            await checkSchikkoStatus();
+            await updateAppFooter();
+            hideLoading();
+            await showAlert(
+                `The claim is complete. ${info.firstName} ${info.lastName} is now the Schikko.`,
+                "Ascension Complete"
+            );
+        } catch (error) {
+            hideLoading();
+            console.error("Error setting Schikko:", error);
+            const message = error?.message || 'Unknown error';
+            await showAlert("Failed to set Schikko: " + message, "Error");
+        }
+    });
+
+    if (dom.schikkoSettingsBtn) dom.schikkoSettingsBtn.addEventListener('click', async () => {
+        if (!await ensureSchikkoSession()) return;
+        showSchikkoSettingsModal(true);
+    });
+
+    if (dom.closeSchikkoSettingsModalBtn) dom.closeSchikkoSettingsModalBtn.addEventListener('click', () => {
+        showSchikkoSettingsModal(false);
+    });
+
+    if (dom.schikkoSettingsCloseBtn) dom.schikkoSettingsCloseBtn.addEventListener('click', () => {
+        showSchikkoSettingsModal(false);
+    });
+
+    if (dom.unsetSchikkoBtn) dom.unsetSchikkoBtn.addEventListener('click', async () => {
+        if (!await ensureSchikkoSession()) return;
+
+        const confirmed = await showConfirm(
+            'Unset the current Schikko? This immediately ends all active Schikko sessions but keeps the ledger, decrees, and other event data intact.',
+            'Confirm Unset'
+        );
+        if (!confirmed) return;
+
+        const finalConfirmed = await showConfirm(
+            'Only continue if you really want the Schikko role to become unclaimed right now.',
+            'Final Confirmation'
+        );
+        if (!finalConfirmed) return;
+
+        showLoading('Unsetting Schikko...');
+        try {
+            await unsetSchikko();
+            showSchikkoSettingsModal(false);
+            localStorage.removeItem('schikkoSessionId');
+            state.isSchikkoSessionActive = false;
+            state.isSchikkoSetForTheYear = false;
+            updateGuestUI();
+            await checkSchikkoStatus();
+            await updateAppFooter();
+            hideLoading();
+            await showAlert('The Schikko has been unset. The role can now be claimed again.', 'Schikko Unset');
+        } catch (error) {
+            hideLoading();
+            console.error('Error unsetting Schikko:', error);
+            await showAlert(`Failed to unset Schikko: ${error?.message || 'Unknown error'}`, 'Error');
         }
     });
 

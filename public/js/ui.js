@@ -273,6 +273,16 @@ function showLogbookModal(show) {
     }
 }
 
+function showSchikkoSettingsModal(show) {
+    const modal = document.getElementById('schikko-settings-modal');
+    if (!modal) return;
+    if (show) {
+        modal.classList.remove('hidden');
+    } else {
+        modal.classList.add('hidden');
+    }
+}
+
 function renderLogbook(logData, isSchikko = false) {
     const logContentDiv = document.getElementById('logbook-content');
     if (!logContentDiv) return;
@@ -974,18 +984,11 @@ function renderRules(rulesData, isSchikko) {
 
 function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
     const countdownContainer = document.getElementById('countdown');
-    const editBtn = document.getElementById('edit-app-date-btn');
     const titleTextEl = document.getElementById('main-title-text');
     const liveBadgeEl = document.getElementById('live-badge');
     
     // Track Schikko login state inside UI module so other helpers can adapt
     schikkoLoggedIn = !!isSchikko;
-
-    if (isSchikko) {
-        editBtn.classList.remove('hidden');
-    } else {
-        editBtn.classList.add('hidden');
-    }
 
     if (appCountdownInterval) clearInterval(appCountdownInterval);
 
@@ -1090,51 +1093,56 @@ function renderAppCountdown(appData, isSchikko, appName = 'Stripez') {
 }
 
 /**
- * Shows a themed modal for Schikko login.
- * @returns {Promise<string|null>} A promise that resolves with the password, or null if canceled.
+ * Shows the Schikko login modal with admin-key and (optionally) Google sign-in.
+ * @returns {Promise<{method:'key',code:string}|{method:'google'}|null>}
  */
 function showSchikkoLoginModal() {
     const modal = document.getElementById('schikko-login-modal');
     const passwordInput = document.getElementById('schikko-password-input');
     const okBtn = document.getElementById('schikko-login-submit-btn');
     const cancelBtn = document.getElementById('schikko-login-cancel-btn');
+    const googleSection = document.getElementById('schikko-google-section');
+    const googleBtn = document.getElementById('schikko-google-btn');
+
+    // Show Google section only if Firebase is configured (window.__firebaseConfig set)
+    const hasGoogle = Boolean(window.__firebaseConfig?.apiKey && window.__firebaseConfig?.projectId);
+    if (googleSection) googleSection.classList.toggle('hidden', !hasGoogle);
 
     passwordInput.value = '';
     modal.classList.remove('hidden');
     passwordInput.focus();
 
     return new Promise(resolve => {
-        const cleanup = () => {
+        const close = (value) => {
+            modal.classList.add('hidden');
             okBtn.onclick = null;
             cancelBtn.onclick = null;
             passwordInput.onkeydown = null;
+            if (googleBtn) googleBtn.onclick = null;
+            resolve(value);
         };
 
-        const handleOk = () => {
-            modal.classList.add('hidden');
-            cleanup();
-            resolve(passwordInput.value);
+        okBtn.onclick = () => {
+            const code = passwordInput.value;
+            if (!code) return;
+            close({ method: 'key', code });
         };
-        
-        okBtn.onclick = handleOk;
+
         passwordInput.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleOk();
-            }
+            if (e.key === 'Enter') { e.preventDefault(); okBtn.onclick(); }
         };
 
-        cancelBtn.onclick = () => {
-            modal.classList.add('hidden');
-            cleanup();
-            resolve(null);
-        };
+        if (googleBtn) {
+            googleBtn.onclick = () => close({ method: 'google' });
+        }
+
+        cancelBtn.onclick = () => close(null);
     });
 }
 
 /**
  * Shows a themed modal for setting the Schikko.
- * @returns {Promise<{firstName:string,lastName:string,email:string}|null>} Object with firstName, lastName, email or null if canceled.
+ * @returns {Promise<{firstName:string,lastName:string}|null>}
  */
 function showSetSchikkoModal() {
     const modal = document.getElementById('set-schikko-modal');
@@ -1142,47 +1150,46 @@ function showSetSchikkoModal() {
     const lastNameInput = document.getElementById('set-schikko-lastname-input');
     const okBtn = document.getElementById('set-schikko-submit-btn');
     const cancelBtn = document.getElementById('set-schikko-cancel-btn');
+    const introText = modal?.querySelector('p.text-lg');
+    const warningText = modal?.querySelector('p.text-sm');
 
     if (firstNameInput) firstNameInput.value = '';
     if (lastNameInput) lastNameInput.value = '';
+    if (introText) {
+        introText.textContent = 'Enter the name of the person taking the role, then continue with that person\'s Google account.';
+    }
+    if (warningText) {
+        warningText.textContent = 'Only the person who has actually chosen to become Schikko should continue. The first confirmed Google claim becomes the Schikko after a reset.';
+    }
     modal.classList.remove('hidden');
-    (firstNameInput)?.focus();
+    firstNameInput?.focus();
 
     return new Promise(resolve => {
-        const cleanup = () => {
+        const close = (value) => {
+            modal.classList.add('hidden');
             okBtn.onclick = null;
             cancelBtn.onclick = null;
             if (firstNameInput) firstNameInput.onkeydown = null;
             if (lastNameInput) lastNameInput.onkeydown = null;
+            resolve(value);
         };
 
         const handleOk = () => {
             const firstName = String(firstNameInput?.value || '').trim();
             const lastName = String(lastNameInput?.value || '').trim();
-            modal.classList.add('hidden');
-            cleanup();
-            resolve({ firstName, lastName });
+            close({ firstName, lastName });
         };
 
         okBtn.onclick = handleOk;
 
         const bindEnter = (el) => {
             if (!el) return;
-            el.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleOk();
-                }
-            };
+            el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleOk(); } };
         };
         bindEnter(firstNameInput);
         bindEnter(lastNameInput);
 
-        cancelBtn.onclick = () => {
-            modal.classList.add('hidden');
-            cleanup();
-            resolve(null);
-        };
+        cancelBtn.onclick = () => close(null);
     });
 }
 
@@ -1320,4 +1327,4 @@ function showBulkEditRulesModal(show, currentRules = []) {
     }
 }
 
-export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, showBulkEditRulesModal, renderAppCountdown, showLogbookModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };
+export { renderLedger, showStatsModal, closeMenus, renderRules, renderUpcomingEvent, renderFullAgenda, showAgendaModal, showAlert, showConfirm, showPrompt, showSchikkoLoginModal, showSetSchikkoModal, showRuleEditModal, showBulkEditRulesModal, renderAppCountdown, showLogbookModal, showSchikkoSettingsModal, renderLogbook, renderLogbookChart, showLoading, hideLoading, setStripeTotals };

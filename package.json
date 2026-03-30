@@ -1,6 +1,6 @@
 {
   "name": "stripez",
-  "version": "4.0.5",
+  "version": "4.0.6",
   "private": true,
   "description": "Stripez - Bun.js API + static site with SQLite (Dockerized).",
   "type": "module",
@@ -10,6 +10,7 @@
     "check": "echo \"No type checking configured (Bun transpiles TS).\""
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "gaxios": "^6.7.1",
     "hono": "^4.10.4",
     "node-cron": "^3.0.3",

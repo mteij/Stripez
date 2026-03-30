@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schikko-rules-cache-v16';
+const CACHE_NAME = 'schikko-rules-cache-v17';
 const urlsToCache = [
   '/',
   // '/index.html', // Removed: server generates this, not a static file
@@ -8,7 +8,13 @@ const urlsToCache = [
   '/js/ui.js',
   '/randomizer/randomizer.js',
   '/randomizer/randomizer.css',
-  '/assets/favicon.png'
+  '/favicon.svg',
+  '/icon-192.png',
+  '/icon-192.svg',
+  '/icon-512.png',
+  '/icon-512.svg',
+  '/apple-touch-icon.png',
+  '/manifest.json'
 ];
 
 // Install a service worker
@@ -75,8 +81,13 @@ self.addEventListener('fetch', event => {
           }
           return networkResponse;
         }).catch(err => {
-          console.error('Fetch failed', err);
-          return cachedResponse;
+          // Requests are sometimes aborted during reloads or service worker updates.
+          // If we already have a cached asset, quietly use it instead of spamming the console.
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          console.warn('SW: network fetch failed for uncached asset', req.url, err && (err.message || err));
+          return Response.error();
         });
         return cachedResponse || fetchPromise;
       });

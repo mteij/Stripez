@@ -61,7 +61,13 @@ export async function loadCalendarData() {
             if (dom.upcomingEventDiv) dom.upcomingEventDiv.innerHTML = 'Could not load calendar data.';
         }
     } else {
-        if (dom.upcomingEventDiv) dom.upcomingEventDiv.innerHTML = 'No calendar URL set.';
+        // Hide the whole calendar section for guests when no URL is configured
+        if (state.isSchikkoSessionActive) {
+            if (dom.upcomingEventDiv) dom.upcomingEventDiv.innerHTML = 'No calendar URL set.';
+        } else {
+            const calSection = document.getElementById('calendar-section');
+            if (calSection) calSection.classList.add('hidden');
+        }
     }
 }
 
@@ -182,6 +188,14 @@ export async function updateAppFooter() {
             state.appYear = Number(cfg?.year) || state.appYear;
             state.hasOracle = !!cfg?.hasOracle;
             state.requireApprovalForDrinks = typeof cfg?.requireApprovalForDrinks === 'boolean' ? cfg.requireApprovalForDrinks : state.requireApprovalForDrinks;
+
+            if (cfg?.firebaseApiKey && cfg?.firebaseProjectId) {
+                window.__firebaseConfig = {
+                    apiKey: cfg.firebaseApiKey,
+                    authDomain: `${cfg.firebaseProjectId}.firebaseapp.com`,
+                    projectId: cfg.firebaseProjectId,
+                };
+            }
   
             const displayTitle = state.appYear ? `${state.appName} ${state.appYear}` : state.appName;
 

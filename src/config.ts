@@ -29,6 +29,15 @@ export const DRINK_REQUIRE_APPROVAL = parseBool(
   true
 );
 
+// Firebase / Google login
+export const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || "").trim();
+export const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || "").trim();
+// Optional comma-separated Google allowlist for Schikko login overrides.
+export const ALLOWED_GOOGLE_EMAILS = (process.env.ALLOWED_GOOGLE_EMAILS || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
 // Event config and cleanup behavior
 export const STRIPEZ_DEFAULT_DURATION_DAYS = Math.max(
   1,

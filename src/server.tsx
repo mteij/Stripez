@@ -9,6 +9,7 @@ import { Index } from "./views/Index";
 import pkg from "../package.json";
 import { PORT, CORS_ORIGINS, APP_NAME, APP_YEAR } from "./config";
 import { setupCronJobs } from "./cron";
+import { getAppDisplayName, renderAppIconPng, renderAppIconSvg } from "./icon";
 
 // Route modules
 import authRoutes from "./routes/auth";
@@ -41,7 +42,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com blob: data: https://cloudflareinsights.com",
+  "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com blob: data: https://cloudflareinsights.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
   "frame-src 'self' https://apis.google.com https://schikko-rules.firebaseapp.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -73,7 +74,49 @@ app.route("/api/oracle", oracleRoutes);
 // ---- Static assets ----
 const PUBLIC_DIR = path.join(import.meta.dir, "..", "public");
 
-app.get("/favicon.ico", (c) => c.redirect("/assets/favicon.png", 302));
+app.get("/favicon.ico", (c) => c.redirect("/favicon.svg", 302));
+app.get("/favicon.svg", (c) => {
+  const svg = renderAppIconSvg(APP_NAME, APP_YEAR, 64);
+  return c.body(svg, 200, {
+    "Content-Type": "image/svg+xml; charset=utf-8",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  });
+});
+app.get("/icon-192.svg", (c) => {
+  const svg = renderAppIconSvg(APP_NAME, APP_YEAR, 192);
+  return c.body(svg, 200, {
+    "Content-Type": "image/svg+xml; charset=utf-8",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  });
+});
+app.get("/icon-192.png", (c) => {
+  const png = renderAppIconPng(APP_NAME, APP_YEAR, 192);
+  return c.body(png, 200, {
+    "Content-Type": "image/png",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  });
+});
+app.get("/icon-512.svg", (c) => {
+  const svg = renderAppIconSvg(APP_NAME, APP_YEAR, 512);
+  return c.body(svg, 200, {
+    "Content-Type": "image/svg+xml; charset=utf-8",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  });
+});
+app.get("/icon-512.png", (c) => {
+  const png = renderAppIconPng(APP_NAME, APP_YEAR, 512);
+  return c.body(png, 200, {
+    "Content-Type": "image/png",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  });
+});
+app.get("/apple-touch-icon.png", (c) => {
+  const png = renderAppIconPng(APP_NAME, APP_YEAR, 180);
+  return c.body(png, 200, {
+    "Content-Type": "image/png",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  });
+});
 // Ensure correct MIME type for Service Worker (Bun runtime)
 app.get("/sw.js", async (c) => {
   const file = Bun.file(path.join(PUBLIC_DIR, "sw.js"));
@@ -82,7 +125,7 @@ app.get("/sw.js", async (c) => {
   });
 });
 app.get("/manifest.json", async (c) => {
-  const name = `${APP_NAME}${APP_YEAR ? " " + APP_YEAR : ""}`;
+  const name = getAppDisplayName(APP_NAME, APP_YEAR);
   const manifest = {
     name,
     short_name: APP_NAME,
@@ -90,10 +133,20 @@ app.get("/manifest.json", async (c) => {
     display: "standalone",
     background_color: "#fdf8e9",
     theme_color: "#8c6b52",
-    description: "The official ledger for the Rules of Schikko.",
+    description: `The official ledger for ${name}.`,
     icons: [
-      { src: "/assets/icon-192.png", type: "image/png", sizes: "192x192" },
-      { src: "/assets/icon-512.png", type: "image/png", sizes: "512x512" },
+      {
+        src: "/icon-192.png",
+        type: "image/png",
+        sizes: "192x192",
+        purpose: "any maskable",
+      },
+      {
+        src: "/icon-512.png",
+        type: "image/png",
+        sizes: "512x512",
+        purpose: "any maskable",
+      },
     ],
     screenshots: [
       {

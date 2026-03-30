@@ -1,27 +1,17 @@
 import cron from "node-cron";
 import { get, run } from "./db";
 import { yearKey } from "./utils/helpers";
-import { STRIPEZ_DEFAULT_DURATION_DAYS, STRIPEZ_UNSET_DELAY_HOURS, STRIPEZ_CLEANUP_ACTION } from "./config";
+import { APP_YEAR, STRIPEZ_DEFAULT_DURATION_DAYS, STRIPEZ_UNSET_DELAY_HOURS, STRIPEZ_CLEANUP_ACTION } from "./config";
 
 export function setupCronJobs() {
-  // Annual Schikko reset: 0 0 1 1 * (Jan 1st 00:00)
+  // Daily cleanup: activity log (> 30 days) + expired sessions
   cron.schedule(
-    "0 0 1 1 *",
-    async () => {
-      const previousYear = new Date().getFullYear() - 1;
-      const key = yearKey(previousYear);
-      run(`DELETE FROM config WHERE key = ?`, [key]);
-    },
-    { timezone: "Europe/Amsterdam" }
-  );
-
-  // Daily activity log cleanup (older than 30 days)
-  cron.schedule(
-    "0 0 * * *",
+    "0 2 * * *",
     async () => {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - 30);
       run(`DELETE FROM activity_log WHERE timestamp < ?`, [cutoff.toISOString()]);
+      run(`DELETE FROM sessions WHERE expires_at <= ?`, [new Date().toISOString()]);
     },
     { timezone: "Europe/Amsterdam" }
   );
@@ -61,14 +51,15 @@ export function setupCronJobs() {
         );
         if (Date.now() < +deadline) return;
 
-        const currentKey = yearKey(new Date().getFullYear());
+        const currentKey = yearKey(APP_YEAR);
         const schikkoExists = !!get("SELECT 1 FROM config WHERE key = ?", [
           currentKey,
         ]);
         if (!schikkoExists) return; // already unset or not set at all
 
-        // Unset Schikko for the year
+        // Unset Schikko for the year and invalidate all sessions
         run(`DELETE FROM config WHERE key = ?`, [currentKey]);
+        run(`DELETE FROM sessions`);
 
         switch (STRIPEZ_CLEANUP_ACTION) {
           case "NUKE":

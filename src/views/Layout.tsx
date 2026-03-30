@@ -3,16 +3,20 @@ import { html } from "hono/html";
 import { type Child } from "hono/jsx";
 
 export const Layout = (props: { children: Child; title?: string; version?: string }) => {
+  const appTitle = props.title || "Loading...";
   return (
     <html lang="en" data-app-version={props.version || "0.0.0"}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{props.title || "Loading…"}</title>
-        <meta name="application-name" content="" />
-        <meta name="apple-mobile-web-app-title" content="" />
+        <meta name="application-name" content={appTitle} />
+        <meta name="apple-mobile-web-app-title" content={appTitle} />
+        <meta name="theme-color" content="#8c6b52" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/png" href="/assets/favicon.png" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         {/* Tailwind CSS with fallback */}
         <script
           dangerouslySetInnerHTML={{
@@ -411,26 +415,9 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
           onerror="window.confettiFallback()"
         ></script>
 
-        {/* QRCode.js with fallback */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-            window.qrcodeFallback = function () {
-              console.warn("QRCode.js CDN blocked, QR code generation disabled");
-              // Create a minimal QRCode constructor to prevent errors
-              window.QRCode = function () {
-                console.warn("QRCode generation not available");
-              };
-            };
-          `,
-          }}
-        />
-        <script
-          src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
-          crossorigin="anonymous"
-          referrerpolicy="no-referrer"
-          onerror="window.qrcodeFallback()"
-        ></script>
+        {/* Firebase Auth SDK (compat) — loaded always, activated only when config is present */}
+        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
         <script
           dangerouslySetInnerHTML={{
@@ -513,11 +500,6 @@ export const Layout = (props: { children: Child; title?: string; version?: strin
                   name: "Confetti",
                   check: () => typeof window.confetti !== "undefined",
                   fallback: window.confettiFallback,
-                },
-                {
-                  name: "QRCode",
-                  check: () => typeof window.QRCode !== "undefined",
-                  fallback: window.qrcodeFallback,
                 },
               ];
       

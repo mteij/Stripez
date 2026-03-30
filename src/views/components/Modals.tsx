@@ -616,14 +616,33 @@ export const Modals = () => {
           <h2 className="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">
             Schikko Authentication
           </h2>
-          <p className="text-lg text-[#4a3024] mb-4">
-            Enter the 6-digit code from your authenticator app.
-          </p>
+
+          {/* Google login — shown by JS only when Firebase is configured */}
+          <div id="schikko-google-section" className="hidden mb-4">
+            <button
+              id="schikko-google-btn"
+              className="w-full flex items-center justify-center gap-3 bg-white border-2 border-[#b9987e] rounded-md p-3 text-lg font-semibold text-[#3c3c3c] hover:bg-[#f5eeda] transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              Sign in with Google
+            </button>
+            <div className="flex items-center gap-3 my-4">
+              <hr className="flex-1 border-[#b9987e]" />
+              <span className="text-sm text-[#6f4e37]">or use admin key</span>
+              <hr className="flex-1 border-[#b9987e]" />
+            </div>
+          </div>
+
           <input
             type="password"
             id="schikko-password-input"
             className="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52] mb-6"
-            placeholder="Code or admin key"
+            placeholder="Admin key"
           />
           <div className="flex justify-center gap-4">
             <button
@@ -652,9 +671,13 @@ export const Modals = () => {
             Claim the Title of Schikko
           </h2>
           <p className="text-lg text-[#4a3024] mb-4">
-            Enter thy first name and last name. After claiming, scan the QR code
-            that appears and use your authenticator app to generate 6-digit
-            codes.
+            Enter the name of the person taking the role, then continue with
+            login via Google — otherwise only the admin key works.
+          </p>
+          <p className="text-sm text-[#8a5a44] mb-4">
+            Only the person who has actually chosen to become Schikko should
+            continue. The first confirmed Google claim becomes the Schikko
+            after a reset.
           </p>
           <input
             type="text"
@@ -673,7 +696,7 @@ export const Modals = () => {
               id="set-schikko-submit-btn"
               className="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg"
             >
-              Claim Title
+              Continue with Google
             </button>
             <button
               id="set-schikko-cancel-btn"
@@ -686,53 +709,63 @@ export const Modals = () => {
       </div>
 
       <div
-        id="totp-setup-modal"
+        id="schikko-settings-modal"
         className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop"
         style={{ zIndex: 300000 }}
       >
-        <div className="bg-[#fdf8e9] w-full max-w-md p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
+        <div className="bg-[#fdf8e9] w-full max-w-lg p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative text-center modal-content">
           <button
-            id="close-totp-setup-modal"
+            id="close-schikko-settings-modal"
             className="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700"
           >
             &times;
           </button>
           <h2 className="font-cinzel-decorative text-3xl text-center text-[#5c3d2e] mb-4">
-            Set Up Authenticator
+            Schikko Settings
           </h2>
-          <p className="text-lg text-[#4a3024] mb-4">
-            Scan this QR with Google Authenticator, 1Password, or similar. Then
-            confirm with a 6‑digit code to claim the title.
+          <p className="text-lg text-[#4a3024] mb-3">
+            Administrative actions for the current Schikko term.
           </p>
-          <div id="totp-qr" className="flex items-center justify-center mb-4"></div>
-          <div className="text-left bg-[#e9e2d7] border-2 border-[#b9987e] rounded-md p-4 mb-2">
-            <p className="text-sm text-[#6f4e37]">
-              <strong>Secret:</strong>
-              <span id="totp-secret" className="break-all"></span>
+          <p className="text-sm text-[#8a5a44] mb-6">
+            Unsetting the Schikko immediately ends all active Schikko sessions.
+            It does not run the event cleanup action.
+          </p>
+          <div className="mb-6 rounded-md border-2 border-[#d8c2ac] bg-[#f7f0e2] p-4 text-left">
+            <h3 className="font-cinzel-decorative text-xl text-[#5c3d2e] mb-2">
+              Event Configuration
+            </h3>
+            <p className="text-sm text-[#6f4e37] mb-4">
+              Update the event timing and the public calendar feed from one
+              place.
             </p>
-            <pre id="totp-manual" className="text-sm mt-2 whitespace-pre-wrap"></pre>
-          </div>
-          <div className="mt-4 text-left">
-            <p className="text-md text-[#4a3024] mb-2">
-              Enter the 6‑digit code from your authenticator app:
-            </p>
-            <input
-              type="text"
-              id="totp-code-input"
-              inputMode="numeric"
-              pattern="\\d{6}"
-              maxLength={6}
-              placeholder="6-digit code"
-              className="w-full bg-[#f5eeda] border-2 border-[#b9987e] rounded-md p-3 text-lg focus:outline-none focus:border-[#8c6b52] focus:ring-1 focus:ring-[#8c6b52]"
-            />
-            <div className="flex justify-center gap-4 mt-4">
+            <div className="flex flex-col gap-3">
               <button
-                id="totp-confirm-btn"
-                className="btn-ancient font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg"
+                id="schikko-settings-event-date-btn"
+                className="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg"
               >
-                Confirm
+                Reschedule Event
+              </button>
+              <button
+                id="schikko-settings-calendar-btn"
+                className="btn-subtle-decree font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg"
+              >
+                Update Calendar Link
               </button>
             </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <button
+              id="unset-schikko-btn"
+              className="btn-ancient font-cinzel-decorative font-bold py-3 px-6 rounded-md text-lg text-red-100 bg-red-700 hover:bg-red-800"
+            >
+              Unset Schikko
+            </button>
+            <button
+              id="schikko-settings-close-btn"
+              className="btn-subtle-decree font-cinzel-decorative font-bold py-2 px-6 rounded-md text-lg"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>

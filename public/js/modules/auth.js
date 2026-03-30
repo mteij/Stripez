@@ -1,7 +1,8 @@
 import { state } from './state.js';
 import { dom } from './dom.js';
-import { getSchikkoStatus, loginSchikko, listDrinkRequests } from '../api.js';
+import { getSchikkoStatus, loginSchikko, loginSchikkoWithGoogle, listDrinkRequests } from '../api.js';
 import { showConfirm, showLoading, hideLoading, showAlert, showSchikkoLoginModal } from '../ui.js';
+import { signInWithGoogle } from '../firebase-auth.js';
 import { handleRender, handleRenderRules } from './render.js';
 import { loadAndRenderAppCountdown, updateAppFooter } from '../main.js';
 
@@ -34,11 +35,13 @@ export function updateGuestUI() {
     if (dom.bulkEditBtn) dom.bulkEditBtn.classList.toggle('hidden', isGuest);
     if (dom.addDecreeBtn) dom.addDecreeBtn.classList.toggle('hidden', isGuest);
     if (dom.addBtn) dom.addBtn.classList.toggle('hidden', isGuest);
-    if (dom.editCalendarBtn) dom.editCalendarBtn.classList.toggle('hidden', isGuest);
     if (dom.openDrinkRequestsBtn) dom.openDrinkRequestsBtn.classList.toggle('hidden', isGuest);
 
     if (dom.openLogbookBtn) {
         dom.openLogbookBtn.classList.toggle('hidden', isGuest);
+    }
+    if (dom.schikkoSettingsBtn) {
+        dom.schikkoSettingsBtn.classList.toggle('hidden', isGuest);
     }
     
     if (dom.schikkoLoginBtn) {
@@ -81,23 +84,31 @@ export async function ensureSchikkoSession() {
         }
     }
 
-    const code = await showSchikkoLoginModal();
-    if (!code) return false;
+    const choice = await showSchikkoLoginModal();
+    if (!choice) return false;
 
     try {
-        showLoading('Verifying code...');
-        const result = await loginSchikko(code);
+        showLoading('Verifying...');
+        let result;
+
+        if (choice.method === 'google') {
+            const googleIdentity = await signInWithGoogle();
+            result = await loginSchikkoWithGoogle(googleIdentity.idToken);
+        } else {
+            result = await loginSchikko(choice.code);
+        }
+
         hideLoading();
 
         if (result?.success && result?.sessionId) {
             localStorage.setItem('schikkoSessionId', result.sessionId);
             state.isSchikkoSessionActive = true;
-            await showAlert("Code accepted. You are the Schikko.", "Login Successful");
+            await showAlert("Access granted. You are the Schikko.", "Login Successful");
             updateGuestUI();
             updateAppFooter();
             return true;
         } else {
-            await showAlert("The code was incorrect. Access denied.", "Login Failed");
+            await showAlert("Access denied. Invalid credentials.", "Login Failed");
             return false;
         }
     } catch (error) {
