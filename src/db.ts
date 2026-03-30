@@ -176,9 +176,13 @@ export function seedDefaultRules() {
 
   const now = nowIso();
   const defaultRules = [
-    { id: randomId('rule'), text: 'The Schikko is chosen by sacred overbidding, each soul raising the burden until one alone dares bear it.', order: 1 },
-    { id: randomId('rule'), text: 'All must obey the Schikko\'s decrees, for his word is law within the circle.', order: 2 },
-    { id: randomId('rule'), text: 'He who defies the rules shall drink the Golden Liquid, aka a Stripe, during the event until penance is made.', order: 3 },
+    { id: randomId('rule'), text: '5 minutes late to a meeting: 1 stripe', order: 1 },
+    { id: randomId('rule'), text: 'Not finishing an AP: 1 stripe', order: 2 },
+    { id: randomId('rule'), text: 'Missing a meeting without notice: dice 3', order: 3 },
+    { id: randomId('rule'), text: 'On phone doing unrelated stuff: 1 stripe (2 stripes if it is a Supercell game)', order: 4 },
+    { id: randomId('rule'), text: 'Do 6-7 meme (or laugh about it): dice 3', order: 5 },
+    { id: randomId('rule'), text: 'Not speaking English during meeting: 1 stripe', order: 6 },
+    { id: randomId('rule'), text: 'Rules can be changed or added by Schikko; they go into effect next meeting.', order: 7 },
   ];
 
   for (const rule of defaultRules) {

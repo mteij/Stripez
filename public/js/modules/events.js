@@ -5,7 +5,7 @@ import {
     addRuleToFirestore, updateRuleInFirestore, addStripeToPerson, getStripezDate, removeLastDrunkStripeFromPerson,
     setPersonRole, bulkUpdateRules, deleteRuleFromFirestore, updateRuleOrderInFirestore, deleteLogFromFirestore,
     approveDrinkRequest, rejectDrinkRequest, requestDrink, addDrunkStripeToPerson, getCalendarConfig, saveCalendarUrl,
-    saveStripezDate, listDrinkRequests, setSchikko, unsetSchikko
+    saveStripezDate, listDrinkRequests, getMyDrinkRequests, setSchikko, unsetSchikko
 } from '../api.js';
 import {
     showConfirm, showPrompt, showLoading, hideLoading, showAlert, showRuleEditModal,
@@ -236,7 +236,10 @@ export function setupEventListeners() {
                     if (!state.isSchikkoSessionActive) {
                         const eventData = await getStripezDate();
                         if (eventData && eventData.date) {
-                            const eventDate = eventData.date.toDate();
+                            const eventDateRaw = eventData.date.toDate();
+                            const eventDate = new Date(eventDateRaw.getFullYear(), eventDateRaw.getMonth(), eventDateRaw.getDate());
+                            const durationDays = Math.max(1, Number(eventData.durationDays || 3));
+                            const eventEnd = new Date(eventDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
                             const now = new Date();
                             if (now < eventDate) {
                                 const distance = eventDate - now;
@@ -248,6 +251,10 @@ export function setupEventListeners() {
                                 await showAlert(`The consumption of the Golden Liquid is a sacred rite reserved for the ${state.appName || 'event'}.\n${countdownString}`, 'Patience, Young One!');
                                 return;
                             }
+                            if (now >= eventEnd) {
+                                await showAlert(`The ${state.appName || 'event'} has already passed. The Golden Liquid can no longer be consumed until the next decree.`, 'Patience, Young One!');
+                                return;
+                            }
                         } else {
                             await showAlert(`The date for the next ${state.appName || 'event'} has not been decreed. The Golden Liquid cannot be consumed.`, 'Patience, Young One!');
                             return;
@@ -256,29 +263,35 @@ export function setupEventListeners() {
 
                     state.currentPersonIdForDrunkStripes = id;
                     const person = state.ledgerDataCache.find(p => p.id === state.currentPersonIdForDrunkStripes);
+                    const pendingDrinks = Math.max(0, Number(person?.pendingDrinks || 0));
                     const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
+                    const availableForGuestRequest = Math.max(0, availablePenaltiesToFulfill - pendingDrinks);
                     const currentDrunkStripes = person?.drunkStripes?.length || 0;
                     
                     if (state.isSchikkoSessionActive) {
                         dom.howManyBeersInput.value = 1;
                         dom.howManyBeersInput.min = -currentDrunkStripes;
                         dom.howManyBeersInput.max = availablePenaltiesToFulfill;
-                        dom.availableStripesDisplay.textContent = `Current: ${currentDrunkStripes}, Available: ${availablePenaltiesToFulfill}`;
+                        dom.availableStripesDisplay.textContent = `Current: ${currentDrunkStripes}, Available: ${availablePenaltiesToFulfill}, Pending: ${pendingDrinks}`;
                         dom.howManyBeersInput.disabled = false;
                         dom.incrementBeersBtn.disabled = false;
                         dom.decrementBeersBtn.disabled = false;
                         dom.confirmDrunkStripesBtn.disabled = false;
+                        if (dom.guestDrinkHistorySection) dom.guestDrinkHistorySection.classList.add('hidden');
                     } else {
-                        dom.howManyBeersInput.value = Math.min(1, availablePenaltiesToFulfill);
+                        dom.howManyBeersInput.value = Math.min(1, availableForGuestRequest);
                         dom.howManyBeersInput.min = 1;
-                        dom.howManyBeersInput.max = availablePenaltiesToFulfill;
-                        dom.availableStripesDisplay.textContent = ` Available Stripes: ${availablePenaltiesToFulfill}`;
-                        const disabled = availablePenaltiesToFulfill <= 0;
+                        dom.howManyBeersInput.max = availableForGuestRequest;
+                        dom.availableStripesDisplay.textContent = `Available Stripes: ${availableForGuestRequest}${pendingDrinks > 0 ? ` (Pending: ${pendingDrinks})` : ''}`;
+                        const disabled = availableForGuestRequest <= 0;
                         dom.howManyBeersInput.disabled = disabled;
                         dom.incrementBeersBtn.disabled = disabled;
                         dom.decrementBeersBtn.disabled = disabled;
                         dom.confirmDrunkStripesBtn.disabled = disabled;
-                        if (disabled) dom.availableStripesDisplay.textContent = 'No Stripes available to fulfill!';
+                        if (disabled) dom.availableStripesDisplay.textContent = pendingDrinks > 0
+                            ? `No unreserved stripes available. Pending requests: ${pendingDrinks}.`
+                            : 'No Stripes available to fulfill!';
+                        await loadMyDrinkRequestHistory();
                     }
 
                     dom.drunkStripesModal.classList.remove('hidden'); 
@@ -648,6 +661,59 @@ export function setupEventListeners() {
     if(dom.geminiSubmitBtn) dom.geminiSubmitBtn.addEventListener('click', handleGeminiSubmit);
 
     // Drink Requests UI
+    async function loadMyDrinkRequestHistory() {
+        if (!dom.guestDrinkHistoryContent || !dom.guestDrinkHistorySection) return;
+
+        if (state.isSchikkoSessionActive) {
+            dom.guestDrinkHistorySection.classList.add('hidden');
+            dom.guestDrinkHistoryContent.innerHTML = '';
+            return;
+        }
+
+        dom.guestDrinkHistorySection.classList.remove('hidden');
+        dom.guestDrinkHistoryContent.innerHTML = '<p class="text-center text-sm text-[#6f4e37] p-2">Loading recent requests...</p>';
+
+        try {
+            const resp = await getMyDrinkRequests();
+            const requests = Array.isArray(resp?.requests) ? resp.requests : [];
+            if (requests.length === 0) {
+                dom.guestDrinkHistoryContent.innerHTML = '<p class="text-center text-sm text-[#6f4e37] p-2">No recent requests yet.</p>';
+                return;
+            }
+
+            dom.guestDrinkHistoryContent.innerHTML = '';
+            requests.forEach((r) => {
+                const when = r.created_at
+                    ? new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                    : '';
+                const applied = Math.max(0, Number(r.applied || 0));
+                const status = String(r.status || 'pending');
+                const statusLabel = status === 'approved'
+                    ? `Approved (${applied} applied)`
+                    : status === 'rejected'
+                        ? 'Rejected'
+                        : 'Pending';
+                const statusClass = status === 'approved'
+                    ? 'text-green-700'
+                    : status === 'rejected'
+                        ? 'text-red-700'
+                        : 'text-[#a55a16]';
+
+                const row = document.createElement('div');
+                row.className = 'rounded-md border border-[#d8c2ac] bg-[#f7f0e2] p-3';
+                row.innerHTML = `
+                    <p class="text-sm text-[#4a3024]"><span class="font-bold">${r.person_name || 'Unknown'}</span> - ${r.amount} draught(s)</p>
+                    <p class="text-xs text-[#6f4e37]">${when}</p>
+                    <p class="text-xs font-bold ${statusClass}">${statusLabel}</p>
+                `;
+                dom.guestDrinkHistoryContent.appendChild(row);
+            });
+        } catch (e) {
+            console.error('Failed to load recent drink requests:', e);
+            dom.guestDrinkHistoryContent.innerHTML = '<p class="text-center text-sm text-[#6f4e37] p-2">Could not load your recent requests.</p>';
+        }
+    }
+
     async function loadDrinkRequests() {
         try {
             const resp = await listDrinkRequests();
@@ -732,7 +798,9 @@ export function setupEventListeners() {
 
         const count = parseInt(dom.howManyBeersInput.value);
         const person = state.ledgerDataCache.find(p => p.id === state.currentPersonIdForDrunkStripes);
+        const pendingDrinks = Math.max(0, Number(person?.pendingDrinks || 0));
         const availablePenaltiesToFulfill = (person?.stripes?.length || 0) - (person?.drunkStripes?.length || 0);
+        const availableForGuestRequest = Math.max(0, availablePenaltiesToFulfill - pendingDrinks);
         const currentDrunkStripes = person?.drunkStripes?.length || 0;
 
         if (!state.isSchikkoSessionActive) {
@@ -740,8 +808,8 @@ export function setupEventListeners() {
                 await showAlert(`Guests can only add positive amounts of draughts!`, "Invalid Amount");
                 return;
             }
-            if (count > availablePenaltiesToFulfill) {
-                await showAlert(`Cannot consume more stripes than available! You have ${availablePenaltiesToFulfill} stripes remaining.`, "Too Many Draughts");
+            if (count > availableForGuestRequest) {
+                await showAlert(`Cannot consume more stripes than available! You have ${availableForGuestRequest} unreserved stripes remaining.`, "Too Many Draughts");
                 return;
             }
         } else {
@@ -756,13 +824,28 @@ export function setupEventListeners() {
         }
 
         if (count !== 0) {
-            if (!state.isSchikkoSessionActive && state.requireApprovalForDrinks && count > 0) {
+            if (!state.isSchikkoSessionActive && count > 0) {
                 showLoading('Submitting request...');
                 try {
-                    await requestDrink(state.currentPersonIdForDrunkStripes, count);
+                    const res = await requestDrink(state.currentPersonIdForDrunkStripes, count);
                     await logActivity('DRINK_REQUEST', 'Guest', `Guest requested ${count} draught(s) for ${person?.name || 'someone'}.`);
                     hideLoading();
-                    await showAlert('Your drink request was submitted and awaits Schikko approval.', 'Request Submitted');
+                    if (res?.status === 'approved') {
+                        const applied = Math.max(0, Number(res?.applied || 0));
+                        await showAlert(
+                            applied > 0
+                                ? `Your draughts were recorded immediately (${applied} applied).`
+                                : 'Your request was auto-approved, but no draughts could be applied because no stripes were available.',
+                            'Draughts Recorded'
+                        );
+                    } else {
+                        if (person) {
+                            person.pendingDrinks = Math.max(0, Number(person.pendingDrinks || 0)) + count;
+                            handleRender();
+                        }
+                        await showAlert('Your drink request was submitted and awaits Schikko approval.', 'Request Submitted');
+                    }
+                    await loadMyDrinkRequestHistory();
                 } catch (e) {
                     hideLoading();
                     await showAlert(`Failed to submit drink request: ${e?.message || 'Unknown error'}`, 'Request Failed');

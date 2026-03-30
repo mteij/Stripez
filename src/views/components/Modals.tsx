@@ -433,6 +433,19 @@ export const Modals = () => {
               Confirm Draughts
             </button>
           </div>
+
+          <div
+            id="guest-drink-history-section"
+            className="hidden mt-6 pt-4 border-t-2 border-dotted border-[#b9987e]"
+          >
+            <h3 className="font-cinzel-decorative text-xl text-center text-[#5c3d2e] mb-3">
+              Your Recent Requests
+            </h3>
+            <div
+              id="guest-drink-history-content"
+              className="space-y-2 max-h-44 overflow-y-auto"
+            ></div>
+          </div>
         </div>
       </div>
 

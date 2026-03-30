@@ -469,13 +469,24 @@ app.post("/action", async (c) => {
 
       case "removeLastDrunkStripe": {
         const docId = String(data.docId || "");
+        const count = Math.max(1, Number(data.count || 1));
         if (!docId) return c.json({ error: "invalid-argument" }, 400);
-        const last = get<{ id: number; ts: string }>(
-          `SELECT id, ts FROM stripes WHERE person_id = ? AND kind = 'drunk' ORDER BY ts DESC LIMIT 1`,
-          [docId]
+        const rows = all<{ id: number }>(
+          `SELECT id
+             FROM stripes
+            WHERE person_id = ? AND kind = 'drunk'
+            ORDER BY ts DESC
+            LIMIT ?`,
+          [docId, count]
         );
-        if (last?.id) run(`DELETE FROM stripes WHERE id = ?`, [last.id]);
-        return c.json({ ok: true });
+        if (rows.length) {
+          const qs = rows.map(() => "?").join(", ");
+          run(
+            `DELETE FROM stripes WHERE id IN (${qs})`,
+            rows.map((row) => row.id)
+          );
+        }
+        return c.json({ ok: true, removed: rows.length });
       }
 
       case "saveCalendarUrl": {
@@ -608,7 +619,7 @@ app.post("/action", async (c) => {
                  processed_by = ?,
                  applied = ?
            WHERE id = ?`,
-          [nowIso(), uid, toApply > 0 ? 1 : 0, reqId]
+          [nowIso(), uid, toApply, reqId]
         );
         return c.json({ ok: true, applied: toApply });
       }

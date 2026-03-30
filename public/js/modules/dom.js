@@ -76,6 +76,8 @@ export const dom = {
     decrementBeersBtn: document.getElementById('decrement-beers-btn'),
     confirmDrunkStripesBtn: document.getElementById('confirm-drunk-stripes-btn'),
     availableStripesDisplay: document.getElementById('available-stripes-display'),
+    guestDrinkHistorySection: document.getElementById('guest-drink-history-section'),
+    guestDrinkHistoryContent: document.getElementById('guest-drink-history-content'),
 
     // Drink Requests admin UI
     openDrinkRequestsBtn: document.getElementById('open-drink-requests-btn'),

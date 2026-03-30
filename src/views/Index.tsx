@@ -83,12 +83,12 @@ export const Index = (props: { title?: string; version?: string }) => {
             </li>
             <li>
               He who defies the rules shall drink the Golden Liquid, aka a
-              Stripe, during the
+              Stripe, during the{" "}
               <span
                 id="app-name-inline"
                 className="opacity-0 transition-opacity duration-700"
               ></span>
-              until penance is made.
+              {" "}until penance is made.
             </li>
           </ol>
 

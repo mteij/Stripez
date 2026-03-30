@@ -503,7 +503,7 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
 
     if (viewData.length === 0) {
         const message = term ? "No transgressors match your search." : "The ledger is clear. No transgressions recorded.";
-        punishmentListDiv.innerHTML = `<div class="text-center text-xl text-[#6f4e37] app-fade">${message}</div>`;
+        punishmentListDiv.innerHTML = `<div class="text-center text-xl text-[#6f4e37] app-fade app-fade-in">${message}</div>`;
         return;
     }
 
@@ -521,12 +521,13 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
     viewData.forEach((person, index) => {
         const normalStripesCount = person.stripes?.length || 0;
         const drunkStripesCount = person.drunkStripes?.length || 0;
+        const pendingDrinksCount = Math.max(0, Number(person.pendingDrinks || 0));
         
         let stripesContentHtml = '';
         let stripeContainerDynamicClasses = '';
         
         if (normalStripesCount > STRIPE_COUNT_THRESHOLD_FOR_NUMBER_DISPLAY) {
-            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drank: ${drunkStripesCount})</p>`; 
+            stripesContentHtml = `<p class="text-xl text-[#c0392b] font-bold">${normalStripesCount} (Drank: ${drunkStripesCount}${pendingDrinksCount > 0 ? `, Pending: ${pendingDrinksCount}` : ''})</p>`; 
             stripeContainerDynamicClasses += 'justify-start';
         } else {
             const stripesToDisplay = normalStripesCount;
@@ -560,6 +561,10 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
                     </div>`;
             }
         }
+
+        const pendingBadgeHtml = pendingDrinksCount > 0
+            ? `<div class="mt-2"><span class="pending-drinks-badge">Pending drinks: ${pendingDrinksCount}</span></div>`
+            : '';
 
         const personDiv = document.createElement('div');
         const isNew = !previousIds.has(person.id) && animateNewItems;
@@ -629,6 +634,7 @@ function renderLedgerItems(viewData, term, isSchikko, previousIds = new Set(), a
             <div class="flex-grow cursor-pointer" data-action="show-stats" data-id="${person.id}">
                 <p class="text-xl md:text-2xl font-bold text-[#5c3d2e] flex items-center gap-2">${escapeHTML(person.name)} ${roleTagHtml}</p>
                 <div class="flex items-center min-h-[44px] ${stripeContainerDynamicClasses}">${stripesContentHtml}</div>
+                ${pendingBadgeHtml}
             </div>
             ${buttonsHTML}`;
         

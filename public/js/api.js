@@ -182,6 +182,12 @@ async function getCalendarDataProxy(url) {
    if (!res.ok) throw new Error(`HTTP ${res.status}`);
    return res.json(); // { ok, id }
  }
+
+ async function getMyDrinkRequests() {
+   const res = await fetch(`${API_BASE}/api/drink/mine`, { credentials: 'include' });
+   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   return res.json();
+ }
  
  // Admin-side (Schikko) actions
  async function listDrinkRequests() {
@@ -223,9 +229,12 @@ async function removeLastStripeFromPerson(person) {
   return callSchikkoAction('removeLastStripe', { docId: person.id });
 }
 
-async function removeLastDrunkStripeFromPerson(person) {
+async function removeLastDrunkStripeFromPerson(person, count = 1) {
   if (!person?.id) return;
-  return callSchikkoAction('removeLastDrunkStripe', { docId: person.id });
+  return callSchikkoAction('removeLastDrunkStripe', {
+    docId: person.id,
+    count: Math.max(1, Number(count || 1)),
+  });
 }
 
 async function renamePersonOnLedger(docId, newName) {
@@ -339,6 +348,7 @@ export {
   getCalendarDataProxy,
   // drink requests
   requestDrink,
+  getMyDrinkRequests,
   listDrinkRequests,
   approveDrinkRequest,
   rejectDrinkRequest,

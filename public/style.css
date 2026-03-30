@@ -403,6 +403,17 @@ body {
     box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
+.pending-drinks-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    background-color: #f6d89b;
+    color: #7a4a11;
+    border: 1px solid #d6a557;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
 /* Flyout submenu for Roles inside kebab (3-dots) menu */
 /* Ensure no hover gap between trigger and submenu by overlapping slightly */
 .kebab-submenu-item { position: relative; }
@@ -1198,6 +1209,7 @@ body {
 /* Ensure all modals appear ABOVE the Oracle overlay (99999) */
 #generic-alert-modal,
 #generic-confirm-modal,
+#generic-prompt-modal,
 #dice-randomizer-modal,
 #list-randomizer-modal,
 #wheel-randomizer-modal,
@@ -1205,13 +1217,13 @@ body {
 #bulk-stripes-modal,
 #logbook-modal,
 #loading-overlay {
-    z-index: 200000 !important;
+    z-index: 400000 !important;
 }
 
 /* Ensure close buttons are clickable */
 #close-dice-randomizer-modal,
 #close-alert-modal,
-#close-generic-modal,
+#close-schikko-settings-modal,
 #close-randomizer-hub-modal,
 #close-list-randomizer-modal,
 #close-wheel-randomizer-modal,
@@ -1222,7 +1234,7 @@ body {
 #close-agenda-modal,
 #close-stats-modal,
 #close-bulk-edit-modal {
-    z-index: 200001 !important; /* Above the modal content */
+    z-index: 400001 !important; /* Above the modal content */
     position: absolute; /* Reinforce absolute positioning */
     pointer-events: auto;
 }
