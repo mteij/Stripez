@@ -1168,10 +1168,10 @@ function showSetSchikkoModal() {
     if (firstNameInput) firstNameInput.value = '';
     if (lastNameInput) lastNameInput.value = '';
     if (introText) {
-        introText.textContent = 'Enter the name of the person taking the role, then continue with that person\'s Google account.';
+        introText.textContent = 'Enter the name of the person who won the overbidding and completed the winning bid, then continue with that person\'s Google account.';
     }
     if (warningText) {
-        warningText.textContent = 'Only the person who has actually chosen to become Schikko should continue. The first confirmed Google claim becomes the Schikko after a reset.';
+        warningText.textContent = 'Only continue once the overbidding is settled and the winning bid has actually been completed. This step records who became Schikko; it does not decide the winner.';
     }
     modal.classList.remove('hidden');
     firstNameInput?.focus();

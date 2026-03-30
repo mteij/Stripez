@@ -114,6 +114,19 @@ export async function ensureSchikkoSession() {
     } catch (error) {
         hideLoading();
         console.error("Error during Schikko login:", error);
+        if (error?.status === 409 || error?.apiError === 'schikko-reset-required') {
+            try { localStorage.removeItem('schikkoSessionId'); } catch (_) {}
+            state.isSchikkoSessionActive = false;
+            state.isSchikkoSetForTheYear = false;
+            updateGuestUI();
+            updateAppFooter();
+            try { await checkSchikkoStatus(); } catch (_) {}
+            await showAlert(
+                "This Schikko was set with an older login method and must be claimed again with Google sign-in. The rules and stripes have not been removed.",
+                "Reclaim Schikko"
+            );
+            return false;
+        }
         await showAlert(`An error occurred: ${error.message}`, "Login Error");
         return false;
     }

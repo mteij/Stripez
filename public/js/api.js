@@ -3,6 +3,19 @@
 
 const API_BASE = '';
 
+function createApiError(res, data, fallbackMessages = {}) {
+  const error = new Error(
+    data?.message ||
+    data?.error ||
+    fallbackMessages[res.status] ||
+    `HTTP ${res.status}`
+  );
+  error.status = res.status;
+  error.apiError = data?.error || null;
+  error.apiMessage = data?.message || null;
+  return error;
+}
+
 // Timestamp helper to keep existing UI expectations
 function toTs(iso) {
   const d = new Date(iso);
@@ -94,7 +107,11 @@ async function loginSchikko(code) {
     });
     data = await res.json().catch(() => null);
   }
-  if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    throw createApiError(res, data, {
+      409: 'This Schikko entry must be claimed again before login is possible.',
+    });
+  }
   return data;
 }
 
@@ -117,7 +134,11 @@ async function loginSchikkoWithGoogle(idToken) {
     });
     data = await res.json().catch(() => null);
   }
-  if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    throw createApiError(res, data, {
+      409: 'This Schikko entry must be claimed again before login is possible.',
+    });
+  }
   return data;
 }
 

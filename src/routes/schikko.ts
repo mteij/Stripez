@@ -29,12 +29,12 @@ function isActiveSchikkoRecord(data: any) {
   return Boolean(googleUid || googleEmail);
 }
 
-function createSchikkoSession(uid: string) {
+function createSchikkoSession(uid: string, authz = "schikko") {
   const sessionId = randomId("s");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   run(
-    `INSERT INTO sessions (id, uid, created_at, expires_at) VALUES (?, ?, ?, ?)`,
-    [sessionId, uid, nowIso(), expiresAt.toISOString()]
+    `INSERT INTO sessions (id, uid, authz, created_at, expires_at) VALUES (?, ?, ?, ?, ?)`,
+    [sessionId, uid, authz, nowIso(), expiresAt.toISOString()]
   );
   return { sessionId, expiresAtMs: +expiresAt };
 }
@@ -140,7 +140,7 @@ app.post("/set", async (c) => {
       {
         error: "google-auth-required",
         message:
-          "Claiming Schikko requires signing in with the Google account of the person taking the role.",
+          "Setting Schikko requires signing in with the Google account of the person who won the overbidding and completed the winning bid.",
       },
       400
     );
@@ -187,7 +187,7 @@ app.post("/set", async (c) => {
         {
           error: "already-claimed",
           message:
-            "Someone else claimed Schikko first. Refresh to see the current Schikko.",
+            "Schikko was already set while you were confirming. Refresh to see the current Schikko.",
         },
         409
       );
@@ -219,28 +219,18 @@ app.post("/login", async (c) => {
   if (!uid) return c.json({ error: "unauthenticated" }, 401);
 
   const currentSchikko = readSchikkoData(yearKey(APP_YEAR));
-  if (!isActiveSchikkoRecord(currentSchikko)) {
-    return c.json(
-      {
-        success: false,
-        error: "schikko-reset-required",
-        message:
-          currentSchikko?.verified
-            ? "The current Schikko was set with an older login method and must be claimed again with Google sign-in."
-            : "No Schikko is currently active. Claim Schikko first before logging in.",
-      },
-      409
-    );
-  }
-
   let ok = false;
   let error = "invalid-credentials";
   let message: string | undefined;
+  let sessionAuthz = "schikko";
 
   // Option 1: admin key
   if (!ok && body.code) {
     const code = String(body.code).trim();
-    if (ADMIN_KEY && timingSafeStrEq(code, ADMIN_KEY)) ok = true;
+    if (ADMIN_KEY && timingSafeStrEq(code, ADMIN_KEY)) {
+      ok = true;
+      sessionAuthz = "admin";
+    }
   }
 
   // Option 2: Firebase Google idToken
@@ -263,6 +253,7 @@ app.post("/login", async (c) => {
           ALLOWED_GOOGLE_EMAILS.includes(claims.email)
         ) {
           ok = true;
+          sessionAuthz = "allowlisted";
         }
         // Then check the currently stored Schikko identity
         if (!ok) {
@@ -270,8 +261,14 @@ app.post("/login", async (c) => {
           if (isActiveSchikkoRecord(data)) {
             const { googleUid: savedUid, googleEmail: savedEmail } =
               getSchikkoIdentity(data);
-            if (savedUid && savedUid === claims.uid) ok = true;
-            if (!ok && savedEmail && savedEmail === claims.email) ok = true;
+            if (savedUid && savedUid === claims.uid) {
+              ok = true;
+              sessionAuthz = "schikko";
+            }
+            if (!ok && savedEmail && savedEmail === claims.email) {
+              ok = true;
+              sessionAuthz = "schikko";
+            }
 
             if (!ok && (savedUid || savedEmail)) {
               error = "google-account-mismatch";
@@ -282,6 +279,12 @@ app.post("/login", async (c) => {
               message =
                 "The current Schikko does not have a linked Google account yet.";
             }
+          } else {
+            error = "schikko-reset-required";
+            message =
+              currentSchikko?.verified
+                ? "The current Schikko was set with an older login method and must be claimed again with Google sign-in."
+                : "No Schikko is currently active. Claim Schikko first before logging in.";
           }
         }
       }
@@ -290,18 +293,31 @@ app.post("/login", async (c) => {
 
   if (!ok) return c.json({ success: false, error, message }, 401);
 
-  return c.json({ success: true, ...createSchikkoSession(uid) });
+  return c.json({ success: true, ...createSchikkoSession(uid, sessionAuthz) });
 });
 
 async function requireValidSession(c: any, sessionId: string): Promise<SessionCheckResult> {
   const uid = getCookie(c, "uid");
   if (!uid) return { ok: false, code: 401, error: "unauthenticated" };
   const currentSchikko = readSchikkoData(yearKey(APP_YEAR));
+  const allowWithoutActiveSchikko = ["allowlisted", "admin"];
   if (!isActiveSchikkoRecord(currentSchikko)) {
-    return { ok: false, code: 403, error: "permission-denied" };
+    const row = get<{ id: string; uid: string; authz?: string; expires_at: string }>(
+      "SELECT id, uid, authz, expires_at FROM sessions WHERE id = ?",
+      [sessionId]
+    );
+    if (
+      !row ||
+      row.uid !== uid ||
+      new Date(row.expires_at).getTime() <= Date.now() ||
+      !allowWithoutActiveSchikko.includes(String(row.authz || "schikko"))
+    ) {
+      return { ok: false, code: 403, error: "permission-denied" };
+    }
+    return { ok: true };
   }
-  const row = get<{ id: string; uid: string; expires_at: string }>(
-    "SELECT id, uid, expires_at FROM sessions WHERE id = ?",
+  const row = get<{ id: string; uid: string; authz?: string; expires_at: string }>(
+    "SELECT id, uid, authz, expires_at FROM sessions WHERE id = ?",
     [sessionId]
   );
   if (

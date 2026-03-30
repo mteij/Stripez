@@ -684,13 +684,13 @@ export const Modals = () => {
             Claim the Title of Schikko
           </h2>
           <p className="text-lg text-[#4a3024] mb-4">
-            Enter the name of the person taking the role, then continue with
-            login via Google — otherwise only the admin key works.
+            Enter the name of the person who won the overbidding and completed
+            the winning bid, then continue with login via Google.
           </p>
           <p className="text-sm text-[#8a5a44] mb-4">
-            Only the person who has actually chosen to become Schikko should
-            continue. The first confirmed Google claim becomes the Schikko
-            after a reset.
+            Only continue once the overbidding is settled and the winning bid
+            has actually been completed. This step records who became Schikko;
+            it does not decide the winner.
           </p>
           <input
             type="text"

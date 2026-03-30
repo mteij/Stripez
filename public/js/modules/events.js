@@ -981,7 +981,7 @@ export function setupEventListeners() {
             }
 
             const confirmed = await showConfirm(
-                `You are about to claim Schikko as ${info.firstName} ${info.lastName} using ${googleIdentity.email}.\n\nOnly continue if you personally chose to become Schikko. The first confirmed claim after a reset wins.`,
+                `You are about to record ${info.firstName} ${info.lastName} as Schikko using ${googleIdentity.email}.\n\nOnly continue if the overbidding is finished and this person successfully completed the winning bid.`,
                 'Confirm Schikko Claim'
             );
             if (!confirmed) return;

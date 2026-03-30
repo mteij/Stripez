@@ -137,10 +137,17 @@ export function migrate() {
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       uid TEXT NOT NULL,
+      authz TEXT NOT NULL DEFAULT 'schikko',
       created_at TEXT NOT NULL,
       expires_at TEXT NOT NULL
     );
   `);
+
+  const sessionTableInfo = db.prepare("PRAGMA table_info(sessions)").all();
+  const sessionColumns = sessionTableInfo.map((col: any) => col.name);
+  if (!sessionColumns.includes("authz")) {
+    db.exec(`ALTER TABLE sessions ADD COLUMN authz TEXT NOT NULL DEFAULT 'schikko'`);
+  }
 
   // throttles (attempts stored as JSON array TEXT)
   db.exec(`
