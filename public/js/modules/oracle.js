@@ -510,7 +510,7 @@ export async function handleGeminiSubmit() {
                      });
                      
                      const doneBtn = document.createElement('button');
-                     doneBtn.className = 'btn-ancient px-8 py-3 rounded-lg text-xl font-bold tracking-wide ml-4';
+                     doneBtn.className = 'btn-oracle-action px-6 py-3 rounded-lg text-lg font-bold tracking-wide';
                      doneBtn.textContent = anyoneGuilty ? 'Done' : 'Acknowledge';
                      doneBtn.onclick = closeOverlay;
                      actionContainer.appendChild(doneBtn);

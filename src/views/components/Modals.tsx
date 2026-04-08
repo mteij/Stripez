@@ -320,7 +320,7 @@ export const Modals = () => {
         id="gemini-modal"
         className="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 modal-backdrop"
       >
-        <div className="bg-[#fdf8e9] w-full max-w-xl p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative modal-content">
+        <div className="bg-[#fdf8e9] w-full max-w-xl max-h-[90vh] overflow-y-auto p-5 md:p-8 rounded-lg border-4 border-[#8c6b52] relative modal-content">
           <button
             id="close-gemini-modal"
             className="absolute top-2 right-4 text-3xl font-bold text-[#5c3d2e] hover:text-red-700"
@@ -354,7 +354,7 @@ export const Modals = () => {
 
           <div
             id="gemini-output"
-            className="mt-6 p-4 min-h-[60px] text-lg text-center font-bold text-[#c0392b] whitespace-pre-wrap hidden"
+            className="mt-6 p-4 min-h-[60px] max-h-[40vh] overflow-y-auto text-lg text-center font-bold text-[#c0392b] whitespace-pre-wrap hidden"
           ></div>
         </div>
       </div>
